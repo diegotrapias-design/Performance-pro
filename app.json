@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "Performance Pro",
+    "slug": "performance-pro",
+    "scheme": "performancepro",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": { "backgroundColor": "#111116", "resizeMode": "contain" },
+    "ios": { "supportsTablet": true, "bundleIdentifier": "br.com.diegotrapia.performancepro" },
+    "android": { "package": "br.com.diegotrapia.performancepro", "adaptiveIcon": { "backgroundColor": "#111116" } },
+    "web": { "bundler": "metro", "name": "Performance Pro", "shortName": "Performance Pro" },
+    "plugins": ["expo-router", "expo-secure-store"]
+  }
+}
