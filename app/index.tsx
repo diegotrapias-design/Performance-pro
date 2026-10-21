@@ -12,6 +12,7 @@ export default function Home() {
   const [loading,setLoading] = useState(true);
   const [email,setEmail] = useState('');
   const [password,setPassword] = useState('');
+  const [loginError,setLoginError] = useState('');
   const [newPassword,setNewPassword] = useState('');
   const [tab,setTab] = useState('Início');
   const [athletes,setAthletes] = useState<Athlete[]>([]);
@@ -60,14 +61,40 @@ export default function Home() {
     const {data,error}=await supabase.from('monitoring_sessions').select('id,session_date,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm').eq('athlete_id',athleteId).order('session_date',{ascending:false}).limit(30);
     if(error) Alert.alert('Monitoramento',error.message); else setSessions(data||[]);
   }
-  async function authenticate() {
-    if (!supabase) { Alert.alert('Configuração necessária','Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY no arquivo .env.'); return; }
-    if (!email.trim() || !password) { Alert.alert('Preencha os campos','Informe e-mail e senha.'); return; }
-    setLoading(true);
-    const result = await supabase.auth.signInWithPassword({email:email.trim(),password});
-    setLoading(false);
-    if (result.error) Alert.alert('Não foi possível entrar',result.error.message);
+async function authenticate() {
+  setLoginError('');
+
+  if (!supabase) {
+    setLoginError('O Supabase não está configurado.');
+    return;
   }
+
+  if (!email.trim() || !password) {
+    setLoginError('Informe seu e-mail e sua senha.');
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+
+    if (error) {
+      setLoginError(error.message);
+    }
+  } catch (error) {
+    setLoginError(
+      error instanceof Error
+        ? error.message
+        : 'Não foi possível entrar. Tente novamente.'
+    );
+  } finally {
+    setLoading(false);
+  }
+}
   async function completeInvite() {
     if (!supabase || newPassword.length < 8) { Alert.alert('Senha inválida','Crie uma senha com pelo menos 8 caracteres.'); return; }
     setLoading(true);
@@ -115,10 +142,12 @@ export default function Home() {
     {!supabase&&<Text style={s.warning}>Configure as variáveis Supabase no arquivo .env para ativar login e sincronização.</Text>}
     <TextInput style={s.input} autoCapitalize="none" keyboardType="email-address" placeholder="E-mail" placeholderTextColor={C.muted} value={email} onChangeText={setEmail}/>
     <TextInput style={s.input} secureTextEntry placeholder="Senha" placeholderTextColor={C.muted} value={password} onChangeText={setPassword}/>
+    {loginError !== '' && (
+  <Text style={s.warning}>{loginError}</Text>
+)
     <Pressable style={s.primary} onPress={authenticate}><Text style={s.primaryText}>Entrar na plataforma</Text></Pressable>
     <Text style={s.legal}>Acesso por convite. O treinador cria seu cadastro e envia um link seguro para você definir a senha. O cadastro público está desativado.</Text>
   </ScrollView>;
-
   const isCoach=profile?.role==='coach';
   const myAthlete=athletes.find(a=>a.id===selectedAthlete);
   const currentSessions=sessions;
