@@ -237,7 +237,7 @@ export default function Home() {
 
   async function loadExercises() {
     if (!supabase) return;
-    const { data, error } = await supabase.from('exercises').select('id,name,category,target,video_path').order('name');
+    const { data, error } = await supabase.from('exercises').select('id,name,category,target,video_path,team_id').order('name');
     if (error) { setActionError(`Erro ao carregar biblioteca: ${error.message}`); return; }
     setExercises(data || []);
     if (!exerciseName && data?.[0]) setExerciseName(data[0].name);
@@ -513,8 +513,18 @@ export default function Home() {
         contentType: asset.mimeType || 'video/mp4', upsert: false,
       });
       if (uploadError) throw uploadError;
-      const { error: updateError } = await supabase.from('exercises').update({ video_path: path }).eq('id', exercise.id);
-      if (updateError) throw updateError;
+      if (exercise.team_id) {
+        const { error: updateError } = await supabase.from('exercises').update({ video_path: path }).eq('id', exercise.id);
+        if (updateError) throw updateError;
+      } else {
+        if (!profile?.team_id) throw new Error('Equipe do treinador não identificada.');
+        const { error: copyError } = await supabase.from('exercises').insert({
+          team_id: profile.team_id, name: exercise.name, category: exercise.category,
+          target: exercise.target || null, video_path: path, is_public: false,
+          created_by: session.user.id,
+        });
+        if (copyError) throw copyError;
+      }
       await loadExercises();
       Alert.alert('Vídeo salvo', 'O vídeo foi vinculado ao exercício.');
     } catch (error: unknown) {
