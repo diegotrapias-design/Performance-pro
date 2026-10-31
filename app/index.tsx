@@ -83,6 +83,7 @@ export default function Home() {
   const [exerciseRest, setExerciseRest] = useState('60');
   const [workoutNotes, setWorkoutNotes] = useState('');
   const [savingWorkout, setSavingWorkout] = useState(false);
+  const [pendingExercises, setPendingExercises] = useState<any[]>([]);
   const [sendingInvite, setSendingInvite] = useState(false);
   const [actionError, setActionError] = useState('');
 
@@ -247,6 +248,20 @@ export default function Home() {
     setWorkouts(data || []);
   }
 
+  function addExerciseToWorkout() {
+    if (!exerciseName.trim()) { Alert.alert('Selecione um exercício', 'Escolha um exercício da biblioteca.'); return; }
+    const sets = Number(exerciseSets), rest = Number(exerciseRest);
+    if (!Number.isInteger(sets) || sets < 1 || sets > 30 || !Number.isFinite(rest) || rest < 0) {
+      Alert.alert('Valores inválidos', 'Confira séries e descanso.'); return;
+    }
+    setPendingExercises((items) => [...items, {
+      exercise_id: exercises.find((item) => item.name === exerciseName)?.id || null,
+      exercise_name: exerciseName.trim(), sets, reps: exerciseReps.trim() || null,
+      load_text: exerciseLoad.trim() || null, rest_seconds: Math.round(rest), sort_order: items.length,
+    }]);
+    setExerciseLoad('');
+  }
+
   async function saveWorkout() {
     if (!supabase || !profile?.team_id || !selectedAthlete) {
       Alert.alert('Selecione um atleta', 'Escolha um atleta antes de montar o treino.'); return;
@@ -265,15 +280,23 @@ export default function Home() {
         scheduled_for: workoutDate || null, notes: workoutNotes.trim() || null, created_by: session.user.id,
       }).select('id').single();
       if (error) throw error;
-      const { error: itemError } = await supabase.from('workout_items').insert({
-        workout_id: workout.id, exercise_name: exerciseName.trim(),
-        exercise_id: exercises.find((item) => item.name === exerciseName)?.id || null,
-        sets, reps: exerciseReps.trim() || null, load_text: exerciseLoad.trim() || null,
-        rest_seconds: Math.round(rest), sort_order: 0,
-      });
+      const itemsToSave = [...pendingExercises];
+      if (itemsToSave.length === 0) {
+        const sets = Number(exerciseSets), rest = Number(exerciseRest);
+        if (!Number.isInteger(sets) || sets < 1 || sets > 30 || !Number.isFinite(rest) || rest < 0) throw new Error('Confira séries e descanso do exercício.');
+        itemsToSave.push({
+          workout_id: workout.id, exercise_name: exerciseName.trim(),
+          exercise_id: exercises.find((item) => item.name === exerciseName)?.id || null,
+          sets, reps: exerciseReps.trim() || null, load_text: exerciseLoad.trim() || null,
+          rest_seconds: Math.round(rest), sort_order: 0,
+        });
+      }
+      const { error: itemError } = await supabase.from('workout_items').insert(
+        itemsToSave.map((item, index) => ({ ...item, workout_id: workout.id, sort_order: index }))
+      );
       if (itemError) { await supabase.from('workouts').delete().eq('id', workout.id); throw itemError; }
       Alert.alert('Treino salvo', 'O treino foi atribuído ao atleta.');
-      setWorkoutTitle(''); setWorkoutDate(''); setWorkoutNotes('');
+      setWorkoutTitle(''); setWorkoutDate(''); setWorkoutNotes(''); setPendingExercises([]);
       await loadWorkouts();
     } catch (error: unknown) { Alert.alert('Não foi possível salvar', errorMessage(error)); }
     finally { setSavingWorkout(false); }
@@ -856,6 +879,8 @@ export default function Home() {
               <TextInput style={s.input} placeholder="Carga (ex.: 60 kg)" placeholderTextColor={C.muted} value={exerciseLoad} onChangeText={setExerciseLoad} />
               <TextInput style={s.input} keyboardType="numeric" placeholder="Descanso em segundos" placeholderTextColor={C.muted} value={exerciseRest} onChangeText={setExerciseRest} />
               <TextInput style={s.input} placeholder="Observações" placeholderTextColor={C.muted} value={workoutNotes} onChangeText={setWorkoutNotes} />
+              <Pressable style={s.action} onPress={addExerciseToWorkout}><Text style={s.actionText}>＋ Adicionar exercício ao treino</Text></Pressable>
+              {pendingExercises.map((item, index) => <View key={index} style={s.athlete}><Text style={s.athleteName}>{index + 1}. {item.exercise_name}</Text><Text style={s.muted}>{item.sets} × {item.reps || '—'} · {item.load_text || 'sem carga'} · pausa {item.rest_seconds}s</Text><Pressable onPress={() => setPendingExercises((items) => items.filter((_, i) => i !== index))}><Text style={s.link}>Remover exercício</Text></Pressable></View>)}
               <Pressable style={[s.primary, savingWorkout && s.primaryDisabled]} disabled={savingWorkout} onPress={() => void saveWorkout()}><Text style={s.primaryText}>{savingWorkout ? 'Salvando…' : 'Salvar e atribuir treino'}</Text></Pressable>
             </> : null}
             <Text style={[s.cardTitle, { marginTop: 22 }]}>Treinos cadastrados</Text>
