@@ -66,6 +66,17 @@ export default function Home() {
   const [jumpPost, setJumpPost] = useState('');
   const [selectedAthlete, setSelectedAthlete] = useState<string | null>(null);
   const [sessions, setSessions] = useState<any[]>([]);
+  const [workouts, setWorkouts] = useState<any[]>([]);
+  const [exercises, setExercises] = useState<any[]>([]);
+  const [workoutTitle, setWorkoutTitle] = useState('');
+  const [workoutDate, setWorkoutDate] = useState('');
+  const [exerciseName, setExerciseName] = useState('');
+  const [exerciseSets, setExerciseSets] = useState('3');
+  const [exerciseReps, setExerciseReps] = useState('10');
+  const [exerciseLoad, setExerciseLoad] = useState('');
+  const [exerciseRest, setExerciseRest] = useState('60');
+  const [workoutNotes, setWorkoutNotes] = useState('');
+  const [savingWorkout, setSavingWorkout] = useState(false);
   const [sendingInvite, setSendingInvite] = useState(false);
   const [actionError, setActionError] = useState('');
 
@@ -161,6 +172,8 @@ export default function Home() {
 
       if (loadedProfile.role === 'coach') {
         await loadAthletes(loadedProfile);
+        await loadExercises();
+        await loadWorkouts();
       } else {
         const { data: linked, error: linkedError } = await supabase
           .from('athletes')
@@ -173,6 +186,7 @@ export default function Home() {
         } else if (linked) {
           setSelectedAthlete(linked.id);
           await loadMonitoring(linked.id);
+          await loadWorkouts(linked.id);
         }
       }
     } catch (error: unknown) {
@@ -205,6 +219,58 @@ export default function Home() {
     } catch (error: unknown) {
       setActionError(`Erro ao carregar atletas: ${errorMessage(error)}`);
     }
+  }
+
+  async function loadExercises() {
+    if (!supabase) return;
+    const { data, error } = await supabase.from('exercises').select('id,name,category,target').order('name');
+    if (error) { setActionError(`Erro ao carregar biblioteca: ${error.message}`); return; }
+    setExercises(data || []);
+    if (!exerciseName && data?.[0]) setExerciseName(data[0].name);
+  }
+
+  async function loadWorkouts(athleteId?: string) {
+    if (!supabase) return;
+    let query = supabase.from('workouts')
+      .select('id,title,scheduled_for,notes,athlete_id,workout_items(id,exercise_name,sets,reps,load_text,rest_seconds,sort_order)')
+      .order('scheduled_for', { ascending: true });
+    if (athleteId) query = query.eq('athlete_id', athleteId);
+    else if (profile?.team_id) query = query.eq('team_id', profile.team_id);
+    const { data, error } = await query;
+    if (error) { setActionError(`Erro ao carregar treinos: ${error.message}`); return; }
+    setWorkouts(data || []);
+  }
+
+  async function saveWorkout() {
+    if (!supabase || !profile?.team_id || !selectedAthlete) {
+      Alert.alert('Selecione um atleta', 'Escolha um atleta antes de montar o treino.'); return;
+    }
+    if (!workoutTitle.trim() || !exerciseName.trim()) {
+      Alert.alert('Dados obrigatórios', 'Informe o nome do treino e selecione um exercício.'); return;
+    }
+    const sets = Number(exerciseSets), rest = Number(exerciseRest);
+    if (!Number.isInteger(sets) || sets < 1 || sets > 30 || !Number.isFinite(rest) || rest < 0) {
+      Alert.alert('Valores inválidos', 'Confira séries e descanso.'); return;
+    }
+    setSavingWorkout(true);
+    try {
+      const { data: workout, error } = await supabase.from('workouts').insert({
+        team_id: profile.team_id, athlete_id: selectedAthlete, title: workoutTitle.trim(),
+        scheduled_for: workoutDate || null, notes: workoutNotes.trim() || null, created_by: session.user.id,
+      }).select('id').single();
+      if (error) throw error;
+      const { error: itemError } = await supabase.from('workout_items').insert({
+        workout_id: workout.id, exercise_name: exerciseName.trim(),
+        exercise_id: exercises.find((item) => item.name === exerciseName)?.id || null,
+        sets, reps: exerciseReps.trim() || null, load_text: exerciseLoad.trim() || null,
+        rest_seconds: Math.round(rest), sort_order: 0,
+      });
+      if (itemError) { await supabase.from('workouts').delete().eq('id', workout.id); throw itemError; }
+      Alert.alert('Treino salvo', 'O treino foi atribuído ao atleta.');
+      setWorkoutTitle(''); setWorkoutDate(''); setWorkoutNotes('');
+      await loadWorkouts();
+    } catch (error: unknown) { Alert.alert('Não foi possível salvar', errorMessage(error)); }
+    finally { setSavingWorkout(false); }
   }
 
   async function loadMonitoring(athleteId: string) {
@@ -733,14 +799,23 @@ export default function Home() {
 
         {(tab === 'Treinos' || tab === 'Meus treinos') && (
           <View style={s.card}>
-            <Text style={s.cardTitle}>
-              {isCoach ? 'Montagem de treinos' : 'Meus treinos atribuídos'}
-            </Text>
-            <Text style={s.muted}>
-              {isCoach
-                ? 'Próximo módulo: criar sessões por atleta com exercícios, séries, repetições, carga, descanso e calendário.'
-                : 'Os treinos atribuídos a você aparecerão aqui. Você não tem acesso aos dados de outros atletas.'}
-            </Text>
+            <Text style={s.cardTitle}>{isCoach ? 'Montar treino para atleta' : 'Meus treinos atribuídos'}</Text>
+            {isCoach ? <>
+              <Text style={s.label}>Atleta</Text>
+              {athletes.map((athlete) => <Pressable key={athlete.id} onPress={() => setSelectedAthlete(athlete.id)} style={[s.athlete, selectedAthlete === athlete.id && s.selected]}><Text style={s.athleteName}>{athlete.full_name}</Text></Pressable>)}
+              <TextInput style={s.input} placeholder="Nome do treino" placeholderTextColor={C.muted} value={workoutTitle} onChangeText={setWorkoutTitle} />
+              <TextInput style={s.input} placeholder="Data (AAAA-MM-DD, opcional)" placeholderTextColor={C.muted} value={workoutDate} onChangeText={setWorkoutDate} />
+              <Text style={s.label}>Exercício</Text>
+              {exercises.map((exercise) => <Pressable key={exercise.id} onPress={() => setExerciseName(exercise.name)} style={[s.athlete, exerciseName === exercise.name && s.selected]}><Text style={s.athleteName}>{exercise.name}</Text><Text style={s.muted}>{exercise.category}</Text></Pressable>)}
+              <TextInput style={s.input} keyboardType="numeric" placeholder="Séries" placeholderTextColor={C.muted} value={exerciseSets} onChangeText={setExerciseSets} />
+              <TextInput style={s.input} placeholder="Repetições (ex.: 8 ou 30 m)" placeholderTextColor={C.muted} value={exerciseReps} onChangeText={setExerciseReps} />
+              <TextInput style={s.input} placeholder="Carga (ex.: 60 kg)" placeholderTextColor={C.muted} value={exerciseLoad} onChangeText={setExerciseLoad} />
+              <TextInput style={s.input} keyboardType="numeric" placeholder="Descanso em segundos" placeholderTextColor={C.muted} value={exerciseRest} onChangeText={setExerciseRest} />
+              <TextInput style={s.input} placeholder="Observações" placeholderTextColor={C.muted} value={workoutNotes} onChangeText={setWorkoutNotes} />
+              <Pressable style={[s.primary, savingWorkout && s.primaryDisabled]} disabled={savingWorkout} onPress={() => void saveWorkout()}><Text style={s.primaryText}>{savingWorkout ? 'Salvando…' : 'Salvar e atribuir treino'}</Text></Pressable>
+            </> : null}
+            <Text style={[s.cardTitle, { marginTop: 22 }]}>Treinos cadastrados</Text>
+            {workouts.length === 0 ? <Text style={s.muted}>Nenhum treino atribuído ainda.</Text> : workouts.map((workout) => <View key={workout.id} style={s.athlete}><Text style={s.athleteName}>{workout.title}</Text><Text style={s.muted}>{workout.scheduled_for || 'Sem data definida'}</Text>{(workout.workout_items || []).map((item) => <Text key={item.id} style={s.muted}>• {item.exercise_name} — {item.sets || '—'} × {item.reps || '—'} · {item.load_text || 'sem carga'} · pausa {item.rest_seconds || 0}s</Text>)}</View>)}
           </View>
         )}
 
