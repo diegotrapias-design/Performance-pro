@@ -55,6 +55,7 @@ export default function Home() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [showLogin, setShowLogin] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [tab, setTab] = useState('Início');
   const [athletes, setAthletes] = useState<Athlete[]>([]);
@@ -612,6 +613,30 @@ export default function Home() {
           ao seu perfil e aos profissionais autorizados.
         </Text>
       </ScrollView>
+    );
+  }
+
+  if (!session && !showLogin) {
+    return (
+      <View style={[s.login, { justifyContent: 'center' }]}>
+        <Image
+          source={require('../logo-diego-trapia.jpg')}
+          style={s.logo}
+          resizeMode="contain"
+        />
+        <Text style={s.eyebrow}>DIEGO TRAPIÁ • ALTA PERFORMANCE</Text>
+        <Text style={s.title}>PERFORMANCE PRO</Text>
+        <Text style={s.muted}>
+          Treinamento, monitoramento e evolução em um só lugar.
+        </Text>
+        <Pressable
+          style={s.primary}
+          onPress={() => setShowLogin(true)}
+          accessibilityRole="button"
+        >
+          <Text style={s.primaryText}>Entrar</Text>
+        </Pressable>
+      </View>
     );
   }
 
