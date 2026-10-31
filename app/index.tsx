@@ -237,7 +237,7 @@ export default function Home() {
 
   async function loadExercises() {
     if (!supabase) return;
-    const { data, error } = await supabase.from('exercises').select('id,name,category,target').order('name');
+    const { data, error } = await supabase.from('exercises').select('id,name,category,target,video_path').order('name');
     if (error) { setActionError(`Erro ao carregar biblioteca: ${error.message}`); return; }
     setExercises(data || []);
     if (!exerciseName && data?.[0]) setExerciseName(data[0].name);
@@ -484,6 +484,54 @@ export default function Home() {
     setEditingAthleteId(null);
     await loadAthletes();
     Alert.alert('Cadastro atualizado', 'Os dados do atleta foram salvos.');
+  }
+
+  async function uploadExerciseVideo() {
+    if (!supabase || !session?.user?.id || !exerciseName) {
+      Alert.alert('Selecione um exercício', 'Escolha um exercício da biblioteca.');
+      return;
+    }
+    const exercise = exercises.find((item) => item.name === exerciseName);
+    if (!exercise) return;
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permissão necessária', 'Autorize o acesso à biblioteca de vídeos.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['videos'], allowsEditing: false, quality: 1,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+    setUploadingExerciseVideo(true);
+    try {
+      const asset = result.assets[0];
+      const extension = (asset.fileName?.split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp4';
+      const path = `${session.user.id}/exercises/${exercise.id}/${Date.now()}.${extension}`;
+      const response = await fetch(asset.uri);
+      const body = await response.arrayBuffer();
+      const { error: uploadError } = await supabase.storage.from('athlete-media').upload(path, body, {
+        contentType: asset.mimeType || 'video/mp4', upsert: false,
+      });
+      if (uploadError) throw uploadError;
+      const { error: updateError } = await supabase.from('exercises').update({ video_path: path }).eq('id', exercise.id);
+      if (updateError) throw updateError;
+      await loadExercises();
+      Alert.alert('Vídeo salvo', 'O vídeo foi vinculado ao exercício.');
+    } catch (error: unknown) {
+      Alert.alert('Não foi possível salvar o vídeo', errorMessage(error));
+    } finally {
+      setUploadingExerciseVideo(false);
+    }
+  }
+
+  async function openExerciseVideo(path: string) {
+    if (!supabase || !path) return;
+    const { data, error } = await supabase.storage.from('athlete-media').createSignedUrl(path, 300);
+    if (error || !data?.signedUrl) {
+      Alert.alert('Vídeo indisponível', error?.message || 'Não foi possível abrir o vídeo.');
+      return;
+    }
+    await Linking.openURL(data.signedUrl);
   }
 
   async function pickAndUploadJump(kind: 'pre' | 'post') {
@@ -950,7 +998,19 @@ export default function Home() {
               <TextInput style={s.input} placeholder="Nome do treino" placeholderTextColor={C.muted} value={workoutTitle} onChangeText={setWorkoutTitle} />
               <TextInput style={s.input} placeholder="Data (AAAA-MM-DD, opcional)" placeholderTextColor={C.muted} value={workoutDate} onChangeText={setWorkoutDate} />
               <Text style={s.label}>Exercício</Text>
-              {exercises.map((exercise) => <Pressable key={exercise.id} onPress={() => setExerciseName(exercise.name)} style={[s.athlete, exerciseName === exercise.name && s.selected]}><Text style={s.athleteName}>{exercise.name}</Text><Text style={s.muted}>{exercise.category}</Text></Pressable>)}
+              {exercises.map((exercise) => <Pressable key={exercise.id} onPress={() => setExerciseName(exercise.name)} style={[s.athlete, exerciseName === exercise.name && s.selected]}><Text style={s.athleteName}>{exercise.name}</Text><Text style={s.muted}>{exercise.category}{exercise.video_path ? ' · vídeo disponível' : ''}</Text></Pressable>)}
+              {isCoach && (
+                <View style={s.actions}>
+                  <Pressable style={s.action} onPress={() => void uploadExerciseVideo()} disabled={uploadingExerciseVideo}>
+                    <Text style={s.actionText}>{uploadingExerciseVideo ? 'Enviando vídeo…' : 'Anexar vídeo ao exercício selecionado'}</Text>
+                  </Pressable>
+                  {exercises.find((item) => item.name === exerciseName)?.video_path ? (
+                    <Pressable style={s.action} onPress={() => void openExerciseVideo(exercises.find((item) => item.name === exerciseName)!.video_path)}>
+                      <Text style={s.actionText}>Abrir vídeo</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              )}
               <TextInput style={s.input} keyboardType="numeric" placeholder="Séries" placeholderTextColor={C.muted} value={exerciseSets} onChangeText={setExerciseSets} />
               <TextInput style={s.input} placeholder="Repetições (ex.: 8 ou 30 m)" placeholderTextColor={C.muted} value={exerciseReps} onChangeText={setExerciseReps} />
               <TextInput style={s.input} placeholder="Carga (ex.: 60 kg)" placeholderTextColor={C.muted} value={exerciseLoad} onChangeText={setExerciseLoad} />
