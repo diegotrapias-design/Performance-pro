@@ -60,6 +60,12 @@ export default function Home() {
   const [tab, setTab] = useState('Início');
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [name, setName] = useState('');
+  const [editingAthleteId, setEditingAthleteId] = useState<string | null>(null);
+  const [editAthleteName, setEditAthleteName] = useState('');
+  const [editAthleteEmail, setEditAthleteEmail] = useState('');
+  const [editAthleteSport, setEditAthleteSport] = useState('');
+  const [editAthleteCategory, setEditAthleteCategory] = useState('');
+  const [editAthletePosition, setEditAthletePosition] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [sport, setSport] = useState('Futebol');
   const [psr, setPsr] = useState('18');
@@ -267,12 +273,14 @@ export default function Home() {
     if (!supabase || !profile?.team_id || !selectedAthlete) {
       Alert.alert('Selecione um atleta', 'Escolha um atleta antes de montar o treino.'); return;
     }
-    if (!workoutTitle.trim() || !exerciseName.trim()) {
-      Alert.alert('Dados obrigatórios', 'Informe o nome do treino e selecione um exercício.'); return;
+    if (!workoutTitle.trim() || (pendingExercises.length === 0 && !exerciseName.trim())) {
+      Alert.alert('Dados obrigatórios', 'Informe o nome do treino e adicione pelo menos um exercício.'); return;
     }
-    const sets = Number(exerciseSets), rest = Number(exerciseRest);
-    if (!Number.isInteger(sets) || sets < 1 || sets > 30 || !Number.isFinite(rest) || rest < 0) {
-      Alert.alert('Valores inválidos', 'Confira séries e descanso.'); return;
+    if (pendingExercises.length === 0) {
+      const sets = Number(exerciseSets), rest = Number(exerciseRest);
+      if (!Number.isInteger(sets) || sets < 1 || sets > 30 || !Number.isFinite(rest) || rest < 0) {
+        Alert.alert('Valores inválidos', 'Confira séries e descanso.'); return;
+      }
     }
     setSavingWorkout(true);
     try {
@@ -449,6 +457,58 @@ export default function Home() {
     } finally {
       setSendingInvite(false);
     }
+  }
+
+  function startEditAthlete(athlete: Athlete) {
+    setEditingAthleteId(athlete.id);
+    setEditAthleteName(athlete.full_name || '');
+    setEditAthleteEmail(athlete.email || '');
+    setEditAthleteSport(athlete.sport || '');
+    setEditAthleteCategory(athlete.category || '');
+    setEditAthletePosition(athlete.position || '');
+  }
+
+  async function saveAthleteChanges() {
+    if (!supabase || !editingAthleteId || !editAthleteName.trim()) {
+      Alert.alert('Dados obrigatórios', 'Informe o nome do atleta.');
+      return;
+    }
+    const { error } = await supabase.from('athletes').update({
+      full_name: editAthleteName.trim(),
+      email: editAthleteEmail.trim() || null,
+      sport: editAthleteSport.trim() || null,
+      category: editAthleteCategory.trim() || null,
+      position: editAthletePosition.trim() || null,
+    }).eq('id', editingAthleteId);
+    if (error) { Alert.alert('Não foi possível atualizar', error.message); return; }
+    setEditingAthleteId(null);
+    await loadAthletes();
+    Alert.alert('Cadastro atualizado', 'Os dados do atleta foram salvos.');
+  }
+
+  function confirmDeleteAthlete(athlete: Athlete) {
+    Alert.alert(
+      'Excluir atleta?',
+      `O cadastro de ${athlete.full_name}, seus treinos e registros de monitoramento serão excluídos permanentemente.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Excluir', style: 'destructive', onPress: () => { void deleteAthlete(athlete.id); } },
+      ]
+    );
+  }
+
+  async function deleteAthlete(athleteId: string) {
+    if (!supabase) return;
+    const { error } = await supabase.from('athletes').delete().eq('id', athleteId);
+    if (error) { Alert.alert('Não foi possível excluir', error.message); return; }
+    if (selectedAthlete === athleteId) {
+      setSelectedAthlete(null);
+      setSessions([]);
+      setWorkouts([]);
+    }
+    setEditingAthleteId(null);
+    await loadAthletes();
+    Alert.alert('Atleta excluído', 'O cadastro e os dados vinculados foram removidos.');
   }
 
   async function pickAndUploadJump(kind: 'pre' | 'post') {
@@ -867,6 +927,20 @@ export default function Home() {
             </Pressable>
 
             <Text style={[s.cardTitle, { marginTop: 22 }]}>Minha equipe</Text>
+            {editingAthleteId && (
+              <View style={s.metricInline}>
+                <Text style={s.cardTitle}>Editar cadastro do atleta</Text>
+                <TextInput style={s.input} placeholder="Nome completo" placeholderTextColor={C.muted} value={editAthleteName} onChangeText={setEditAthleteName} />
+                <TextInput style={s.input} placeholder="E-mail" placeholderTextColor={C.muted} value={editAthleteEmail} onChangeText={setEditAthleteEmail} autoCapitalize="none" />
+                <TextInput style={s.input} placeholder="Modalidade" placeholderTextColor={C.muted} value={editAthleteSport} onChangeText={setEditAthleteSport} />
+                <TextInput style={s.input} placeholder="Categoria" placeholderTextColor={C.muted} value={editAthleteCategory} onChangeText={setEditAthleteCategory} />
+                <TextInput style={s.input} placeholder="Posição" placeholderTextColor={C.muted} value={editAthletePosition} onChangeText={setEditAthletePosition} />
+                <View style={s.actions}>
+                  <Pressable style={s.action} onPress={() => void saveAthleteChanges()}><Text style={s.actionText}>Salvar alterações</Text></Pressable>
+                  <Pressable style={s.action} onPress={() => setEditingAthleteId(null)}><Text style={s.actionText}>Cancelar</Text></Pressable>
+                </View>
+              </View>
+            )}
             {athletes.map((athlete) => (
               <Pressable
                 key={athlete.id}
@@ -884,6 +958,10 @@ export default function Home() {
                   {athlete.email || 'E-mail não informado'} ·{' '}
                   {athlete.sport || 'Modalidade não informada'}
                 </Text>
+                <View style={s.actions}>
+                  <Pressable style={s.action} onPress={() => startEditAthlete(athlete)}><Text style={s.actionText}>Editar</Text></Pressable>
+                  <Pressable style={s.action} onPress={() => confirmDeleteAthlete(athlete)}><Text style={s.actionText}>Excluir</Text></Pressable>
+                </View>
               </Pressable>
             ))}
           </View>
