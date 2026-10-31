@@ -173,7 +173,7 @@ export default function Home() {
       if (loadedProfile.role === 'coach') {
         await loadAthletes(loadedProfile);
         await loadExercises();
-        await loadWorkouts();
+        await loadWorkouts(undefined, loadedProfile.team_id || undefined);
       } else {
         const { data: linked, error: linkedError } = await supabase
           .from('athletes')
@@ -229,13 +229,13 @@ export default function Home() {
     if (!exerciseName && data?.[0]) setExerciseName(data[0].name);
   }
 
-  async function loadWorkouts(athleteId?: string) {
+  async function loadWorkouts(athleteId?: string, teamId?: string) {
     if (!supabase) return;
     let query = supabase.from('workouts')
       .select('id,title,scheduled_for,notes,athlete_id,workout_items(id,exercise_name,sets,reps,load_text,rest_seconds,sort_order)')
       .order('scheduled_for', { ascending: true });
     if (athleteId) query = query.eq('athlete_id', athleteId);
-    else if (profile?.team_id) query = query.eq('team_id', profile.team_id);
+    else if (teamId || profile?.team_id) query = query.eq('team_id', teamId || profile!.team_id!);
     const { data, error } = await query;
     if (error) { setActionError(`Erro ao carregar treinos: ${error.message}`); return; }
     setWorkouts(data || []);
