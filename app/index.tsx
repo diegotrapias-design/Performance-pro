@@ -486,31 +486,6 @@ export default function Home() {
     Alert.alert('Cadastro atualizado', 'Os dados do atleta foram salvos.');
   }
 
-  function confirmDeleteAthlete(athlete: Athlete) {
-    Alert.alert(
-      'Excluir atleta?',
-      `O cadastro de ${athlete.full_name}, seus treinos e registros de monitoramento serão excluídos permanentemente.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Excluir', style: 'destructive', onPress: () => { void deleteAthlete(athlete.id); } },
-      ]
-    );
-  }
-
-  async function deleteAthlete(athleteId: string) {
-    if (!supabase) return;
-    const { error } = await supabase.from('athletes').delete().eq('id', athleteId);
-    if (error) { Alert.alert('Não foi possível excluir', error.message); return; }
-    if (selectedAthlete === athleteId) {
-      setSelectedAthlete(null);
-      setSessions([]);
-      setWorkouts([]);
-    }
-    setEditingAthleteId(null);
-    await loadAthletes();
-    Alert.alert('Atleta excluído', 'O cadastro e os dados vinculados foram removidos.');
-  }
-
   async function pickAndUploadJump(kind: 'pre' | 'post') {
     if (!supabase || !selectedAthlete || !session?.user?.id) {
       Alert.alert('Selecione um atleta', 'Escolha o atleta antes de anexar o vídeo.'); return;
@@ -960,7 +935,6 @@ export default function Home() {
                 </Text>
                 <View style={s.actions}>
                   <Pressable style={s.action} onPress={() => startEditAthlete(athlete)}><Text style={s.actionText}>Editar</Text></Pressable>
-                  <Pressable style={s.action} onPress={() => confirmDeleteAthlete(athlete)}><Text style={s.actionText}>Excluir</Text></Pressable>
                 </View>
               </Pressable>
             ))}
