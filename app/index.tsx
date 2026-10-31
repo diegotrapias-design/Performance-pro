@@ -624,8 +624,8 @@ export default function Home() {
           style={s.logo}
           resizeMode="contain"
         />
-        <Text style={s.eyebrow}>DIEGO TRAPIÁ • ALTA PERFORMANCE</Text>
-        <Text style={s.title}>PERFORMANCE PRO</Text>
+        <Text style={s.eyebrow}>PLATAFORMA DE ALTA PERFORMANCE</Text>
+        <Text style={s.title}>Seu próximo nível começa aqui.</Text>
         <Text style={s.muted}>
           Treinamento, monitoramento e evolução em um só lugar.
         </Text>
