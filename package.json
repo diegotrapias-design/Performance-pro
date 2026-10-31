@@ -25,7 +25,8 @@
     "react-native-url-polyfill": "^2.0.0",
     "@expo/vector-icons": "^15.0.0",
     "react-native-web": "~0.21.0",
-    "@expo/metro-runtime": "~6.1.0"
+    "@expo/metro-runtime": "~6.1.0",
+    "expo-image-picker": "~17.0.8"
   },
   "devDependencies": {
     "@types/react": "~19.1.10",
