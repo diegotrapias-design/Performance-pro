@@ -10,7 +10,9 @@ import {
   TextInput,
   View,
   Alert,
+  Linking,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../lib/supabase';
 
 const C = {
@@ -66,6 +68,10 @@ export default function Home() {
   const [jumpPost, setJumpPost] = useState('');
   const [selectedAthlete, setSelectedAthlete] = useState<string | null>(null);
   const [sessions, setSessions] = useState<any[]>([]);
+  const [loadSummary, setLoadSummary] = useState<any>(null);
+  const [jumpVideoPrePath, setJumpVideoPrePath] = useState('');
+  const [jumpVideoPostPath, setJumpVideoPostPath] = useState('');
+  const [uploadingJump, setUploadingJump] = useState<'pre' | 'post' | null>(null);
   const [workouts, setWorkouts] = useState<any[]>([]);
   const [exercises, setExercises] = useState<any[]>([]);
   const [workoutTitle, setWorkoutTitle] = useState('');
@@ -277,10 +283,14 @@ export default function Home() {
     if (!supabase) return;
 
     try {
+      const { data: summary, error: summaryError } = await supabase
+        .from('athlete_load_summary').select('*').eq('athlete_id', athleteId).maybeSingle();
+      if (summaryError) setActionError(`Erro nos indicadores de carga: ${summaryError.message}`);
+      else setLoadSummary(summary);
       const { data, error } = await supabase
         .from('monitoring_sessions')
         .select(
-          'id,session_date,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm'
+          'id,session_date,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm,jump_video_pre_path,jump_video_post_path'
         )
         .eq('athlete_id', athleteId)
         .order('session_date', { ascending: false })
@@ -417,6 +427,36 @@ export default function Home() {
     }
   }
 
+  async function pickAndUploadJump(kind: 'pre' | 'post') {
+    if (!supabase || !selectedAthlete || !session?.user?.id) {
+      Alert.alert('Selecione um atleta', 'Escolha o atleta antes de anexar o vídeo.'); return;
+    }
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) { Alert.alert('Permissão necessária', 'Autorize o acesso à biblioteca de vídeos do aparelho.'); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['videos'], allowsEditing: false, quality: 1 });
+    if (result.canceled || !result.assets?.[0]) return;
+    const asset = result.assets[0];
+    const extension = (asset.fileName?.split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp4';
+    const path = `${session.user.id}/${selectedAthlete}/${Date.now()}-${kind}.${extension}`;
+    setUploadingJump(kind);
+    try {
+      const response = await fetch(asset.uri);
+      const body = await response.arrayBuffer();
+      const { error } = await supabase.storage.from('athlete-media').upload(path, body, { contentType: asset.mimeType || 'video/mp4', upsert: false });
+      if (error) throw error;
+      if (kind === 'pre') setJumpVideoPrePath(path); else setJumpVideoPostPath(path);
+      Alert.alert('Vídeo anexado', `Vídeo ${kind === 'pre' ? 'pré-sessão' : 'pós-sessão'} enviado com sucesso.`);
+    } catch (error: unknown) { Alert.alert('Falha no envio do vídeo', errorMessage(error)); }
+    finally { setUploadingJump(null); }
+  }
+
+  async function openJumpVideo(path: string) {
+    if (!supabase || !path) return;
+    const { data, error } = await supabase.storage.from('athlete-media').createSignedUrl(path, 300);
+    if (error || !data?.signedUrl) { Alert.alert('Vídeo indisponível', error?.message || 'Não foi possível abrir o vídeo.'); return; }
+    await Linking.openURL(data.signedUrl);
+  }
+
   async function saveSession() {
     if (!supabase || !selectedAthlete || !session?.user?.id) {
       Alert.alert(
@@ -461,6 +501,8 @@ export default function Home() {
       duration_min: nDuration,
       jump_pre_cm: nJumpPre,
       jump_post_cm: nJumpPost,
+      jump_video_pre_path: jumpVideoPrePath || null,
+      jump_video_post_path: jumpVideoPostPath || null,
       created_by: session.user.id,
     };
 
@@ -475,6 +517,8 @@ export default function Home() {
         Alert.alert('Registro salvo', 'Monitoramento salvo com sucesso.');
         setJumpPre('');
         setJumpPost('');
+        setJumpVideoPrePath('');
+        setJumpVideoPostPath('');
         await loadMonitoring(selectedAthlete);
       }
     } catch (error: unknown) {
@@ -894,6 +938,8 @@ export default function Home() {
                   onChangeText={setJumpPre}
                 />
 
+                <Text style={s.label}>Vídeo do salto pré-sessão</Text>
+                <Pressable style={s.action} onPress={() => void pickAndUploadJump('pre')} disabled={uploadingJump !== null}><Text style={s.actionText}>{uploadingJump === 'pre' ? 'Enviando vídeo…' : jumpVideoPrePath ? 'Vídeo pré anexado ✓' : 'Selecionar vídeo pré'}</Text></Pressable>
                 <Text style={s.label}>Salto pós-sessão (cm)</Text>
                 <TextInput
                   style={s.input}
@@ -901,6 +947,9 @@ export default function Home() {
                   value={jumpPost}
                   onChangeText={setJumpPost}
                 />
+
+                <Text style={s.label}>Vídeo do salto pós-sessão</Text>
+                <Pressable style={s.action} onPress={() => void pickAndUploadJump('post')} disabled={uploadingJump !== null}><Text style={s.actionText}>{uploadingJump === 'post' ? 'Enviando vídeo…' : jumpVideoPostPath ? 'Vídeo pós anexado ✓' : 'Selecionar vídeo pós'}</Text></Pressable>
 
                 <View style={s.metricInline}>
                   <Text style={s.muted}>Carga estimada</Text>
@@ -918,9 +967,29 @@ export default function Home() {
               </>
             )}
 
-            <Text style={[s.cardTitle, { marginTop: 22 }]}>
-              Histórico recente
-            </Text>
+            <Text style={[s.cardTitle, { marginTop: 22 }]}>Indicadores de carga</Text>
+            <View style={s.metrics}>
+              <Metric label="Carga aguda · 7 dias" value={`${Number(loadSummary?.acute_load_7d || 0).toFixed(0)} UA`} />
+              <Metric label="Carga · 28 dias" value={`${Number(loadSummary?.load_28d || 0).toFixed(0)} UA`} />
+            </View>
+            <View style={s.metrics}>
+              <Metric label="Monotonia · 7 dias" value={loadSummary?.monotony_7d == null ? '—' : Number(loadSummary.monotony_7d).toFixed(2)} />
+              <Metric label="Strain · 7 dias" value={`${Number(loadSummary?.strain_7d || 0).toFixed(0)} UA`} />
+            </View>
+            <Text style={s.muted}>Monotonia = média diária ÷ desvio-padrão diário; strain = carga semanal × monotonia. Dias sem sessão entram como carga zero.</Text>
+            <Text style={[s.cardTitle, { marginTop: 22 }]}>Tendência das últimas sessões</Text>
+            {sessions.slice(0, 10).reverse().map((record) => {
+              const load = Math.max(0, Number(record.load_ua || 0));
+              const maxLoad = Math.max(1, ...sessions.map((item) => Number(item.load_ua || 0)));
+              const jump = record.jump_pre_cm == null ? null : Number(record.jump_pre_cm);
+              return <View key={`chart-${record.id}`} style={s.chartRow}>
+                <Text style={s.chartDate}>{String(record.session_date).slice(5)}</Text>
+                <View style={s.chartTrack}><View style={[s.chartBar, { width: `${Math.max(2, load / maxLoad * 100)}%` }]} /></View>
+                <Text style={s.chartValue}>{load.toFixed(0)} UA</Text>
+                <Text style={s.chartValue}>{jump == null ? '—' : `${jump.toFixed(1)} cm`}</Text>
+              </View>;
+            })}
+            <Text style={[s.cardTitle, { marginTop: 22 }]}>Histórico recente</Text>
 
             {sessions.length === 0 ? (
               <Text style={s.muted}>Nenhum registro encontrado.</Text>
@@ -935,6 +1004,8 @@ export default function Home() {
                     {record.jump_pre_cm ?? '—'} →{' '}
                     {record.jump_post_cm ?? '—'} cm
                   </Text>
+                  {record.jump_video_pre_path ? <Pressable onPress={() => void openJumpVideo(record.jump_video_pre_path)}><Text style={s.link}>▶ Ver vídeo pré-sessão</Text></Pressable> : null}
+                  {record.jump_video_post_path ? <Pressable onPress={() => void openJumpVideo(record.jump_video_post_path)}><Text style={s.link}>▶ Ver vídeo pós-sessão</Text></Pressable> : null}
                 </View>
               ))
             )}
@@ -1159,4 +1230,9 @@ const s = StyleSheet.create({
     padding: 14,
     borderRadius: 10,
   },
+  chartRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 9 },
+  chartDate: { color: C.muted, width: 38, fontSize: 11 },
+  chartTrack: { flex: 1, height: 10, backgroundColor: '#34343b', borderRadius: 8, overflow: 'hidden' },
+  chartBar: { height: 10, backgroundColor: C.red, borderRadius: 8 },
+  chartValue: { color: C.silver, fontSize: 10, minWidth: 42, textAlign: 'right' },
 });
