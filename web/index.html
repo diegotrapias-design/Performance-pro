@@ -2642,6 +2642,11 @@ function buildDayCardsHtml(days){
 
 /* ---- Edição ---- */
 
+function combineExerciseWithNext(dayId, exerciseId){
+ const day=draft?.trainingPlan?.days?.find(d=>d.id===dayId);if(!day)return;
+ const idx=day.exercises.findIndex(e=>e.id===exerciseId);if(idx<0||idx>=day.exercises.length-1){showToast('Adicione o próximo exercício antes de combinar.','err');return;}
+ const first=day.exercises[idx],next=day.exercises[idx+1];const id=first.comboId||uid();first.comboId=id;next.comboId=id;first.comboType=next.comboType='Bi-set';renderTreinoEditPanel();showToast('Bi-set criado com os dois exercícios.','ok');
+}
 function renderTreinoEditPanel(){
   const p = document.getElementById('panel-athlete');
   if(!p) return;
@@ -2663,6 +2668,7 @@ function renderTreinoEditPanel(){
               <input type="text" class="ex-name-input" value="${escapeHtml(ex.name)}" oninput="updateExerciseField('${d.id}','${ex.id}','name',this.value)" placeholder="Nome do exercício">
               <button class="rm-btn" onclick="removeExercise('${d.id}','${ex.id}')" title="Remover exercício">×</button>
             </div>
+            <button type="button" class="btn btn-outline btn-sm" style="margin:6px 0" onclick="combineExerciseWithNext('${d.id}','${ex.id}')">🔗 Combinar com o próximo</button>
             <div class="ex-card-grid">
               <div><label>Séries</label><input type="text" data-day-id="${d.id}" data-ex-id="${ex.id}" data-ex-field="series" value="${escapeHtml(ex.series)}" oninput="updateExerciseField('${d.id}','${ex.id}','series',this.value)" placeholder="4"></div>
               <div><label>Reps</label><input type="text" data-day-id="${d.id}" data-ex-id="${ex.id}" data-ex-field="reps" value="${escapeHtml(ex.reps)}" oninput="updateExerciseField('${d.id}','${ex.id}','reps',this.value)" placeholder="10-12"></div>
