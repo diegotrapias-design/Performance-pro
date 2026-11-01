@@ -1760,7 +1760,7 @@ async function submitAthleteMonitoring(athleteId){
   try{
     const prePath=await uploadJumpAssessmentVideo(document.getElementById('athlete-video-pre').files[0],athleteId,'pre');
     const postPath=await uploadJumpAssessmentVideo(document.getElementById('athlete-video-post').files[0],athleteId,'post');
-    const payload={athlete_id:athleteId,session_date:date,psr:tqr,pse,duration_min:duration,load_ua:pse*duration,
+    const payload={athlete_id:athleteId,session_date:date,psr:tqr,pse,duration_min:duration,
       jump_pre_cm:pre===''?null:Number(pre),jump_post_cm:post===''?null:Number(post),
       jump_video_pre_path:prePath,jump_video_post_path:postPath,created_by:currentUser.id};
     const {error}=await supabaseClient.from('monitoring_sessions').insert(payload);
