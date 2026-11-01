@@ -240,6 +240,30 @@ window.handleLogin = async function(event){
   .day-body{padding:14px;background:#fafafa;}
 
   .ex-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px;}
+  .training-athlete-grid{grid-template-columns:1fr;}
+  .training-athlete-card{border-radius:16px;padding:18px;margin-bottom:12px;}
+  .training-day-list{display:grid;gap:8px;margin:14px 0;}
+  .training-day-chip{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border:1px solid #e4e7ed;border-radius:10px;background:#fafbfc;}
+  .training-day-chip b{font-size:13px;color:var(--text);}
+  .training-day-chip small{font-size:11px;color:var(--muted);text-align:right;}
+  .training-empty-label{font-size:12px;color:var(--muted);}
+  .view-day-card{border-radius:14px;overflow:hidden;margin:14px 0;background:#fff;border:1px solid #e6e9ef;}
+  .view-day-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:#f7f9fc;font-weight:700;}
+  .view-day-body{padding:10px 14px;}
+  .view-athlete-ex{position:relative;padding:14px 8px 16px 18px;border-bottom:1px solid #edf0f4;}
+  .view-athlete-ex:last-child{border-bottom:0;}
+  .view-athlete-ex.is-combined{border-left:3px solid #397bd5;background:#f8fbff;margin:5px 0;padding-left:15px;}
+  .athlete-combo-letter{position:absolute;left:-1px;top:10px;transform:translateX(-50%);background:#397bd5;color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;}
+  .view-athlete-ex-top{display:flex;align-items:center;gap:12px;}
+  .athlete-video-thumb{width:44px;height:62px;flex:0 0 44px;border:0;border-radius:8px;background:#e4ebf5;color:#24466f;font-size:20px;display:flex;align-items:center;justify-content:center;}
+  .athlete-video-thumb.no-video{font-size:12px;color:#9aa4b2;}
+  .view-athlete-name{font-size:15px;font-weight:650;line-height:1.35;}
+  .view-athlete-meta{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0 56px;}
+  .view-athlete-meta b{font-size:12px;font-weight:600;padding:7px 9px;background:#f2f4f7;border-radius:7px;}
+  .view-ex-obs{margin:8px 0 0 56px;font-size:12px;color:#687386;}
+  .view-athlete-start{padding:10px 14px 0;}
+  .view-athlete-start button{width:100%;border:0;border-radius:9px;padding:12px;background:#2f9b65;color:#fff;font-weight:700;}
+  .view-athlete-start small{display:block;text-align:center;color:#7b8491;font-size:11px;margin-top:6px;}
   .ex-card.is-combined{border:1.5px solid #3b82f6;border-left:5px solid #3b82f6;background:#fbfdff;margin-bottom:8px;}
   .combo-group-heading{font-size:10px;font-weight:800;letter-spacing:.7px;color:#2563eb;margin:0 0 9px;}
   .exercise-video-thumb{width:42px;height:54px;flex:0 0 42px;border-radius:8px;background:#e8eef8;color:#2563eb;font-size:20px;font-weight:800;display:flex;align-items:center;justify-content:center;border:1px solid #d5e1f2;}
@@ -2083,45 +2107,36 @@ function renderList(filter){
     .filter(a => !q || a.name.toLowerCase().includes(q) || (a.sport||'').toLowerCase().includes(q))
     .sort((a,b) => a.name.localeCompare(b.name));
   const isTreinoMode = listMode === 'treino';
-
   let cardsHtml = '';
   if(list.length === 0){
-    cardsHtml = `<div class="empty-state">
-        <div class="icon">🏋️</div>
-        <div>${athletes.length === 0 ? 'Nenhum atleta cadastrado ainda.' : 'Nenhum atleta encontrado.'}</div>
-      </div>`;
+    cardsHtml = `<div class="empty-state"><div class="icon">🏋️</div><div>${athletes.length === 0 ? 'Nenhum atleta cadastrado ainda.' : 'Nenhum atleta encontrado.'}</div></div>`;
   }else{
-    cardsHtml = '<div class="grid">' + list.map(a => {
+    cardsHtml = '<div class="grid training-athlete-grid">' + list.map(a => {
       const age = calcAge(a.birthDate);
-      const days = (a.trainingPlan && a.trainingPlan.days) ? a.trainingPlan.days.length : 0;
-      const primaryLabel = 'Ver perfil';
+      const days = (a.trainingPlan && a.trainingPlan.days) ? a.trainingPlan.days : [];
+      const exerciseCount = days.reduce((n,d)=>n+(d.exercises||[]).filter(ex=>ex.name&&ex.name.trim()).length,0);
+      const daySummary = days.length ? days.map(d => `<span class="training-day-chip"><b>${escapeHtml(d.label||'Dia')}</b><small>${escapeHtml(d.type||'Treino')} · ${(d.exercises||[]).filter(ex=>ex.name&&ex.name.trim()).length} exercícios</small></span>`).join('') : '<span class="training-empty-label">Nenhum treino montado</span>';
       const secondaryBtn = isTreinoMode
         ? `<button class="btn btn-outline btn-sm" onclick="downloadTrainingPdf('${a.id}')">Treino (PDF)</button>`
         : `<button class="btn btn-outline btn-sm" onclick="downloadAthletePdf('${a.id}')">Dados (PDF)</button>`;
       return `
-        <div class="card">
+        <div class="card training-athlete-card">
           <div class="tag">${escapeHtml(a.sport || 'Atleta')}${a.category ? ' · ' + escapeHtml(a.category) : ''}</div>
           <div class="name">${escapeHtml(a.name)}</div>
-          <div class="meta">
-            ${age !== null ? `<span>${age} anos${a.sex ? ' · ' + (a.sex==='M'?'Masculino':'Feminino') : ''}</span>` : ''}
-            <span>${days > 0 ? days + ' dia(s) de treino cadastrado(s)' : 'Sem treino montado'}</span>
-          </div>
+          <div class="meta">${age !== null ? `<span>${age} anos${a.sex ? ' · ' + (a.sex==='M'?'Masculino':'Feminino') : ''}</span>` : ''}<span>${days.length} dia(s) · ${exerciseCount} exercício(s)</span></div>
+          ${isTreinoMode ? `<div class="training-day-list">${daySummary}</div>` : ''}
           <div class="actions">
-            <button class="btn btn-dark btn-sm" onclick="openAthlete('${a.id}')">${primaryLabel}</button>
+            <button class="btn btn-dark btn-sm" onclick="openAthlete('${a.id}')">${isTreinoMode?'Abrir treino':'Ver perfil'}</button>
             ${secondaryBtn}
             <button class="btn btn-danger btn-sm" onclick="deleteAthlete('${a.id}')">Excluir</button>
           </div>
         </div>`;
     }).join('') + '</div>';
   }
-
   app.innerHTML = `
     <div class="back-link" onclick="renderHome()">← Menu principal</div>
     <h2 class="section-title">${isTreinoMode ? 'Treinos' : 'Atletas'}</h2>
-    <div class="toolbar">
-      <input type="search" placeholder="Buscar por nome ou esporte…" oninput="renderList(this.value)" value="${escapeHtml(filter||'')}">
-      <button class="btn btn-primary" onclick="newAthlete()">+ Novo atleta</button>
-    </div>
+    <div class="toolbar"><input type="search" placeholder="Buscar por nome ou esporte…" oninput="renderList(this.value)" value="${escapeHtml(filter||'')}"><button class="btn btn-primary" onclick="newAthlete()">+ Novo atleta</button></div>
     ${cardsHtml}
   `;
 }
@@ -2642,22 +2657,34 @@ function renderJumpProgressSection(athleteId){
 }
 
 function buildDayCardsHtml(days){
-  return (days||[]).map(d => `
-    <div class="view-day-card">
-      <div class="view-athlete-start"><button type="button" onclick="showToast('Modo de visualização: peça ao treinador para iniciar o treino presencial.','ok')">▶ INICIAR TREINO PRESENCIAL</button><small>Você está em modo de visualização</small></div>
-      <div class="view-day-head"><span>${escapeHtml(d.label || '')}</span><span class="view-day-type">${escapeHtml(d.type || '')}</span></div>
-      <div class="view-day-body">
-        ${(d.exercises||[]).filter(ex => ex.name && ex.name.trim()).map(ex => `
-          <article class="view-athlete-ex ${ex.comboId?'is-combined':''}">
-            <div class="view-athlete-ex-top"><span class="view-athlete-combo">${ex.comboId?'COMBINADO':''}</span><span class="view-athlete-name">${escapeHtml(ex.name)}</span></div>
-            <div class="view-athlete-meta">${ex.series?'<b>'+escapeHtml(ex.series)+' séries</b>':''}${ex.reps?'<b>'+escapeHtml(ex.reps)+' reps</b>':''}${ex.carga?'<b>'+escapeHtml(ex.carga)+'</b>':''}${ex.descanso?'<b>Intervalo: '+escapeHtml(ex.descanso)+'</b>':''}</div>
-            ${ex.obs?'<p class="view-ex-obs">'+escapeHtml(ex.obs)+'</p>':''}
-            ${ex.video?'<button class="view-athlete-video" type="button" onclick="openExerciseVideo(\''+escapeHtml(ex.video)+'\',\''+escapeHtml(ex.name)+'\')">▶ Assistir demonstração</button>':'<div class="view-athlete-no-video">Vídeo não cadastrado</div>'}
-          </article>
-        `).join('') || '<div class="view-ex-empty">Nenhum exercício neste dia.</div>'}
-      </div>
-    </div>
-  `).join('');
+  const letters='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const comboLetters=new Map();
+  let nextLetter=0;
+  (days||[]).forEach(d=>(d.exercises||[]).forEach(ex=>{
+    if(ex.comboId&&!comboLetters.has(ex.comboId)) comboLetters.set(ex.comboId,letters[nextLetter++]||('G'+nextLetter));
+  }));
+  return (days||[]).map(d => {
+    const exercises=(d.exercises||[]).filter(ex=>ex.name&&ex.name.trim());
+    return `
+      <div class="view-day-card">
+        <div class="view-day-head"><span>${escapeHtml(d.label||'')}</span><span class="view-day-type">${escapeHtml(d.type||'')}</span></div>
+        <div class="view-day-body">
+          ${exercises.map(ex => {
+            const letter=ex.comboId?comboLetters.get(ex.comboId):'';
+            return `
+              <article class="view-athlete-ex ${letter?'is-combined':''}">
+                ${letter?'<div class="athlete-combo-letter">'+letter+'</div>':''}
+                <div class="view-athlete-ex-top">
+                  ${ex.video?'<button class="athlete-video-thumb" type="button" onclick="openExerciseVideo(\''+escapeHtml(ex.video)+'\',\''+escapeHtml(ex.name)+'\')" aria-label="Assistir vídeo">▶</button>':'<span class="athlete-video-thumb no-video">—</span>'}
+                  <span class="view-athlete-name">${escapeHtml(ex.name)}</span>
+                </div>
+                <div class="view-athlete-meta">${ex.series?'<b>'+escapeHtml(ex.series)+' séries</b>':''}${ex.reps?'<b>'+escapeHtml(ex.reps)+' reps</b>':''}${ex.carga?'<b>'+escapeHtml(ex.carga)+'</b>':''}${ex.descanso?'<b>Intervalo: '+escapeHtml(ex.descanso)+'</b>':''}</div>
+                ${ex.obs?'<p class="view-ex-obs">'+escapeHtml(ex.obs)+'</p>':''}
+              </article>`;
+          }).join('')||'<div class="view-ex-empty">Nenhum exercício neste dia.</div>'}
+        </div>
+      </div>`;
+  }).join('');
 }
 
 /* ---- Edição ---- */
