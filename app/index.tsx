@@ -934,7 +934,7 @@ export default function Home() {
           <View style={s.card}>
             <Text style={s.cardTitle}>Convidar atleta</Text>
             <Text style={s.muted}>
-              O atleta receberá um e-mail para criar sua senha individual.
+              Novos atletas recebem convite por e-mail. Se o atleta já tiver conta, será gerado um link seguro para compartilhar pelo WhatsApp.
             </Text>
 
             <TextInput
