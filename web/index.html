@@ -49,7 +49,7 @@ window.handleLogin = async function(event){
     const {data, error} = await supabaseClient.auth.signInWithPassword({email, password});
     if(error) throw error;
     if(!data?.user) throw new Error('A autenticação não retornou o usuário.');
-    if(typeof window.onAuthChange !== 'function') throw new Error('O painel ainda está carregando. Atualize a página e tente novamente.');
+    if(typeof window.onAuthChange !== 'function') throw new Error('O painel não foi inicializado. Recarregue a página e tente novamente.');
     await window.onAuthChange(data.user);
   } catch(e) {
     console.error('Falha no login:', e);
@@ -1401,6 +1401,9 @@ async function onAuthChange(user){
     showLoginError(e.message || 'Não foi possível validar o acesso de treinador.');
   }
 }
+
+// Expor explicitamente o fluxo de autenticação para o bootstrap inicial.
+window.onAuthChange = onAuthChange;
 
 async function handleLogin(event){
   event.preventDefault();
