@@ -1510,7 +1510,7 @@ async function syncCoachDataToRelational(){
           sets:e.series?parseInt(e.series,10)||null:null,
           reps:e.reps||null,load_text:e.carga||null,
           rest_seconds:e.descanso?parseInt(e.descanso,10)||null:null,
-          notes:e.obs||null,video_url:e.video||null,sort_order:index
+          notes:(e.comboId?'[[PP_COMBO:'+e.comboId+'|'+(e.comboType||'Bi-set')+']] ':'')+(e.obs||''),video_url:e.video||null,sort_order:index
         });
       });
     }
@@ -1579,7 +1579,7 @@ async function loadAthletePortal(){
         ${list.length?list.map(i=>`<div style="padding:12px 0;border-bottom:1px solid #ddd">
           <b>${safe(i.exercise_name)}</b><div>${i.sets?safe(i.sets)+' séries · ':''}${safe(i.reps)} ${i.load_text?'· '+safe(i.load_text):''}${i.rest_seconds?'· pausa '+safe(i.rest_seconds)+'s':''}</div>
           ${i.notes?`<small>${safe(i.notes)}</small>`:''}
-          ${i.video_url?`<div style="margin-top:8px"><button type="button" class="btn btn-primary btn-sm" onclick="openExerciseVideo(&quot;${safe(i.video_url)}&quot;,&quot;${safe(i.exercise_name)}&quot;)">▶ Assistir vídeo</button></div>`:'' }
+          ${i.video_url?`<div style="margin-top:10px;background:#111;border-radius:10px;overflow:hidden"><video controls playsinline preload="metadata" style="display:block;width:100%;max-height:260px;background:#000" src="${safe(i.video_url)}"></video></div>`:'' }
         </div>`).join(''):'<p>Nenhum exercício adicionado.</p>'}
         ${w.notes?`<p>${safe(w.notes)}</p>`:''}</section>`;
     }).join(''):'<div class="empty-state">Ainda não há treinos atribuídos a você.</div>';
@@ -2205,6 +2205,8 @@ function toggleCoachMonitoring(athleteId){
   loadCoachMonitoringPanel(athleteId);
 }
 
+function openAthletePreview(){const a=draft||{};const days=a.trainingPlan?.days||[];let h=document.getElementById('athlete-preview-host');if(!h){h=document.createElement('div');h.id='athlete-preview-host';document.body.appendChild(h);}h.innerHTML='<div style="position:fixed;inset:0;z-index:9999;background:#000b;overflow:auto;padding:16px"><div style="max-width:560px;margin:20px auto;background:#f3f3f4;border-radius:16px;padding:16px"><button onclick="closeAthletePreview()">Fechar ×</button><h2>Visão do atleta: '+escapeHtml(a.name||'Atleta')+'</h2>'+days.map(d=>'<section style="background:white;padding:14px;margin:12px 0;border-radius:12px"><h3>'+escapeHtml(d.label||'Treino')+'</h3>'+(d.exercises||[]).map(e=>'<p><b>'+escapeHtml(e.name)+'</b><br>'+escapeHtml(e.series||'')+' séries · '+escapeHtml(e.reps||'')+' reps '+(e.comboId?' · COMBINADO':'')+(e.video?' <button onclick="openExerciseVideo(\''+escapeHtml(e.video)+'\',\''+escapeHtml(e.name)+'\')">▶ Vídeo</button>':'')+'</p>').join('')+'</section>').join('')+'<small>Prévia demonstrativa — não altera dados.</small></div></div>';}
+function closeAthletePreview(){const h=document.getElementById('athlete-preview-host');if(h)h.innerHTML='';}
 function renderProfileView(){
   const p = document.getElementById('panel-athlete');
   if(!p) return;
@@ -2216,7 +2218,7 @@ function renderProfileView(){
   p.innerHTML = `
     <div class="profile-actions">
       <button class="btn btn-dark btn-sm" onclick="setAthleteMode('edit-dados')">✏️ Editar dados pessoais</button>
-      <button class="btn btn-dark btn-sm" onclick="setAthleteMode('edit-treino')">✏️ Editar treino</button>
+      <button class="btn btn-dark btn-sm" onclick="setAthleteMode('edit-treino')">✏️ Editar treino</button><button class="btn btn-outline btn-sm" onclick="openAthletePreview()">👁 Visualizar como atleta</button>
       ${!isNew ? `
         <button class="btn btn-primary btn-sm" onclick="createAthleteAccount()">📲 Gerar acesso do atleta</button>
         <button class="btn btn-outline btn-sm" id="coach-monitoring-toggle" onclick="toggleCoachMonitoring('${draft.id}')">📊 Ver monitoramento</button>
