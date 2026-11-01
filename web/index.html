@@ -1150,7 +1150,9 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLI
       <label class="field field--small">
         <span class="field-label">Tipo</span>
         <select id="jumpTypeInput">
-          <option value="CMJ">CMJ</option>
+          <option value="CMJ">CMJ (avaliação)</option>
+          <option value="CMJ Pré-sessão">CMJ pré-sessão</option>
+          <option value="CMJ Pós-sessão">CMJ pós-sessão</option>
           <option value="SJ">SJ</option>
           <option value="Abalakov">Abalakov</option>
         </select>
@@ -1643,6 +1645,24 @@ async function submitAthleteMonitoring(athleteId){
   }finally{if(btn){btn.disabled=false;btn.textContent='Salvar monitoramento';}}
 }
 
+function buildMonitoringCharts(rows){
+  const valid=(rows||[]).filter(r=>r.jump_pre_cm!=null||r.jump_post_cm!=null);
+  if(!valid.length)return '<div class="empty-state">Os gráficos CMJ aparecerão quando houver avaliações pré e/ou pós-sessão.</div>';
+  const values=valid.flatMap(r=>[r.jump_pre_cm,r.jump_post_cm]).filter(v=>v!=null).map(Number);
+  const min=Math.floor(Math.min(...values)-2),max=Math.ceil(Math.max(...values)+2),range=Math.max(1,max-min);
+  const x=i=>48+(i*(560/Math.max(1,valid.length-1)));
+  const y=v=>18+(190-(Number(v)-min)/range*170);
+  const series=(field,color)=>valid.map((r,i)=>r[field]==null?null:`${x(i)},${y(r[field])}`).filter(Boolean);
+  const path=pts=>pts.length>1?'M '+pts.join(' L '):'';
+  const pre=series('jump_pre_cm','#58b8d5'),post=series('jump_post_cm','#57b88a');
+  const circles=(field,color)=>valid.map((r,i)=>r[field]==null?'':`<circle cx="${x(i)}" cy="${y(r[field])}" r="5" fill="${color}"><title>${escapeHtml(r.session_date)}: ${Number(r[field]).toFixed(1)} cm</title></circle>`).join('');
+  return `<div class="profile-card"><h3>📈 Evolução do CMJ (cm)</h3><svg viewBox="0 0 640 250" role="img" aria-label="Gráfico de evolução dos saltos CMJ" style="width:100%;height:auto">
+    ${[0,1,2,3,4].map(i=>{const yy=18+i*42;return `<line x1="42" y1="${yy}" x2="610" y2="${yy}" stroke="currentColor" opacity=".12"/><text x="34" y="${yy+4}" text-anchor="end" fill="currentColor" opacity=".65" font-size="10">${(max-i*range/4).toFixed(0)}</text>`;}).join('')}
+    <path d="${path(pre)}" fill="none" stroke="#58b8d5" stroke-width="3"/><path d="${path(post)}" fill="none" stroke="#57b88a" stroke-width="3"/>
+    ${circles('jump_pre_cm','#58b8d5')}${circles('jump_post_cm','#57b88a')}
+    <text x="48" y="238" fill="#58b8d5" font-size="12">● Pré-sessão</text><text x="160" y="238" fill="#57b88a" font-size="12">● Pós-sessão</text>
+  </svg></div>`;
+}
 async function loadCoachMonitoringPanel(athleteId){
   const host=document.getElementById('coach-monitoring-panel');
   if(!host||!currentUser) return;
@@ -1672,6 +1692,7 @@ async function loadCoachMonitoringPanel(athleteId){
         <div class="stat-card"><div class="stat-num">${metrics.monotony===null?'—':metrics.monotony.toFixed(2)}</div><div class="stat-label">Monotonia</div></div>
         <div class="stat-card"><div class="stat-num">${metrics.strain===null?'—':metrics.strain.toFixed(0)}</div><div class="stat-label">Strain (UA)</div></div>
       </div>
+${buildMonitoringCharts(rows)}
       <div class="profile-card"><h3>Evolução por sessão</h3>
         <div class="table-wrap"><table><thead><tr><th>Data</th><th>TQR</th><th>PSE</th><th>Min</th><th>UA</th><th>CMJ pré</th><th>CMJ pós</th><th>Δ CMJ</th></tr></thead>
         <tbody>${(rows||[]).slice().reverse().map(r=>`<tr><td>${safe(r.session_date)}</td><td>${safe(r.psr)}</td><td>${safe(r.pse)}</td><td>${safe(r.duration_min)}</td><td>${safe(r.load_ua)}</td><td>${safe(r.jump_pre_cm)}</td><td>${safe(r.jump_post_cm)}</td><td>${r.jump_pre_cm!=null&&r.jump_post_cm!=null?(Number(r.jump_post_cm)-Number(r.jump_pre_cm)).toFixed(1):'—'}</td><td>${videoLinks[r.id+'_jump_video_pre_path']?'<a target="_blank" rel="noopener" href="'+videoLinks[r.id+'_jump_video_pre_path']+'">Vídeo pré</a>':''} ${videoLinks[r.id+'_jump_video_post_path']?'<a target="_blank" rel="noopener" href="'+videoLinks[r.id+'_jump_video_post_path']+'">Vídeo pós</a>':''}</td></tr>`).join('')}</tbody></table></div>
@@ -3516,10 +3537,10 @@ boot();
     jumpLog.push(entry);
     try {
       await persistLog();
-      if(athleteId && currentUser && entry.type === 'CMJ'){
+      if(athleteId && currentUser && entry.type.toLowerCase().startsWith('cmj')){
         const jumpField = jumpTypeInput.value.toLowerCase().includes('pré') ? 'jump_pre_cm' : 'jump_post_cm';
         const {data:existing,error:findError}=await supabaseClient.from('monitoring_sessions')
-          .select('id').eq('athlete_id',athleteId).eq('session_date',entry.date).maybeSingle();
+          .select('id').eq('athlete_id',athleteId).eq('session_date',entry.date).order('created_at',{ascending:false}).limit(1).maybeSingle();
         if(findError) throw findError;
         if(existing){
           const {error:updateError}=await supabaseClient.from('monitoring_sessions').update({[jumpField]:currentHeightCm}).eq('id',existing.id);
