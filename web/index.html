@@ -2220,7 +2220,11 @@ function toggleCoachMonitoring(athleteId){
   loadCoachMonitoringPanel(athleteId);
 }
 
-function openAthletePreview(){const a=draft||{};const days=a.trainingPlan?.days||[];let h=document.getElementById('athlete-preview-host');if(!h){h=document.createElement('div');h.id='athlete-preview-host';document.body.appendChild(h);}h.innerHTML='<div style="position:fixed;inset:0;z-index:9999;background:#000b;overflow:auto;padding:16px"><div style="max-width:560px;margin:20px auto;background:#f3f3f4;border-radius:16px;padding:16px"><button onclick="closeAthletePreview()">Fechar ×</button><h2>Visão do atleta: '+escapeHtml(a.name||'Atleta')+'</h2>'+days.map(d=>'<section style="background:white;padding:14px;margin:12px 0;border-radius:12px"><h3>'+escapeHtml(d.label||'Treino')+'</h3>'+(d.exercises||[]).map(e=>'<p><b>'+escapeHtml(e.name)+'</b><br>'+escapeHtml(e.series||'')+' séries · '+escapeHtml(e.reps||'')+' reps '+(e.comboId?' · COMBINADO':'')+(e.video?' <button onclick="openExerciseVideo(\''+escapeHtml(e.video)+'\',\''+escapeHtml(e.name)+'\')">▶ Vídeo</button>':'')+'</p>').join('')+'</section>').join('')+'<small>Prévia demonstrativa — não altera dados.</small></div></div>';}
+function openAthletePreview(){
+ const a=draft||{};const days=a.trainingPlan?.days||[];let h=document.getElementById('athlete-preview-host');
+ if(!h){h=document.createElement('div');h.id='athlete-preview-host';document.body.appendChild(h);}
+ h.innerHTML='<div style="position:fixed;inset:0;z-index:9999;background:#000b;overflow:auto;padding:16px"><div style="max-width:560px;margin:20px auto;background:#f3f3f4;border-radius:16px;padding:16px"><button onclick="closeAthletePreview()">Fechar ×</button><h2>Visão do atleta: '+escapeHtml(a.name||'Atleta')+'</h2>'+buildDayCardsHtml(days)+'<small>Prévia demonstrativa — não altera dados.</small></div></div>';
+}
 function closeAthletePreview(){const h=document.getElementById('athlete-preview-host');if(h)h.innerHTML='';}
 function renderProfileView(){
   const p = document.getElementById('panel-athlete');
@@ -2684,7 +2688,7 @@ function renderTreinoEditPanel(){
             <div class="ex-card-top">
               <label class="combine-select" title="Selecionar para combinar"><input type="checkbox" data-combine-day="${d.id}" value="${ex.id}"> Combinar</label>
               <input type="text" class="ex-name-input" value="${escapeHtml(ex.name)}" oninput="updateExerciseField('${d.id}','${ex.id}','name',this.value)" placeholder="Nome do exercício">
-              <button class="rm-btn" onclick="removeExercise('${d.id}','${ex.id}')" title="Remover exercício">×</button>
+              <button class="rm-btn" onclick="removeExercise('${d.id}','${ex.id}')" title="Excluir exercício">🗑 Excluir</button>
             </div>
             ${ex.comboId ? '<span class="combo-status">🔗 '+escapeHtml(ex.comboType||'Combinado')+'</span>' : ''}
             <div class="ex-card-grid">
