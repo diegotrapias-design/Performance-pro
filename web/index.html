@@ -1546,7 +1546,7 @@ async function loadAthletePortal(){
         ${list.length?list.map(i=>`<div style="padding:12px 0;border-bottom:1px solid #ddd">
           <b>${safe(i.exercise_name)}</b><div>${i.sets?safe(i.sets)+' séries · ':''}${safe(i.reps)} ${i.load_text?'· '+safe(i.load_text):''}${i.rest_seconds?'· pausa '+safe(i.rest_seconds)+'s':''}</div>
           ${i.notes?`<small>${safe(i.notes)}</small>`:''}
-          ${i.video_url?`<div><a href="${safe(i.video_url)}" target="_blank" rel="noopener">Assistir vídeo do exercício</a></div>`:''}
+          ${i.video_url?`<div style="margin-top:8px"><button type="button" class="btn btn-primary btn-sm" onclick="openExerciseVideo(&quot;${safe(i.video_url)}&quot;,&quot;${safe(i.exercise_name)}&quot;)">▶ Assistir vídeo</button></div>`:'' }
         </div>`).join(''):'<p>Nenhum exercício adicionado.</p>'}
         ${w.notes?`<p>${safe(w.notes)}</p>`:''}</section>`;
     }).join(''):'<div class="empty-state">Ainda não há treinos atribuídos a você.</div>';
