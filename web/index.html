@@ -2557,6 +2557,13 @@ function openExerciseVideo(url,title){
     else if(host.endsWith('youtube.com')) videoId=parsed.searchParams.get('v')||parsed.pathname.split('/').filter(Boolean).pop()||'';
     if(videoId && /^[A-Za-z0-9_-]{11}$/.test(videoId)){
       player.innerHTML='<iframe class="exercise-video-frame" src="https://www.youtube-nocookie.com/embed/'+videoId+'?playsinline=1&rel=0" title="Demonstração: '+escapeHtml(safeTitle)+'" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>';
+    }else if(host==='vimeo.com' || host==='player.vimeo.com'){
+      const vimeoId=parsed.pathname.match(/^\/(?:video\/)?(\d+)(?:\/|$)/)?.[1]||'';
+      if(vimeoId){
+        player.innerHTML='<iframe class="exercise-video-frame" src="https://player.vimeo.com/video/'+vimeoId+'" title="Demonstração: '+escapeHtml(safeTitle)+'" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>';
+      }else{
+        player.innerHTML='<div class="exercise-video-empty">Link do Vimeo inválido.</div>';
+      }
     }else if(/\.(mp4|m4v|mov|webm)(\?|$)/i.test(parsed.pathname+parsed.search) || host.includes('supabase')){
       player.innerHTML='<video class="exercise-inline-video" controls playsinline preload="metadata" src="'+escapeHtml(parsed.href)+'"></video>';
     }else{
