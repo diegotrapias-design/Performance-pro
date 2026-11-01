@@ -2881,7 +2881,7 @@ function renderLibraryScreen(filter){
                 🎥
                 <input type="file" accept="video/*" style="display:none" onchange="handleLibraryVideoUpload(event,'${ex.id}')">
               </label>
-              ${ex.video ? `<a href="${escapeHtml(ex.video)}" target="_blank" rel="noopener" class="video-open-btn" title="Abrir vídeo">▶</a>` : ''}
+              ${ex.video ? `<button type="button" onclick="openExerciseVideo('${escapeHtml(ex.video)}','${escapeHtml(ex.name)}')" class="video-open-btn exercise-video-open" title="Assistir vídeo">▶</button>` : ''}
               <button class="btn btn-outline btn-sm" onclick="editLibraryExercise('${ex.id}')">✏️</button>
               <button class="btn btn-danger btn-sm" onclick="deleteLibraryExercise('${ex.id}')">🗑</button>
             </div>
@@ -3374,7 +3374,7 @@ async function renderPublicSharedTraining(shareId){
     const p=data.payload||{},days=p.days||[],safe=x=>escapeHtml(x==null?'':String(x));
     root.innerHTML=`<div class="shared-main"><div class="home-hero"><div class="home-hero-title">Performance Pro</div><div class="shared-athlete-name">${safe(p.athleteName)}</div><div class="shared-athlete-sub">${safe(p.sport)} ${p.category?'· '+safe(p.category):''}</div></div>
       ${p.startDate||p.endDate?`<section class="panel" style="padding:16px"><b>Período do plano</b><p>${safe(p.startDate)} a ${safe(p.endDate)}</p></section>`:''}
-      ${days.map(d=>`<section class="panel" style="padding:18px;margin:14px 0"><h3>${safe(d.label||'Treino')} · ${safe(d.type||'')}</h3>${(d.exercises||[]).filter(x=>x.name).map(x=>`<div style="padding:12px 0;border-bottom:1px solid var(--border)"><b>${safe(x.name)}</b><p>${safe(x.series)} séries · ${safe(x.reps)} repetições · ${safe(x.carga)}</p>${x.obs?`<small>${safe(x.obs)}</small>`:''}${x.video?`<p><a href="${safe(x.video)}" target="_blank" rel="noopener">Assistir vídeo</a></p>`:''}</div>`).join('')}</section>`).join('')}
+      ${days.map(d=>`<section class="panel" style="padding:18px;margin:14px 0"><h3>${safe(d.label||'Treino')} · ${safe(d.type||'')}</h3>${(d.exercises||[]).filter(x=>x.name).map(x=>`<div style="padding:12px 0;border-bottom:1px solid var(--border)"><b>${safe(x.name)}</b><p>${safe(x.series)} séries · ${safe(x.reps)} repetições · ${safe(x.carga)}</p>${x.obs?`<small>${safe(x.obs)}</small>`:''}${x.video?`<p><button class="btn btn-outline btn-sm" onclick="openExerciseVideo('${safe(x.video)}','${safe(x.name)}')">▶ Assistir vídeo</button></p>`:''}</div>`).join('')}</section>`).join('')}
       <p class="muted">Visualização compartilhada pelo treinador. Para responder ao monitoramento e registrar saltos, utilize seu acesso individual.</p></div>`;
   }catch(e){root.innerHTML='<div class="shared-main"><div class="panel" style="padding:24px"><h2>Link indisponível</h2><p>'+escapeHtml(e.message||'Não foi possível carregar o treino.')+'</p></div></div>';}
 }
