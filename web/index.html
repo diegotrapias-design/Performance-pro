@@ -1517,7 +1517,7 @@ async function loadAthletePortal(){
         <h2>📊 Monitoramento — prontidão e esforço</h2>
         <p class="muted">Responda ao terminar cada sessão. Os dados serão enviados automaticamente ao treinador.</p>
         <label class="field-label" for="athlete-monitor-date">Data da sessão</label>
-        <input id="athlete-monitor-date" type="date" value="${new Date().toLocaleDateString('en-CA')}" style="width:100%;margin:6px 0 16px">
+        <input id="athlete-monitor-date" type="date" value="${performanceProLocalDateISO()}" style="width:100%;margin:6px 0 16px">
         <label class="field-label">TQR — recuperação (6–20)</label>
         <p class="muted">Como foi sua recuperação até esta sessão?</p>
         <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin:10px 0 18px" id="athlete-tqr-options">
@@ -1575,6 +1575,11 @@ async function uploadJumpAssessmentVideo(file,athleteId,phase){
   return path;
 }
 
+function performanceProLocalDateISO(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
 function calculateMonitoringMetrics(rows){
   const now=new Date(); now.setHours(0,0,0,0);
   const daily=Array(7).fill(0);
@@ -1594,7 +1599,7 @@ function calculateMonitoringMetrics(rows){
 async function loadAthleteMonitoringMetrics(athleteId){
   const {data,error}=await supabaseClient.from('monitoring_sessions')
     .select('session_date,load_ua').eq('athlete_id',athleteId)
-    .gte('session_date',new Date(Date.now()-6*86400000).toLocaleDateString('en-CA'));
+    .gte('session_date',(()=>{const d=new Date();d.setDate(d.getDate()-6);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})());
   if(error) throw error;
   const m=calculateMonitoringMetrics(data||[]);
   const host=document.getElementById('athlete-monitor-form');
