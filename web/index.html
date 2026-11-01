@@ -608,6 +608,9 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLI
     border: 1px solid var(--salto-amber);
     color: var(--salto-amber);
   }
+  #salto-root .video-source-actions {
+    margin-top: 12px;
+  }
 
   #salto-root .readout {
     display: flex;
@@ -1077,11 +1080,11 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLI
       <video id="video" playsinline muted></video>
       <div class="viewfinder-empty">
         <p>Envie um vídeo do salto para começar. De preferência, em câmera lenta.</p>
-        <div class="upload-btn-row">
-          <button class="upload-btn" type="button" id="chooseVideoButton">📁 Escolher da galeria</button>
-          <button class="upload-btn upload-btn--record" type="button" id="recordVideoButton">🎥 Gravar vídeo</button>
-        </div>
       </div>
+    </div>
+    <div class="upload-btn-row video-source-actions">
+      <button class="upload-btn" type="button" id="chooseVideoButton">📁 Escolher outro vídeo</button>
+      <button class="upload-btn upload-btn--record" type="button" id="recordVideoButton">🎥 Gravar novo vídeo</button>
     </div>
     <input type="file" id="fileInput" accept="video/mp4,video/quicktime,video/webm,video/x-m4v,.mp4,.mov,.m4v,.webm,.3gp" hidden />
     <input type="file" id="fileInputCamera" accept="video/*,.mp4,.mov,.m4v,.3gp" capture="environment" hidden />
