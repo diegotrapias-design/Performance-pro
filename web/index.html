@@ -2630,7 +2630,7 @@ function buildDayCardsHtml(days){
               </div>
               ${ex.obs ? `<div class="view-ex-obs">${escapeHtml(ex.obs)}</div>` : ''}
             </div>
-            ${<button type="button" onclick="openExerciseVideo('${escapeHtml(ex.video||'')}','${escapeHtml(ex.name)}')" class="view-ex-video exercise-video-open" title="Assistir demonstração">${ex.video?'▶':'▶'}</button>
+            <button type="button" onclick="openExerciseVideo('${escapeHtml(ex.video||'')}','${escapeHtml(ex.name)}')" class="view-ex-video exercise-video-open" title="Assistir demonstração">${ex.video?'▶':'▶'}</button>
           </div>
         `).join('') || '<div class="view-ex-empty">Nenhum exercício neste dia.</div>'}
       </div>
