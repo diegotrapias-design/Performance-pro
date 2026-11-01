@@ -2589,10 +2589,10 @@ function renderTreinoEditPanel(){
               <button class="rm-btn" onclick="removeExercise('${d.id}','${ex.id}')" title="Remover exercício">×</button>
             </div>
             <div class="ex-card-grid">
-              <div><label>Séries</label><input type="text" value="${escapeHtml(ex.series)}" oninput="updateExerciseField('${d.id}','${ex.id}','series',this.value)" placeholder="4"></div>
-              <div><label>Reps</label><input type="text" value="${escapeHtml(ex.reps)}" oninput="updateExerciseField('${d.id}','${ex.id}','reps',this.value)" placeholder="10-12"></div>
-              <div><label>Carga</label><input type="text" value="${escapeHtml(ex.carga)}" oninput="updateExerciseField('${d.id}','${ex.id}','carga',this.value)" placeholder="20kg"></div>
-              <div><label>Descanso</label><input type="text" value="${escapeHtml(ex.descanso)}" oninput="updateExerciseField('${d.id}','${ex.id}','descanso',this.value)" placeholder="60s"></div>
+              <div><label>Séries</label><input type="text" data-day-id="${d.id}" data-ex-id="${ex.id}" data-ex-field="series" value="${escapeHtml(ex.series)}" oninput="updateExerciseField('${d.id}','${ex.id}','series',this.value)" placeholder="4"></div>
+              <div><label>Reps</label><input type="text" data-day-id="${d.id}" data-ex-id="${ex.id}" data-ex-field="reps" value="${escapeHtml(ex.reps)}" oninput="updateExerciseField('${d.id}','${ex.id}','reps',this.value)" placeholder="10-12"></div>
+              <div><label>Carga</label><input type="text" data-day-id="${d.id}" data-ex-id="${ex.id}" data-ex-field="carga" value="${escapeHtml(ex.carga)}" oninput="updateExerciseField('${d.id}','${ex.id}','carga',this.value)" placeholder="20kg"></div>
+              <div><label>Descanso</label><input type="text" data-day-id="${d.id}" data-ex-id="${ex.id}" data-ex-field="descanso" value="${escapeHtml(ex.descanso)}" oninput="updateExerciseField('${d.id}','${ex.id}','descanso',this.value)" placeholder="60s"></div>
             </div>
             <input type="text" class="ex-obs-input" value="${escapeHtml(ex.obs)}" oninput="updateExerciseField('${d.id}','${ex.id}','obs',this.value)" placeholder="Observações (opcional)">
             <div class="video-cell">
@@ -2977,24 +2977,31 @@ async function applySeriesPreset(presetId){
   const day=draft.trainingPlan.days.find(x=>x.id===presetTarget.dayId);
   const exercise=day?.exercises?.find(x=>x.id===presetTarget.exId);
   if(!exercise) return;
-  exercise.series=String(p.series??'');
-  exercise.reps=String(p.reps??'');
+  ['series','reps','carga','descanso','obs'].forEach(field=>{
+    if(Object.prototype.hasOwnProperty.call(p,field)) exercise[field]=String(p[field]??'');
+  });
   closePresetPicker();
   renderTreinoEditPanel();
-  showToast('Preset aplicado aos campos de séries e repetições.','ok');
+  ['series','reps','carga','descanso'].forEach(field=>{
+    const input=document.querySelector('[data-day-id="'+presetTarget.dayId+'"][data-ex-id="'+presetTarget.exId+'"][data-ex-field="'+field+'"]');
+    if(input) input.value=String(exercise[field]??'');
+  });
+  showToast('Preset preenchido. Salve o treino para gravar as alterações.','ok');
 }
 
 async function saveCurrentAsPreset(){
   if(!presetTarget) return;
-  const d = draft.trainingPlan.days.find(x => x.id === presetTarget.dayId);
-  const ex = d && d.exercises.find(e => e.id === presetTarget.exId);
+  const d=draft.trainingPlan.days.find(x=>x.id===presetTarget.dayId);
+  const ex=d && d.exercises.find(e=>e.id===presetTarget.exId);
   if(!ex) return;
-  const label = prompt('Nome do preset (ex: "4x10"):', `${ex.series||''}x${ex.reps||''}`);
+  const label=prompt('Nome do preset:', `${ex.series||''}x${ex.reps||''}`);
   if(!label) return;
-  seriesPresets.push({ id: uid(), label, series: ex.series || '', reps: ex.reps || '' });
-  await persist(false);
+  const preset={id:uid(),label,series:ex.series||'',reps:ex.reps||'',carga:ex.carga||'',descanso:ex.descanso||'',obs:ex.obs||''};
+  seriesPresets.push(preset);
+  const saved=await persist(false);
+  if(!saved){seriesPresets=seriesPresets.filter(x=>x.id!==preset.id);return;}
   renderPresetList();
-  showToast('Preset salvo.', 'ok');
+  showToast('Preset salvo com todos os campos preenchidos.','ok');
 }
 
 async function deleteSeriesPreset(presetId){
