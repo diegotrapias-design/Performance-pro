@@ -32,4 +32,9 @@ create policy "items read if parent workout readable" on public.workout_items fo
 create policy "coach manages items" on public.workout_items for all to authenticated using(public.is_coach() and exists(select 1 from public.workouts w join public.teams t on t.id=w.team_id where w.id=workout_id and w.team_id=public.current_team_id() and t.owner_id=auth.uid())) with check(public.is_coach() and exists(select 1 from public.workouts w join public.teams t on t.id=w.team_id where w.id=workout_id and w.team_id=public.current_team_id() and t.owner_id=auth.uid()));
 create policy "monitoring read own or coach team" on public.monitoring_sessions for select to authenticated using(athlete_id in(select id from public.athletes where user_id=auth.uid()) or (public.is_coach() and athlete_id in(select a.id from public.athletes a join public.teams t on t.id=a.team_id where a.team_id=public.current_team_id() and t.owner_id=auth.uid())));
 create policy "coach manages monitoring" on public.monitoring_sessions for all to authenticated using(public.is_coach() and athlete_id in(select a.id from public.athletes a join public.teams t on t.id=a.team_id where a.team_id=public.current_team_id() and t.owner_id=auth.uid())) with check(public.is_coach() and athlete_id in(select a.id from public.athletes a join public.teams t on t.id=a.team_id where a.team_id=public.current_team_id() and t.owner_id=auth.uid()));
+
+-- Permissões de tabela para o Data API; as políticas RLS acima continuam controlando cada linha.
+GRANT SELECT ON TABLE public.teams TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.athletes, public.exercises, public.workouts, public.workout_items, public.monitoring_sessions TO authenticated;
+
 -- Convites devem ocorrer somente via Edge Function usando SERVICE_ROLE no servidor. Nunca exponha essa chave no app.
