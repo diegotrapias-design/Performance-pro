@@ -240,6 +240,12 @@ window.handleLogin = async function(event){
   .day-body{padding:14px;background:#fafafa;}
 
   .ex-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px;}
+  .ex-card.is-combined{border:1.5px solid #3b82f6;border-left:5px solid #3b82f6;background:#fbfdff;margin-bottom:8px;}
+  .combo-group-heading{font-size:10px;font-weight:800;letter-spacing:.7px;color:#2563eb;margin:0 0 9px;}
+  .exercise-video-thumb{width:42px;height:54px;flex:0 0 42px;border-radius:8px;background:#e8eef8;color:#2563eb;font-size:20px;font-weight:800;display:flex;align-items:center;justify-content:center;border:1px solid #d5e1f2;}
+  .exercise-video-thumb:active{background:#dbeafe;}
+  .ex-card.is-combined .ex-card-top{align-items:center;}
+  .ex-card.is-combined .ex-name-input{min-width:0;}
   .ex-card-top{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
   .ex-name-input{
     flex:1;font-family:'Poppins',sans-serif;font-weight:700;font-size:14.5px;border:none;border-bottom:2px solid var(--border);
@@ -2450,10 +2456,15 @@ function addExercise(dayId){
   if(d) d.exercises.push(newExercise());
   renderTreinoEditPanel();
 }
-function removeExercise(dayId, exId){
-  const d = draft.trainingPlan.days.find(x => x.id === dayId);
-  if(d) d.exercises = d.exercises.filter(e => e.id !== exId);
+function removeExercise(dayId, exId, event){
+  if(event){event.preventDefault();event.stopPropagation();}
+  const day = draft?.trainingPlan?.days?.find(x => x.id === dayId);
+  if(!day) return;
+  const before = day.exercises.length;
+  day.exercises = day.exercises.filter(e => String(e.id) !== String(exId));
+  if(day.exercises.length === before) return;
   renderTreinoEditPanel();
+  showToast('Exercício excluído do treino. Clique em Salvar treino para confirmar.', 'ok');
 }
 function updateExerciseField(dayId, exId, field, value){
   const d = draft.trainingPlan.days.find(x => x.id === dayId);
@@ -2684,13 +2695,14 @@ function renderTreinoEditPanel(){
       </div>
       <div class="day-body">
         ${d.exercises.map(ex => `
-          <div class="ex-card">
+          <div class="ex-card ${ex.comboId?'is-combined':''}">
+            ${ex.comboId ? '<div class="combo-group-heading">🔗 BLOCO COMBINADO · '+escapeHtml(ex.comboType||'Bi-set')+'</div>' : ''}
             <div class="ex-card-top">
               <label class="combine-select" title="Selecionar para combinar"><input type="checkbox" data-combine-day="${d.id}" value="${ex.id}"> Combinar</label>
+              <button type="button" class="exercise-video-thumb" onclick="openExerciseVideo('${escapeHtml(ex.video||'')}','${escapeHtml(ex.name||'Exercício')}')" title="Ver demonstração">${ex.video?'▶':'＋'}</button>
               <input type="text" class="ex-name-input" value="${escapeHtml(ex.name)}" oninput="updateExerciseField('${d.id}','${ex.id}','name',this.value)" placeholder="Nome do exercício">
-              <button class="rm-btn" onclick="removeExercise('${d.id}','${ex.id}')" title="Excluir exercício">🗑 Excluir</button>
+              <button type="button" class="rm-btn" onclick="removeExercise('${d.id}','${ex.id}',event)" title="Excluir exercício" aria-label="Excluir exercício">🗑</button>
             </div>
-            ${ex.comboId ? '<span class="combo-status">🔗 '+escapeHtml(ex.comboType||'Combinado')+'</span>' : ''}
             <div class="ex-card-grid">
               <div><label>Séries</label><input type="text" data-day-id="${d.id}" data-ex-id="${ex.id}" data-ex-field="series" value="${escapeHtml(ex.series)}" oninput="updateExerciseField('${d.id}','${ex.id}','series',this.value)" placeholder="4"></div>
               <div><label>Reps</label><input type="text" data-day-id="${d.id}" data-ex-id="${ex.id}" data-ex-field="reps" value="${escapeHtml(ex.reps)}" oninput="updateExerciseField('${d.id}','${ex.id}','reps',this.value)" placeholder="10-12"></div>
