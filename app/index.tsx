@@ -57,6 +57,7 @@ export default function Home() {
   const [loginError, setLoginError] = useState('');
   const [showLogin, setShowLogin] = useState(false);
   const [newPassword, setNewPassword] = useState('');
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
   const [tab, setTab] = useState('Início');
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [name, setName] = useState('');
@@ -126,8 +127,9 @@ export default function Home() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!active) return;
+      if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true);
 
       setSession(nextSession);
 
@@ -401,6 +403,7 @@ export default function Home() {
         Alert.alert('Não foi possível definir a senha', error.message);
       } else {
         setNewPassword('');
+        setPasswordRecovery(false);
         Alert.alert(
           'Acesso ativado',
           'Sua senha foi criada. Bem-vindo ao Performance Pro.'
@@ -683,7 +686,7 @@ export default function Home() {
     );
   }
 
-  if (session?.user?.user_metadata?.invitation_pending) {
+  if (passwordRecovery || session?.user?.user_metadata?.invitation_pending) {
     return (
       <ScrollView contentContainerStyle={s.login}>
         <Image
