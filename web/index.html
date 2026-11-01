@@ -1298,7 +1298,7 @@ function exitLocalMode(){
 function enterLocalMode(){ showToast('Entre com seu e-mail e senha para acessar os dados sincronizados.', 'err'); }
 function showLoginError(msg){ const el=document.getElementById('login-error'); if(el) el.textContent=msg; }
 
-async async function onAuthChange(user){
+async function onAuthChange(user){
   const transition = ++authTransition;
   const loginScreen=document.getElementById('login-screen');
   const appShell=document.getElementById('app-shell');
@@ -1469,7 +1469,7 @@ async function persist(showMsg){
 
 
 
-async async function loadAthletePortal(){
+async function loadAthletePortal(){
   const app=document.getElementById('app');
   app.innerHTML='<div class="loading">Carregando sua área do atleta…</div>';
   try{
@@ -1507,13 +1507,7 @@ async async function loadAthletePortal(){
         </div>`).join(''):'<p>Nenhum exercício adicionado.</p>'}
         ${w.notes?`<p>${safe(w.notes)}</p>`:''}</section>`;
     }).join(''):'<div class="empty-state">Ainda não há treinos atribuídos a você.</div>';
-    const today=new Date();
-    const dateKey=d=>{if(typeof d==='string') return d.slice(0,10);const x=d;return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')};
-    const daily=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(6-i));const key=dateKey(d);return (monitoring||[]).filter(m=>m.session_date===key).reduce((sum,m)=>sum+Number(m.load_ua||0),0)});
-    const acute=daily.reduce((a,b)=>a+b,0), mean=acute/7, variance=daily.reduce((a,b)=>a+(b-mean)**2,0)/7, sd=Math.sqrt(variance), monotony=sd?mean/sd:0, strain=acute*monotony;
-    const monitorHtml=`<section class="panel" style="padding:18px;margin:14px 0"><h3>Registrar meu treino</h3><p class="muted">Preencha após terminar a sessão. PSR e PSE de 0 a 10.</p><form id="athlete-monitor-form" onsubmit="submitAthleteMonitoring(event,'${athlete.id}')"><div class="form-group"><label>PSR — recuperação (0 a 10)</label><input name="psr" type="number" min="0" max="10" step="0.5" required></div><div class="form-group"><label>PSE — esforço percebido (0 a 10)</label><input name="pse" type="number" min="0" max="10" step="0.5" required></div><div class="form-group"><label>Duração real do treino (minutos)</label><input name="duration" type="number" min="1" max="600" step="1" required></div><button class="btn btn-primary" type="submit">Enviar monitoramento</button></form></section>
-      <section class="panel" style="padding:18px;margin:14px 0"><h3>Carga dos últimos 7 dias</h3><div class="stat-grid"><div class="stat-card"><div class="stat-value">${Math.round(acute)}</div><div class="stat-label">Carga aguda</div></div><div class="stat-card"><div class="stat-value">${monotony.toFixed(2)}</div><div class="stat-label">Monotonia</div></div><div class="stat-card"><div class="stat-value">${Math.round(strain)}</div><div class="stat-label">Strain</div></div></div><small class="muted">Carga da sessão = PSE × duração. Monotonia = média das cargas diárias ÷ desvio-padrão dos 7 dias; dias sem treino contam como zero.</small></section>
-      ${(monitoring||[]).length?`<div class="table-wrap"><table><thead><tr><th>Data</th><th>PSR</th><th>PSE</th><th>Duração</th><th>Carga</th><th>Salto pré</th><th>Salto pós</th></tr></thead><tbody>${monitoring.map(m=>`<tr><td>${safe(m.session_date)}</td><td>${safe(m.psr)}</td><td>${safe(m.pse)}</td><td>${safe(m.duration_min)} min</td><td>${safe(m.load_ua)}</td><td>${safe(m.jump_pre_cm)}</td><td>${safe(m.jump_post_cm)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty-state">Ainda não há registros de monitoramento.</div>'}`;
+    const monitorHtml=(monitoring||[]).length?`<div class="table-wrap"><table><thead><tr><th>Data</th><th>PSR</th><th>PSE</th><th>Carga</th><th>Salto pré</th><th>Salto pós</th></tr></thead><tbody>${monitoring.map(m=>`<tr><td>${safe(m.session_date)}</td><td>${safe(m.psr)}</td><td>${safe(m.pse)}</td><td>${safe(m.load_ua)}</td><td>${safe(m.jump_pre_cm)}</td><td>${safe(m.jump_post_cm)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty-state">Seu treinador ainda não registrou avaliações.</div>';
     app.innerHTML=`<div class="home-hero"><div class="home-hero-title">Olá, ${safe(athlete.full_name)}</div><div class="home-hero-sub">Sua área individual de acompanhamento</div></div>
       <section class="panel" style="padding:18px"><h3>Meu cadastro</h3><p>${safe(athlete.sport)} ${athlete.category?'· '+safe(athlete.category):''}</p></section>
       <h2 style="margin-top:24px">Meus treinos</h2>${workoutHtml}
@@ -1522,21 +1516,6 @@ async async function loadAthletePortal(){
     console.error('Falha ao carregar portal do atleta:',e);
     app.innerHTML=`<div class="panel" style="padding:20px"><h2>Não foi possível carregar sua área</h2><p>${escapeHtml(e.message||'Falha de conexão')}</p><button class="btn btn-primary" onclick="loadAthletePortal()">Tentar novamente</button></div>`;
   }
-}
-
-
-async async function submitAthleteMonitoring(event,athleteId){
-  event.preventDefault();
-  const form=event.currentTarget,button=form.querySelector('button[type="submit"]'),values=new FormData(form);
-  const psr=Number(values.get('psr')),pse=Number(values.get('pse')),duration=Number(values.get('duration'));
-  if(!Number.isFinite(psr)||psr<0||psr>10||!Number.isFinite(pse)||pse<0||pse>10||!Number.isInteger(duration)||duration<1||duration>600){showToast('Confira os valores informados.','err');return;}
-  button.disabled=true;button.textContent='Enviando…';
-  try{
-    const now=new Date(),sessionDate=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
-    const {error}=await supabaseClient.from('monitoring_sessions').insert({athlete_id:athleteId,session_date:sessionDate,psr,pse,duration_min:duration,load_ua:pse*duration,created_by:currentUser.id});
-    if(error) throw error;
-    showToast('Monitoramento enviado com sucesso.','ok'); await loadAthletePortal();
-  }catch(error){console.error('Erro ao enviar monitoramento:',error);showToast(error.message||'Não foi possível enviar.','err');button.disabled=false;button.textContent='Enviar monitoramento';}
 }
 
 function calcAge(birthDate){
@@ -1996,34 +1975,12 @@ function renderProfileView(){
       : `<div class="empty-state"><div class="icon">📋</div><div>Nenhum treino montado ainda.</div>
           <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="setAthleteMode('edit-treino')">Montar treino</button></div>`}
 
-    <div id="coach-monitoring-panel"></div>
     <div class="actions-row">
       ${!isNew ? `<button class="btn btn-outline" onclick="downloadAthletePdf('${draft.id}', true)">Baixar dados (PDF)</button>` : ''}
       ${hasTraining && !isNew ? `<button class="btn btn-outline" onclick="downloadTrainingPdf('${draft.id}', true)">Baixar treino (PDF)</button>` : ''}
       ${!isNew ? `<button class="btn btn-danger" onclick="deleteAthlete('${draft.id}')">Excluir atleta</button>` : ''}
     </div>
   `;
-  if(!isNew) loadCoachMonitoringPanel(a.id);
-}
-
-async async function loadCoachMonitoringPanel(athleteId){
-  const panel=document.getElementById('coach-monitoring-panel');
-  if(!panel) return;
-  panel.innerHTML='<div class="empty-state">Carregando monitoramento enviado pelo atleta…</div>';
-  try{
-    const {data,error}=await supabaseClient.from('monitoring_sessions')
-      .select('id,session_date,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm,notes')
-      .eq('athlete_id',athleteId).order('session_date',{ascending:false}).limit(100);
-    if(error) throw error;
-    const rows=data||[];
-    const today=new Date(),key=d=>{if(typeof d==='string') return d.slice(0,10);const x=d;return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')};
-    const daily=Array.from({length:7},(_,i)=>{const d=new Date(today);d.setDate(d.getDate()-(6-i));const k=key(d);return rows.filter(r=>r.session_date===k).reduce((sum,r)=>sum+Number(r.load_ua||0),0)});
-    const acute=daily.reduce((a,b)=>a+b,0),mean=acute/7,sd=Math.sqrt(daily.reduce((a,b)=>a+(b-mean)**2,0)/7),monotony=sd?mean/sd:0,strain=acute*monotony;
-    panel.innerHTML=`<div class="profile-section-title">Monitoramento do atleta</div>
-      <div class="stat-grid"><div class="stat-card"><div class="stat-num">${Math.round(acute)}</div><div class="stat-label">Carga aguda (7 dias)</div></div><div class="stat-card"><div class="stat-num">${monotony.toFixed(2)}</div><div class="stat-label">Monotonia</div></div><div class="stat-card"><div class="stat-num">${Math.round(strain)}</div><div class="stat-label">Strain</div></div></div>
-      <p class="muted" style="font-size:12px">Carga da sessão = PSE × duração. Monotonia = média das cargas diárias ÷ desvio-padrão dos 7 dias, incluindo dias sem treino como zero.</p>
-      <div class="table-wrap"><table><thead><tr><th>Data</th><th>PSR</th><th>PSE</th><th>Duração</th><th>Carga</th><th>Salto pré</th><th>Salto pós</th></tr></thead><tbody>${rows.length?rows.map(r=>`<tr><td>${escapeHtml(r.session_date)}</td><td>${escapeHtml(r.psr)}</td><td>${escapeHtml(r.pse)}</td><td>${escapeHtml(r.duration_min)} min</td><td>${escapeHtml(r.load_ua)}</td><td>${escapeHtml(r.jump_pre_cm)}</td><td>${escapeHtml(r.jump_post_cm)}</td></tr>`).join(''):'<tr><td colspan="7">O atleta ainda não enviou registros.</td></tr>'}</tbody></table></div>`;
-  }catch(error){console.error('Falha ao carregar monitoramento do atleta:',error);panel.innerHTML='<div class="empty-state">Não foi possível carregar o monitoramento.</div>';}
 }
 
 function renderDadosEditPanel(){
