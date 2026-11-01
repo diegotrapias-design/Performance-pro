@@ -3702,8 +3702,10 @@ boot();
     var activeVideoObjectUrl = null;
     function loadVideoFile(file){
       if (!file) return;
-      if (!file.type || !file.type.startsWith('video/')) {
-        saveMsg.textContent = 'O arquivo selecionado não é um vídeo compatível.';
+      var videoExt = (file.name || '').split('.').pop().toLowerCase();
+      var supportedVideo = (file.type && file.type.startsWith('video/')) || ['mp4','mov','m4v','webm','3gp'].includes(videoExt);
+      if (!supportedVideo) {
+        saveMsg.textContent = 'Selecione um vídeo MP4, MOV, M4V ou WEBM.';
         return;
       }
       if (activeVideoObjectUrl) URL.revokeObjectURL(activeVideoObjectUrl);
