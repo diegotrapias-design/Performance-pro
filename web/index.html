@@ -1469,7 +1469,7 @@ async function persist(showMsg){
 
 
 
-async function loadAthletePortal(){
+async async function loadAthletePortal(){
   const app=document.getElementById('app');
   app.innerHTML='<div class="loading">Carregando sua área do atleta…</div>';
   try{
@@ -1525,7 +1525,7 @@ async function loadAthletePortal(){
 }
 
 
-async function submitAthleteMonitoring(event,athleteId){
+async async function submitAthleteMonitoring(event,athleteId){
   event.preventDefault();
   const form=event.currentTarget,button=form.querySelector('button[type="submit"]'),values=new FormData(form);
   const psr=Number(values.get('psr')),pse=Number(values.get('pse')),duration=Number(values.get('duration'));
@@ -2006,7 +2006,7 @@ function renderProfileView(){
   if(!isNew) loadCoachMonitoringPanel(a.id);
 }
 
-async function loadCoachMonitoringPanel(athleteId){
+async async function loadCoachMonitoringPanel(athleteId){
   const panel=document.getElementById('coach-monitoring-panel');
   if(!panel) return;
   panel.innerHTML='<div class="empty-state">Carregando monitoramento enviado pelo atleta…</div>';
