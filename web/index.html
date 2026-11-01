@@ -32,6 +32,33 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLI
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
 });
 
+// Login definido neste primeiro bloco para ficar disponível mesmo se outro
+// bloco grande do aplicativo falhar ao carregar no Safari/iOS.
+window.handleLogin = async function(event){
+  if(event) event.preventDefault();
+  const email = (document.getElementById('login-email')?.value || '').trim().toLowerCase();
+  const password = document.getElementById('login-password')?.value || '';
+  const errorEl = document.getElementById('login-error');
+  const button = document.getElementById('login-submit');
+  const showError = msg => { if(errorEl) errorEl.textContent = msg; };
+  showError('');
+  if(!email){ showError('Informe seu e-mail.'); return; }
+  if(!password){ showError('Informe sua senha.'); return; }
+  if(button){ button.disabled = true; button.textContent = 'ENTRANDO...'; }
+  try {
+    const {data, error} = await supabaseClient.auth.signInWithPassword({email, password});
+    if(error) throw error;
+    if(!data?.user) throw new Error('A autenticação não retornou o usuário.');
+    if(typeof window.onAuthChange !== 'function') throw new Error('O painel ainda está carregando. Atualize a página e tente novamente.');
+    await window.onAuthChange(data.user);
+  } catch(e) {
+    console.error('Falha no login:', e);
+    showError('Não foi possível entrar: ' + (e?.message || 'erro desconhecido'));
+  } finally {
+    if(button){ button.disabled = false; button.textContent = 'ENTRAR'; }
+  }
+};
+
 </script>
 <style>
   :root{
