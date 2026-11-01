@@ -984,6 +984,21 @@ window.handleLogin = async function(event){
     #salto-root .transport-btn { min-width: 42px; height: 44px; }
   }
 
+
+  .view-athlete-start{background:#1769aa;color:#fff;text-align:center;padding:14px 10px;margin:-6px -4px 8px;display:flex;flex-direction:column;gap:6px;align-items:center}
+  .view-athlete-start button{background:#159447;color:#fff;border-radius:5px;padding:10px 22px;font-weight:700;font-size:12px}
+  .view-athlete-start small{font-size:11px;color:#eaf4ff}
+  .view-athlete-ex{background:#fff;border:1px solid #dfe4e9;border-radius:12px;padding:13px;margin:10px 6px;box-shadow:0 2px 7px #0000000a}
+  .view-athlete-ex.is-combined{border-left:4px solid #1675b8}
+  .view-athlete-ex-top{display:flex;justify-content:space-between;gap:8px;align-items:center}
+  .view-athlete-name{font-weight:800;font-size:14px;flex:1}
+  .view-athlete-combo{font-size:9px;color:#1769aa;font-weight:800}
+  .view-athlete-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;font-size:11px;color:#4b5563}
+  .view-athlete-meta b{background:#eef2f6;padding:5px 7px;border-radius:5px}
+  .view-athlete-video{display:block;margin-top:10px;width:100%;background:#111;color:#fff;border-radius:8px;padding:10px;font-weight:700}
+  .view-athlete-no-video{font-size:11px;color:#888;margin-top:8px}
+  .combine-select{display:flex;align-items:center;gap:3px;font-size:10px;color:#1769aa;white-space:nowrap}
+  .combo-status{display:inline-block;background:#e8f3fb;color:#1769aa;border-radius:6px;padding:5px 8px;font-size:11px;font-weight:700}
 </style>
 </head>
 <body>
@@ -2614,26 +2629,16 @@ function renderJumpProgressSection(athleteId){
 function buildDayCardsHtml(days){
   return (days||[]).map(d => `
     <div class="view-day-card">
-      <div class="view-day-head">
-        <span>${escapeHtml(d.label || '')}</span>
-        <span class="view-day-type">${escapeHtml(d.type || '')}</span>
-      </div>
+      <div class="view-athlete-start"><button type="button" onclick="showToast('Modo de visualização: peça ao treinador para iniciar o treino presencial.','ok')">▶ INICIAR TREINO PRESENCIAL</button><small>Você está em modo de visualização</small></div>
+      <div class="view-day-head"><span>${escapeHtml(d.label || '')}</span><span class="view-day-type">${escapeHtml(d.type || '')}</span></div>
       <div class="view-day-body">
         ${(d.exercises||[]).filter(ex => ex.name && ex.name.trim()).map(ex => `
-          <div class="view-ex-row">
-            <div class="view-ex-check" onclick="this.classList.toggle('checked')" title="Marcar como concluído"></div>
-            <div class="view-ex-info">
-              <div class="view-ex-name">${escapeHtml(ex.name)}</div>
-              <div class="view-ex-badges">
-                ${ex.series ? `<span class="view-badge">${escapeHtml(ex.series)}x</span>` : ''}
-                ${ex.reps ? `<span class="view-badge">${escapeHtml(ex.reps)} reps</span>` : ''}
-                ${ex.carga ? `<span class="view-badge">${escapeHtml(ex.carga)}</span>` : ''}
-                ${ex.descanso ? `<span class="view-badge">${escapeHtml(ex.descanso)} desc.</span>` : ''}
-              </div>
-              ${ex.obs ? `<div class="view-ex-obs">${escapeHtml(ex.obs)}</div>` : ''}
-            </div>
-            <button type="button" onclick="openExerciseVideo('${escapeHtml(ex.video||'')}','${escapeHtml(ex.name)}')" class="view-ex-video exercise-video-open" title="Assistir demonstração">${ex.video?'▶':'▶'}</button>
-          </div>
+          <article class="view-athlete-ex ${ex.comboId?'is-combined':''}">
+            <div class="view-athlete-ex-top"><span class="view-athlete-combo">${ex.comboId?'COMBINADO':''}</span><span class="view-athlete-name">${escapeHtml(ex.name)}</span></div>
+            <div class="view-athlete-meta">${ex.series?'<b>'+escapeHtml(ex.series)+' séries</b>':''}${ex.reps?'<b>'+escapeHtml(ex.reps)+' reps</b>':''}${ex.carga?'<b>'+escapeHtml(ex.carga)+'</b>':''}${ex.descanso?'<b>Intervalo: '+escapeHtml(ex.descanso)+'</b>':''}</div>
+            ${ex.obs?'<p class="view-ex-obs">'+escapeHtml(ex.obs)+'</p>':''}
+            ${ex.video?'<button class="view-athlete-video" type="button" onclick="openExerciseVideo(\''+escapeHtml(ex.video)+'\',\''+escapeHtml(ex.name)+'\')">▶ Assistir demonstração</button>':'<div class="view-athlete-no-video">Vídeo não cadastrado</div>'}
+          </article>
         `).join('') || '<div class="view-ex-empty">Nenhum exercício neste dia.</div>'}
       </div>
     </div>
@@ -2642,10 +2647,22 @@ function buildDayCardsHtml(days){
 
 /* ---- Edição ---- */
 
+function combineSelectedExercises(dayId){
+ const day=draft?.trainingPlan?.days?.find(d=>d.id===dayId);if(!day)return;
+ const selected=[...document.querySelectorAll('[data-combine-day="'+dayId+'"]:checked')].map(x=>x.value);
+ if(selected.length<2){showToast('Selecione pelo menos dois exercícios para combinar.','err');return;}
+ const comboId=uid();day.exercises.forEach(ex=>{if(selected.includes(ex.id)){ex.comboId=comboId;ex.comboType='Bi-set';}});
+ renderTreinoEditPanel();showToast(selected.length+' exercícios combinados.','ok');
+}
+function uncombineExercise(dayId,comboId){
+ const day=draft?.trainingPlan?.days?.find(d=>d.id===dayId);if(!day)return;
+ day.exercises.forEach(ex=>{if(ex.comboId===comboId){delete ex.comboId;delete ex.comboType;}});
+ renderTreinoEditPanel();
+}
 function combineExerciseWithNext(dayId, exerciseId){
  const day=draft?.trainingPlan?.days?.find(d=>d.id===dayId);if(!day)return;
  const idx=day.exercises.findIndex(e=>e.id===exerciseId);if(idx<0||idx>=day.exercises.length-1){showToast('Adicione o próximo exercício antes de combinar.','err');return;}
- const first=day.exercises[idx],next=day.exercises[idx+1];const id=first.comboId||uid();first.comboId=id;next.comboId=id;first.comboType=next.comboType='Bi-set';renderTreinoEditPanel();showToast('Bi-set criado com os dois exercícios.','ok');
+ const first=day.exercises[idx],next=day.exercises[idx+1],id=first.comboId||uid();first.comboId=id;next.comboId=id;first.comboType=next.comboType='Bi-set';renderTreinoEditPanel();showToast('Bi-set criado com os dois exercícios.','ok');
 }
 function renderTreinoEditPanel(){
   const p = document.getElementById('panel-athlete');
@@ -2665,10 +2682,11 @@ function renderTreinoEditPanel(){
         ${d.exercises.map(ex => `
           <div class="ex-card">
             <div class="ex-card-top">
+              <label class="combine-select" title="Selecionar para combinar"><input type="checkbox" data-combine-day="${d.id}" value="${ex.id}"> Combinar</label>
               <input type="text" class="ex-name-input" value="${escapeHtml(ex.name)}" oninput="updateExerciseField('${d.id}','${ex.id}','name',this.value)" placeholder="Nome do exercício">
               <button class="rm-btn" onclick="removeExercise('${d.id}','${ex.id}')" title="Remover exercício">×</button>
             </div>
-            <button type="button" class="btn btn-outline btn-sm" style="margin:6px 0" onclick="combineExerciseWithNext('${d.id}','${ex.id}')">🔗 Combinar com o próximo</button>
+            ${ex.comboId ? '<span class="combo-status">🔗 '+escapeHtml(ex.comboType||'Combinado')+'</span>' : ''}
             <div class="ex-card-grid">
               <div><label>Séries</label><input type="text" data-day-id="${d.id}" data-ex-id="${ex.id}" data-ex-field="series" value="${escapeHtml(ex.series)}" oninput="updateExerciseField('${d.id}','${ex.id}','series',this.value)" placeholder="4"></div>
               <div><label>Reps</label><input type="text" data-day-id="${d.id}" data-ex-id="${ex.id}" data-ex-field="reps" value="${escapeHtml(ex.reps)}" oninput="updateExerciseField('${d.id}','${ex.id}','reps',this.value)" placeholder="10-12"></div>
@@ -2691,6 +2709,7 @@ function renderTreinoEditPanel(){
           </div>
         `).join('')}
         <div class="day-foot">
+          <button class="btn btn-primary btn-sm" onclick="combineSelectedExercises('${d.id}')">🔗 Combinar selecionados</button>
           <button class="btn btn-outline btn-sm" onclick="addExercise('${d.id}')">+ Exercício</button>
           <button class="btn btn-outline btn-sm" onclick="openExerciseLibrary('${d.id}')">📚 Biblioteca de exercícios</button>
         </div>
