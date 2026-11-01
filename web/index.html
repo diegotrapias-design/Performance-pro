@@ -273,6 +273,10 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLI
     display:flex;align-items:center;justify-content:center;font-size:13px;text-decoration:none;margin-top:2px;
   }
   .view-ex-video.search{background:#e5e5e7;color:var(--black);font-size:14px;}
+  .exercise-inline-video{width:100%;max-height:62vh;background:#000;border-radius:12px;display:block;}
+  .exercise-video-frame{width:100%;aspect-ratio:16/9;border:0;border-radius:12px;background:#000;}
+  .exercise-video-empty{padding:18px;background:#f3f3f4;border-radius:10px;color:var(--black);font-size:13px;line-height:1.5;}
+  .exercise-video-open{border:0;cursor:pointer;}
   .view-ex-empty{padding:16px;color:var(--gray);font-size:12.5px;text-align:center;}
 
   /* ---- Modais (biblioteca / compartilhar) ---- */
@@ -1088,6 +1092,12 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLI
       <button class="modal-close" onclick="closeShareModal()">×</button>
     </div>
     <div id="share-modal-body"></div>
+  </div>
+</div>
+<div id="exercise-video-modal" class="modal-overlay" style="display:none;z-index:500;" onclick="if(event.target===this) closeExerciseVideo()">
+  <div class="modal-box" style="max-width:640px;max-height:88vh;">
+    <div class="modal-header"><div class="modal-title" id="exercise-video-title">Vídeo do exercício</div><button class="modal-close" onclick="closeExerciseVideo()">×</button></div>
+    <div id="exercise-video-player"></div>
   </div>
 </div>
 
@@ -2433,6 +2443,38 @@ async function handleVideoUpload(event, dayId, exId){
   }
 }
 
+function closeExerciseVideo(){
+  const modal=document.getElementById('exercise-video-modal');
+  const player=document.getElementById('exercise-video-player');
+  if(player) player.innerHTML='';
+  if(modal) modal.style.display='none';
+}
+function openExerciseVideo(url,title){
+  const modal=document.getElementById('exercise-video-modal');
+  const player=document.getElementById('exercise-video-player');
+  const safeTitle=title||'Vídeo do exercício';
+  document.getElementById('exercise-video-title').textContent=safeTitle;
+  if(!url){
+    player.innerHTML='<div class="exercise-video-empty">Este exercício ainda não tem vídeo demonstrativo cadastrado. O treinador pode adicionar um vídeo próprio pela biblioteca de exercícios.</div>';
+  }else{
+    let parsed;
+    try{parsed=new URL(url,location.href);}catch(e){showToast('Link de vídeo inválido.','err');return;}
+    if(!['http:','https:'].includes(parsed.protocol)){showToast('Link de vídeo inválido.','err');return;}
+    const host=parsed.hostname.replace(/^www\./,'').toLowerCase();
+    let videoId='';
+    if(host==='youtu.be') videoId=parsed.pathname.split('/').filter(Boolean)[0]||'';
+    else if(host.endsWith('youtube.com')) videoId=parsed.searchParams.get('v')||parsed.pathname.split('/').filter(Boolean).pop()||'';
+    if(videoId && /^[A-Za-z0-9_-]{11}$/.test(videoId)){
+      player.innerHTML='<iframe class="exercise-video-frame" src="https://www.youtube-nocookie.com/embed/'+videoId+'?playsinline=1&rel=0" title="Demonstração: '+escapeHtml(safeTitle)+'" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>';
+    }else if(/\.(mp4|m4v|mov|webm)(\?|$)/i.test(parsed.pathname+parsed.search) || host.includes('supabase')){
+      player.innerHTML='<video class="exercise-inline-video" controls playsinline preload="metadata" src="'+escapeHtml(parsed.href)+'"></video>';
+    }else{
+      player.innerHTML='<div class="exercise-video-empty">Este link não é um arquivo de vídeo reproduzível diretamente. Envie um vídeo MP4/MOV pela biblioteca para assistir dentro do app.</div>';
+    }
+  }
+  modal.style.display='flex';
+}
+
 /* ---- Cards de treino (usados no perfil e na página pública) ---- */
 
 /* ---- Ciclo de treino (datas de início/fim) ---- */
@@ -2555,9 +2597,7 @@ function buildDayCardsHtml(days){
               </div>
               ${ex.obs ? `<div class="view-ex-obs">${escapeHtml(ex.obs)}</div>` : ''}
             </div>
-            ${ex.video
-              ? `<a href="${escapeHtml(ex.video)}" target="_blank" rel="noopener" class="view-ex-video" title="Assistir vídeo">▶</a>`
-              : `<a href="https://www.youtube.com/results?search_query=${encodeURIComponent(ex.name + ' exercício execução')}" target="_blank" rel="noopener" class="view-ex-video search" title="Buscar vídeo no YouTube">🔍</a>`}
+            ${<button type="button" onclick="openExerciseVideo('${escapeHtml(ex.video||'')}','${escapeHtml(ex.name)}')" class="view-ex-video exercise-video-open" title="Assistir demonstração">${ex.video?'▶':'▶'}</button>
           </div>
         `).join('') || '<div class="view-ex-empty">Nenhum exercício neste dia.</div>'}
       </div>
@@ -2601,7 +2641,7 @@ function renderTreinoEditPanel(){
                 🎥
                 <input type="file" accept="video/*" style="display:none" onchange="handleVideoUpload(event,'${d.id}','${ex.id}')">
               </label>
-              ${ex.video ? `<a href="${escapeHtml(ex.video)}" target="_blank" rel="noopener" class="video-open-btn" title="Abrir vídeo">▶</a>` : ''}
+              ${ex.video ? `<button type="button" onclick="openExerciseVideo('${escapeHtml(ex.video)}','${escapeHtml(ex.name)}')" class="video-open-btn exercise-video-open" title="Assistir vídeo">▶</button>` : ''}
             </div>
             <div class="ex-card-foot">
               <button class="btn btn-outline btn-sm" onclick="openPresetPicker('${d.id}','${ex.id}')">⚡ Preset de série</button>
