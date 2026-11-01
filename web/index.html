@@ -887,12 +887,15 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLI
   }
   #salto-root .row-delete {
     background: none;
-    border: none;
-    color: var(--salto-text-muted);
-    font-size: 18px;
+    border: 1px solid var(--salto-danger);
+    color: var(--salto-danger);
+    font-size: 12px;
+    font-weight: 700;
     line-height: 1;
     cursor: pointer;
-    padding: 4px 8px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
   }
   #salto-root .row-delete:hover { color: var(--salto-danger); }
   #salto-root .history-actions {
@@ -1075,13 +1078,13 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLI
       <div class="viewfinder-empty">
         <p>Envie um vídeo do salto para começar. De preferência, em câmera lenta.</p>
         <div class="upload-btn-row">
-          <label class="upload-btn" for="fileInput" onclick="document.getElementById('fileInput').click()">📁 Escolher da galeria</label>
-          <label class="upload-btn upload-btn--record" for="fileInputCamera" onclick="document.getElementById('fileInputCamera').click()">🎥 Gravar vídeo</label>
+          <button class="upload-btn" type="button" id="chooseVideoButton">📁 Escolher da galeria</button>
+          <button class="upload-btn upload-btn--record" type="button" id="recordVideoButton">🎥 Gravar vídeo</button>
         </div>
       </div>
     </div>
-    <input type="file" id="fileInput" accept="video/*" hidden />
-    <input type="file" id="fileInputCamera" accept="video/*" capture="camcorder" hidden />
+    <input type="file" id="fileInput" accept="video/mp4,video/quicktime,video/webm,video/x-m4v,.mp4,.mov,.m4v,.webm,.3gp" hidden />
+    <input type="file" id="fileInputCamera" accept="video/*,.mp4,.mov,.m4v,.3gp" capture="environment" hidden />
 
     <div class="readout">
       <span class="readout-frame" id="frameReadout">QUADRO —</span>
@@ -1092,7 +1095,9 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLI
       <button class="transport-btn transport-btn--text" id="btnToStart" type="button">Início</button>
       <button class="transport-btn" id="btnPrevFrame" type="button">−1</button>
       <button class="transport-btn transport-btn--main" id="btnPlayPause" type="button" aria-label="Reproduzir ou pausar"></button>
-      <button class="transport-btn" id="btnNextFrame" type="button">+1</button>
+      <button class="transport-btn" id="btnNextFrame" type="button">+1 quadro</button>
+      <button class="transport-btn transport-btn--text" id="btnBack10ms" type="button">−10 ms</button>
+      <button class="transport-btn transport-btn--text" id="btnForward10ms" type="button">+10 ms</button>
       <button class="transport-btn transport-btn--text" id="btnToEnd" type="button">Fim</button>
     </div>
 
@@ -3392,6 +3397,14 @@ boot();
     video.currentTime = newTime;
   }
 
+  function stepMilliseconds(deltaMs) {
+    if (!video.src) return;
+    video.pause();
+    updatePlayIcon(false);
+    var max = isFinite(video.duration) ? video.duration : Infinity;
+    video.currentTime = Math.max(0, Math.min(max, (video.currentTime || 0) + deltaMs / 1000));
+  }
+
   function togglePlay() {
     if (!video.src) return;
     if (video.paused) {
@@ -3587,6 +3600,10 @@ boot();
     var idx = jumpLog.findIndex(function (j) { return j.id === id; });
     if (idx === -1) return;
     var removed = jumpLog.splice(idx, 1)[0];
+    if (!confirm('Excluir o salto de ' + removed.athlete + ' (' + Number(removed.heightCm).toFixed(1) + ' cm)?')) {
+      jumpLog.splice(idx, 0, removed);
+      return;
+    }
     try {
       await persistLog();
     } catch (e) {
@@ -3672,7 +3689,7 @@ boot();
         '<td>' + escapeHtml(j.athlete) + '</td>' +
         '<td>' + escapeHtml(j.type) + '</td>' +
         '<td class="history-height">' + j.heightCm.toFixed(1) + ' cm</td>' +
-        '<td><button class="row-delete" data-id="' + j.id + '" type="button" aria-label="Remover">&times;</button></td>';
+        '<td><button class="row-delete" data-id="' + escapeHtml(j.id) + '" type="button" aria-label="Excluir este salto">Excluir</button></td>';
       historyBody.appendChild(tr);
     }
 
@@ -3723,7 +3740,7 @@ boot();
     function loadVideoFile(file){
       if (!file) return;
       var videoExt = (file.name || '').split('.').pop().toLowerCase();
-      var supportedVideo = (file.type && file.type.startsWith('video/')) || ['mp4','mov','m4v','webm','3gp'].includes(videoExt);
+      var supportedVideo = (file.type && file.type.toLowerCase().startsWith('video/')) || ['mp4','mov','m4v','webm','3gp'].includes(videoExt);
       if (!supportedVideo) {
         saveMsg.textContent = 'Selecione um vídeo MP4, MOV, M4V ou WEBM.';
         return;
@@ -3734,14 +3751,17 @@ boot();
       video.removeAttribute('src');
       video.src = activeVideoObjectUrl;
       video.load();
-      viewfinder.classList.remove('has-video');
+      resetMarks();
       saveMsg.textContent = 'Carregando vídeo…';
     }
-    fileInput.addEventListener('change', function (e) {
-      loadVideoFile(e.target.files[0]);
-    });
-    fileInputCamera.addEventListener('change', function (e) {
-      loadVideoFile(e.target.files[0]);
+    $('chooseVideoButton').addEventListener('click', function(){ fileInput.value=''; fileInput.click(); });
+    $('recordVideoButton').addEventListener('click', function(){ fileInputCamera.value=''; fileInputCamera.click(); });
+    [fileInput,fileInputCamera].forEach(function(input){
+      input.addEventListener('change', function(e){
+        loadVideoFile(e.target.files && e.target.files[0]);
+        e.target.value='';
+      });
+      input.addEventListener('cancel', function(){ saveMsg.textContent='Seleção cancelada.'; });
     });
 
     video.addEventListener('loadedmetadata', function () {
@@ -3772,6 +3792,8 @@ boot();
     });
     setupHoldToRepeat(btnPrevFrame, function () { stepFrame(-1); });
     setupHoldToRepeat(btnNextFrame, function () { stepFrame(1); });
+    $('btnBack10ms').addEventListener('click', function(){ stepMilliseconds(-10); });
+    $('btnForward10ms').addEventListener('click', function(){ stepMilliseconds(10); });
     btnPlayPause.addEventListener('click', togglePlay);
 
     scrubber.addEventListener('input', function () {
