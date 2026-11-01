@@ -293,6 +293,14 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLI
     padding:10px 12px;border-radius:9px;border:1px solid var(--border);font-size:14px;margin-bottom:10px;width:100%;
   }
   .modal-list{overflow-y:auto;flex:1;}
+  .library-filter-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+  .library-filter-row select{min-width:0;width:100%;padding:10px 9px;border:1px solid var(--border);border-radius:9px;background:#fff;color:var(--black);font-size:12px;}
+  .library-filter-tabs{display:flex;gap:8px;margin:0 0 10px;flex-wrap:wrap;}
+  .library-exercise-card{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 12px;margin-bottom:8px;background:var(--card);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:10px;cursor:pointer;}
+  .library-exercise-card:active{background:#f3f3f4;}
+  .library-exercise-name{font-weight:700;font-size:14px;color:var(--black);}
+  .library-exercise-meta{font-size:11px;color:var(--gray);margin-top:4px;}
+  .library-exercise-add{color:var(--red);font-weight:800;font-size:20px;}
   .lib-group-title{
     font-family:'Poppins',sans-serif;font-weight:700;font-size:11.5px;color:var(--gray);text-transform:uppercase;
     letter-spacing:.4px;padding:12px 4px 6px;
@@ -1019,7 +1027,22 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLI
       <div class="modal-title" id="library-modal-title">Biblioteca de exercícios</div>
       <button class="modal-close" onclick="closeExerciseLibrary()">×</button>
     </div>
-    <input type="search" id="library-search" class="modal-search" placeholder="Buscar exercício…" oninput="renderLibraryList(this.value)">
+    <input type="search" id="library-search" class="modal-search" placeholder="Buscar exercícios…" oninput="renderLibraryList(this.value)">
+    <div class="library-filter-row">
+      <select id="library-group-filter" aria-label="Grupo muscular" onchange="renderLibraryList(document.getElementById('library-search').value)">
+        <option value="">Todos os grupos musculares</option>
+      </select>
+      <select id="library-category-filter" aria-label="Categoria" onchange="renderLibraryList(document.getElementById('library-search').value)">
+        <option value="">Todas as categorias</option>
+        <option value="Musculação">Musculação</option><option value="Funcional">Funcional</option>
+        <option value="Aeróbico">Aeróbico</option><option value="Mobilidade">Mobilidade</option>
+        <option value="Alongamento">Alongamento</option><option value="Esportivo">Esportivo</option>
+      </select>
+    </div>
+    <div class="library-filter-tabs">
+      <button type="button" class="btn btn-primary btn-sm" id="library-all-tab" onclick="setLibraryTab('all')">Todos</button>
+      <button type="button" class="btn btn-outline btn-sm" id="library-fav-tab" onclick="setLibraryTab('favorites')">Favoritos</button>
+    </div>
     <div id="library-list" class="modal-list"></div>
   </div>
 </div>
@@ -2658,11 +2681,17 @@ function seedDefaultPresets(){
 
 /* ---- Biblioteca: modal de escolha (usado ao adicionar/substituir exercício num treino) ---- */
 
+let libraryPickerTab = 'all';
+
 function openExerciseLibrary(dayId, replaceExId){
   libraryTargetDayId = dayId;
   libraryReplaceExId = replaceExId || null;
+  libraryPickerTab = 'all';
   document.getElementById('library-search').value = '';
-  document.getElementById('library-modal-title').textContent = replaceExId ? 'Substituir por…' : 'Biblioteca de exercícios';
+  document.getElementById('library-modal-title').textContent = replaceExId ? 'Substituir exercício' : 'Biblioteca de exercícios';
+  const groupSelect=document.getElementById('library-group-filter');
+  groupSelect.innerHTML='<option value="">Todos os grupos musculares</option>'+[...new Set(exerciseLibrary.map(x=>x.group).filter(Boolean))].sort().map(g=>'<option value="'+escapeHtml(g)+'">'+escapeHtml(g)+'</option>').join('');
+  document.getElementById('library-category-filter').value='';
   renderLibraryList('');
   document.getElementById('library-modal').style.display = 'flex';
 }
@@ -2671,22 +2700,40 @@ function closeExerciseLibrary(){
   document.getElementById('library-modal').style.display = 'none';
 }
 
-function renderLibraryList(filter){
-  const q = (filter || '').toLowerCase();
-  const groups = {};
-  exerciseLibrary
-    .filter(ex => !q || ex.name.toLowerCase().includes(q))
-    .forEach(ex => { (groups[ex.group] = groups[ex.group] || []).push(ex); });
+function setLibraryTab(tab){
+  libraryPickerTab=tab;
+  document.getElementById('library-all-tab').className='btn '+(tab==='all'?'btn-primary':'btn-outline')+' btn-sm';
+  document.getElementById('library-fav-tab').className='btn '+(tab==='favorites'?'btn-primary':'btn-outline')+' btn-sm';
+  renderLibraryList(document.getElementById('library-search').value);
+}
 
-  const container = document.getElementById('library-list');
-  let html = '';
-  Object.keys(groups).sort().forEach(group => {
-    html += `<div class="lib-group-title">${escapeHtml(group)}</div>`;
-    html += groups[group].map(ex => `
-      <div class="lib-item" onclick="addFromLibrary('${ex.id}')">${ex.favorite ? '⭐ ' : ''}${escapeHtml(ex.name)}${ex.video ? ' 🎥' : ''}</div>
-    `).join('');
-  });
-  container.innerHTML = html || '<div class="empty-state" style="padding:24px 0;">Nenhum exercício encontrado.</div>';
+function exerciseCategory(ex){
+  if(ex.category) return ex.category;
+  const g=(ex.group||'').toLowerCase();
+  if(/funcional|cardio|alta performance/.test(g)) return 'Funcional';
+  if(/mobilidade/.test(g)) return 'Mobilidade';
+  if(/alongamento/.test(g)) return 'Alongamento';
+  if(/aeróbic|corrida|bike/.test(g)) return 'Aeróbico';
+  return 'Musculação';
+}
+
+function renderLibraryList(filter){
+  const q=(filter||'').toLowerCase();
+  const group=document.getElementById('library-group-filter').value;
+  const category=document.getElementById('library-category-filter').value;
+  const filtered=exerciseLibrary.filter(ex=>
+    (!q || (ex.name||'').toLowerCase().includes(q)) &&
+    (!group || ex.group===group) &&
+    (!category || exerciseCategory(ex)===category) &&
+    (libraryPickerTab!=='favorites' || ex.favorite)
+  );
+  const container=document.getElementById('library-list');
+  container.innerHTML=filtered.length?filtered.map(ex=>`
+    <div class="library-exercise-card" onclick="addFromLibrary('${ex.id}')">
+      <div><div class="library-exercise-name">${ex.favorite?'⭐ ':''}${escapeHtml(ex.name)}</div>
+      <div class="library-exercise-meta">${escapeHtml(ex.group||'Sem grupo')} · ${escapeHtml(exerciseCategory(ex))}${ex.video?' · Vídeo':''}</div></div>
+      <span class="library-exercise-add">+</span>
+    </div>`).join(''):'<div class="empty-state" style="padding:24px 0;">Nenhum exercício encontrado com esses filtros.</div>';
 }
 
 function addFromLibrary(libExId){
@@ -2925,12 +2972,16 @@ function renderPresetList(){
 }
 
 async function applySeriesPreset(presetId){
-  const p = seriesPresets.find(x => x.id === presetId);
-  if(!p || !presetTarget) return;
-  updateExerciseField(presetTarget.dayId, presetTarget.exId, 'series', p.series);
-  updateExerciseField(presetTarget.dayId, presetTarget.exId, 'reps', p.reps);
+  const p=seriesPresets.find(x=>x.id===presetId);
+  if(!p || !presetTarget || !draft?.trainingPlan?.days) return;
+  const day=draft.trainingPlan.days.find(x=>x.id===presetTarget.dayId);
+  const exercise=day?.exercises?.find(x=>x.id===presetTarget.exId);
+  if(!exercise) return;
+  exercise.series=String(p.series??'');
+  exercise.reps=String(p.reps??'');
   closePresetPicker();
   renderTreinoEditPanel();
+  showToast('Preset aplicado aos campos de séries e repetições.','ok');
 }
 
 async function saveCurrentAsPreset(){
