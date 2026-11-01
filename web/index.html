@@ -979,7 +979,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLI
       <form id="login-form" class="lp-login-form" onsubmit="return false">
         <input type="email" id="login-email" placeholder="E-mail" required autocomplete="username">
         <input type="password" id="login-password" placeholder="Senha" required autocomplete="current-password">
-        <button type="button" class="lp-cta" onclick="handleLogin(event)">ENTRAR <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11L11 3M5 3h6v6"/></svg></button>
+        <button type="button" id="login-submit" class="lp-cta">ENTRAR <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11L11 3M5 3h6v6"/></svg></button>
       </form>
       <div id="login-error" class="login-error"></div>
       <div class="login-hint">Acesso do treinador. Entre com seu e-mail e senha cadastrados.</div>
@@ -1382,7 +1382,7 @@ async function handleLogin(event){
   showLoginError('');
   if(!email){ showLoginError('Informe seu e-mail.'); return; }
   if(!password){ showLoginError('Informe sua senha.'); return; }
-  const button=document.querySelector('#login-form button[type="submit"]');
+  const button=document.getElementById('login-submit');
   if(button){ button.disabled=true; button.textContent='ENTRANDO...'; }
   try{
     const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
@@ -1400,7 +1400,14 @@ async function handleLogin(event){
   }
 }
 window.handleLogin = handleLogin;
-// Login acionado diretamente pelo botão para evitar falhas de submit em navegadores móveis.
+// Captura o toque no botão em fase de captura (iOS) e também o envio pelo teclado.
+document.addEventListener('click', function(e){
+  const target = e.target && e.target.closest ? e.target.closest('#login-submit') : null;
+  if(!target) return;
+  e.preventDefault();
+  handleLogin(e);
+}, true);
+document.getElementById('login-form')?.addEventListener('submit', handleLogin);
 
 async function sendPasswordRecovery(){
   const email=document.getElementById('login-email').value.trim().toLowerCase();
