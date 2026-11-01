@@ -968,13 +968,13 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLI
       <span class="lp-logo-main">DIEGO TRAPIÁ</span>
       <span class="lp-logo-sub">ALTA PERFORMANCE</span>
     </div>
-    <button type="button" class="lp-header-btn" onclick="landingEnter()">ENTRAR</button>
+    <button type="button" class="lp-header-btn" onclick="(function(){var p=document.getElementById('lp-login-panel');if(p){p.hidden=false;p.style.display='block';p.scrollIntoView({behavior:'smooth',block:'center'});}var e=document.getElementById('login-email');if(e)e.focus();})()">ENTRAR</button>
   </header>
   <main class="lp-hero">
     <div class="lp-eyebrow"><span class="lp-eyebrow-dash"></span>ALTA PERFORMANCE · ACOMPANHAMENTO ONLINE</div>
     <h1 class="lp-headline">Seja o <span class="lp-accent">adversário</span><br>que você temeria<br>enfrentar.</h1>
     <p class="lp-sub">Para atletas de todas as modalidades que querem ir além do próprio limite, com método e acompanhamento de perto.</p>
-    <button type="button" class="lp-cta" id="lp-cta" onclick="landingEnter()">ENTRAR <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11L11 3M5 3h6v6"/></svg></button>
+    <button type="button" class="lp-cta" id="lp-cta" onclick="(function(){var p=document.getElementById('lp-login-panel');if(p){p.hidden=false;p.style.display='block';p.scrollIntoView({behavior:'smooth',block:'center'});}var e=document.getElementById('login-email');if(e)e.focus();})()">ENTRAR <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11L11 3M5 3h6v6"/></svg></button>
     <div id="lp-login-panel" class="lp-login-panel" hidden>
       <form id="login-form" class="lp-login-form" onsubmit="handleLogin(event)">
         <input type="email" id="login-email" placeholder="E-mail" required autocomplete="username">
