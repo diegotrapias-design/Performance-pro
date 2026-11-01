@@ -1298,7 +1298,7 @@ function exitLocalMode(){
 function enterLocalMode(){ showToast('Entre com seu e-mail e senha para acessar os dados sincronizados.', 'err'); }
 function showLoginError(msg){ const el=document.getElementById('login-error'); if(el) el.textContent=msg; }
 
-async function onAuthChange(user){
+async async function onAuthChange(user){
   const transition = ++authTransition;
   const loginScreen=document.getElementById('login-screen');
   const appShell=document.getElementById('app-shell');
