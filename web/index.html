@@ -1492,8 +1492,8 @@ async function loadAthletePortal(){
       items=data||[];
     }
     const {data:monitoring,error:monitorError}=await supabaseClient.from('monitoring_sessions')
-      .select('id,session_date,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm,notes')
-      .eq('athlete_id',athlete.id).order('session_date',{ascending:false}).limit(20);
+      .select('id,session_date,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm')
+      .eq('athlete_id',athlete.id).order('session_date',{ascending:false}).limit(30);
     if(monitorError) throw monitorError;
     const safe=x=>escapeHtml(x==null?'':String(x));
     const workoutHtml=(workouts||[]).length ? workouts.map(w=>{
@@ -1507,15 +1507,167 @@ async function loadAthletePortal(){
         </div>`).join(''):'<p>Nenhum exercício adicionado.</p>'}
         ${w.notes?`<p>${safe(w.notes)}</p>`:''}</section>`;
     }).join(''):'<div class="empty-state">Ainda não há treinos atribuídos a você.</div>';
-    const monitorHtml=(monitoring||[]).length?`<div class="table-wrap"><table><thead><tr><th>Data</th><th>PSR</th><th>PSE</th><th>Carga</th><th>Salto pré</th><th>Salto pós</th></tr></thead><tbody>${monitoring.map(m=>`<tr><td>${safe(m.session_date)}</td><td>${safe(m.psr)}</td><td>${safe(m.pse)}</td><td>${safe(m.load_ua)}</td><td>${safe(m.jump_pre_cm)}</td><td>${safe(m.jump_post_cm)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty-state">Seu treinador ainda não registrou avaliações.</div>';
+    const monitorHtml=(monitoring||[]).length?`<div class="table-wrap"><table><thead><tr><th>Data</th><th>TQR</th><th>PSE</th><th>Duração</th><th>UA</th><th>CMJ pré</th><th>CMJ pós</th></tr></thead><tbody>${monitoring.map(m=>`<tr><td>${safe(m.session_date)}</td><td>${safe(m.psr)}</td><td>${safe(m.pse)}</td><td>${safe(m.duration_min)} min</td><td>${safe(m.load_ua)}</td><td>${safe(m.jump_pre_cm)}</td><td>${safe(m.jump_post_cm)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty-state">Você ainda não enviou respostas de monitoramento.</div>';
     app.innerHTML=`<div class="home-hero"><div class="home-hero-title">Olá, ${safe(athlete.full_name)}</div><div class="home-hero-sub">Sua área individual de acompanhamento</div></div>
       <section class="panel" style="padding:18px"><h3>Meu cadastro</h3><p>${safe(athlete.sport)} ${athlete.category?'· '+safe(athlete.category):''}</p></section>
       <h2 style="margin-top:24px">Meus treinos</h2>${workoutHtml}
-      <h2 style="margin-top:24px">Meu monitoramento</h2>${monitorHtml}`;
+      <section class="panel" style="padding:18px;margin-top:24px" id="athlete-monitor-form">
+        <h2>📊 Monitoramento — prontidão e esforço</h2>
+        <p class="muted">Responda ao terminar cada sessão. Os dados serão enviados automaticamente ao treinador.</p>
+        <label class="field-label" for="athlete-monitor-date">Data da sessão</label>
+        <input id="athlete-monitor-date" type="date" value="${new Date().toLocaleDateString('en-CA')}" style="width:100%;margin:6px 0 16px">
+        <label class="field-label">TQR — recuperação (6–20)</label>
+        <p class="muted">Como foi sua recuperação até esta sessão?</p>
+        <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin:10px 0 18px" id="athlete-tqr-options">
+          ${Array.from({length:15},(_,i)=>i+6).map(n=>`<button type="button" class="btn btn-outline" data-tqr="${n}" onclick="selectAthleteScale('tqr',${n})" style="padding:10px 2px">${n}</button>`).join('')}
+        </div>
+        <label class="field-label">PSE — esforço (0–10)</label>
+        <p class="muted">Como foi o esforço desta sessão?</p>
+        <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;margin:10px 0 18px" id="athlete-pse-options">
+          ${Array.from({length:11},(_,i)=>i).map(n=>`<button type="button" class="btn btn-outline" data-pse="${n}" onclick="selectAthleteScale('pse',${n})" style="padding:10px 2px">${n}</button>`).join('')}
+        </div>
+        <label class="field-label" for="athlete-duration">Duração real do treino (minutos)</label>
+        <input id="athlete-duration" type="number" min="1" max="600" inputmode="numeric" placeholder="Ex.: 60" style="width:100%;margin:6px 0 18px">
+        <h3>🦘 CMJ — salto (cm)</h3>
+        <div class="field-grid" style="grid-template-columns:1fr 1fr">
+          <div><label class="field-label" for="athlete-jump-pre">Pré-sessão</label><input id="athlete-jump-pre" type="number" step="0.1" min="0" max="100" placeholder="Ex.: 44.0" style="width:100%"></div>
+          <div><label class="field-label" for="athlete-jump-post">Pós-sessão</label><input id="athlete-jump-post" type="number" step="0.1" min="0" max="100" placeholder="Ex.: 42.5" style="width:100%"></div>
+        </div>
+        <div class="field-grid" style="grid-template-columns:1fr 1fr;margin-top:12px">
+          <div><label class="field-label" for="athlete-video-pre">Vídeo CMJ pré (opcional)</label><input id="athlete-video-pre" type="file" accept="video/*" style="width:100%"></div>
+          <div><label class="field-label" for="athlete-video-post">Vídeo CMJ pós (opcional)</label><input id="athlete-video-post" type="file" accept="video/*" style="width:100%"></div>
+        </div>
+        <p class="muted" style="margin-top:10px">A carga da sessão é calculada automaticamente: PSE × duração.</p>
+        <button class="btn btn-primary" id="athlete-monitor-submit" type="button" onclick="submitAthleteMonitoring('${athlete.id}')">Salvar monitoramento</button>
+        <p id="athlete-monitor-message" class="muted" role="status" style="margin-top:10px"></p>
+      </section>
+      <h2 style="margin-top:24px">Meu histórico de monitoramento</h2>${monitorHtml}`;
+    window.__athleteMonitoringId=athlete.id;
+    window.__athleteScale={tqr:null,pse:null};
+    loadAthleteMonitoringMetrics(athlete.id);
   }catch(e){
     console.error('Falha ao carregar portal do atleta:',e);
     app.innerHTML=`<div class="panel" style="padding:20px"><h2>Não foi possível carregar sua área</h2><p>${escapeHtml(e.message||'Falha de conexão')}</p><button class="btn btn-primary" onclick="loadAthletePortal()">Tentar novamente</button></div>`;
   }
+}
+
+function selectAthleteScale(type,value){
+  if(!window.__athleteScale) window.__athleteScale={tqr:null,pse:null};
+  window.__athleteScale[type]=value;
+  const attr=type==='tqr'?'data-tqr':'data-pse';
+  document.querySelectorAll('#athlete-'+(type==='tqr'?'tqr':'pse')+'-options button').forEach(b=>{
+    const active=Number(b.getAttribute(attr))===value;
+    b.classList.toggle('btn-primary',active);
+    b.classList.toggle('btn-outline',!active);
+  });
+}
+
+async function uploadJumpAssessmentVideo(file,athleteId,phase){
+  if(!file) return null;
+  if(!file.type.startsWith('video/')) throw new Error('Selecione um arquivo de vídeo válido.');
+  if(file.size>100*1024*1024) throw new Error('Cada vídeo deve ter no máximo 100 MB.');
+  const ext=(file.name.split('.').pop()||'mp4').toLowerCase().replace(/[^a-z0-9]/g,'')||'mp4';
+  const path=`${athleteId}/${athleteId}/${Date.now()}-${phase}-${crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)}.${ext}`;
+  const {error}=await supabaseClient.storage.from('athlete-media').upload(path,file,{upsert:false,contentType:file.type});
+  if(error) throw error;
+  return path;
+}
+
+function calculateMonitoringMetrics(rows){
+  const now=new Date(); now.setHours(0,0,0,0);
+  const daily=Array(7).fill(0);
+  (rows||[]).forEach(r=>{
+    const d=new Date(String(r.session_date).slice(0,10)+'T00:00:00');
+    const diff=Math.round((now-d)/86400000);
+    if(diff>=0&&diff<7) daily[6-diff]+=Number(r.load_ua)||0;
+  });
+  const total=daily.reduce((a,b)=>a+b,0);
+  const mean=total/7;
+  const variance=daily.reduce((a,b)=>a+Math.pow(b-mean,2),0)/7;
+  const sd=Math.sqrt(variance);
+  const monotony=sd===0?(total===0?0:null):mean/sd;
+  return {acute:total,monotony,strain:monotony===null?null:total*monotony,daily};
+}
+
+async function loadAthleteMonitoringMetrics(athleteId){
+  const {data,error}=await supabaseClient.from('monitoring_sessions')
+    .select('session_date,load_ua').eq('athlete_id',athleteId)
+    .gte('session_date',new Date(Date.now()-6*86400000).toLocaleDateString('en-CA'));
+  if(error) throw error;
+  const m=calculateMonitoringMetrics(data||[]);
+  const host=document.getElementById('athlete-monitor-form');
+  if(!host) return;
+  const box=document.createElement('div');
+  box.className='stat-grid';
+  box.style.marginTop='18px';
+  box.innerHTML=`<div class="stat-card"><div class="stat-num">${m.acute.toFixed(0)}</div><div class="stat-label">Carga aguda — 7 dias (UA)</div></div>
+    <div class="stat-card"><div class="stat-num">${m.monotony===null?'—':m.monotony.toFixed(2)}</div><div class="stat-label">Monotonia</div></div>
+    <div class="stat-card"><div class="stat-num">${m.strain===null?'—':m.strain.toFixed(0)}</div><div class="stat-label">Strain (UA)</div></div>`;
+  host.appendChild(box);
+}
+
+async function submitAthleteMonitoring(athleteId){
+  const msg=document.getElementById('athlete-monitor-message');
+  const btn=document.getElementById('athlete-monitor-submit');
+  const scale=window.__athleteScale||{};
+  const date=document.getElementById('athlete-monitor-date').value;
+  const duration=Number(document.getElementById('athlete-duration').value);
+  const tqr=Number(scale.tqr), pse=Number(scale.pse);
+  const pre=document.getElementById('athlete-jump-pre').value;
+  const post=document.getElementById('athlete-jump-post').value;
+  if(!date||scale.tqr==null||scale.pse==null||!Number.isInteger(duration)||duration<1||duration>600){
+    msg.textContent='Preencha data, TQR, PSE e duração válida do treino.';return;
+  }
+  if(btn){btn.disabled=true;btn.textContent='SALVANDO…';}
+  msg.textContent='Enviando respostas e vídeos…';
+  try{
+    const prePath=await uploadJumpAssessmentVideo(document.getElementById('athlete-video-pre').files[0],athleteId,'pre');
+    const postPath=await uploadJumpAssessmentVideo(document.getElementById('athlete-video-post').files[0],athleteId,'post');
+    const payload={athlete_id:athleteId,session_date:date,psr:tqr,pse,duration_min:duration,load_ua:pse*duration,
+      jump_pre_cm:pre===''?null:Number(pre),jump_post_cm:post===''?null:Number(post),
+      jump_video_pre_path:prePath,jump_video_post_path:postPath,created_by:currentUser.id};
+    const {error}=await supabaseClient.from('monitoring_sessions').insert(payload);
+    if(error) throw error;
+    msg.textContent='Monitoramento salvo. Seu treinador já pode visualizar os dados.';
+    document.getElementById('athlete-duration').value='';
+    document.getElementById('athlete-jump-pre').value='';
+    document.getElementById('athlete-jump-post').value='';
+    document.getElementById('athlete-video-pre').value='';
+    document.getElementById('athlete-video-post').value='';
+    window.__athleteScale={tqr:null,pse:null};
+    document.querySelectorAll('#athlete-tqr-options button,#athlete-pse-options button').forEach(b=>{b.classList.remove('btn-primary');b.classList.add('btn-outline');});
+    await loadAthletePortal();
+  }catch(e){
+    console.error('Erro ao salvar monitoramento:',e);
+    msg.textContent='Não foi possível salvar: '+(e.message||'erro de conexão');
+  }finally{if(btn){btn.disabled=false;btn.textContent='Salvar monitoramento';}}
+}
+
+async function loadCoachMonitoringPanel(athleteId){
+  const host=document.getElementById('coach-monitoring-panel');
+  if(!host||!currentUser) return;
+  host.innerHTML='<div class="loading">Carregando monitoramento…</div>';
+  try{
+    const {data:rows,error}=await supabaseClient.from('monitoring_sessions')
+      .select('id,session_date,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm,jump_video_pre_path,jump_video_post_path')
+      .eq('athlete_id',athleteId).order('session_date',{ascending:true}).limit(90);
+    if(error) throw error;
+    const safe=x=>escapeHtml(x==null?'—':String(x));
+    const metrics=calculateMonitoringMetrics(rows||[]);
+    const latest=(rows||[]).slice(-1)[0];
+    host.innerHTML=`<div class="profile-section-title">📊 Monitoramento do atleta</div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-num">${latest?Number(latest.psr).toFixed(0):'—'}</div><div class="stat-label">TQR atual (6–20)</div></div>
+        <div class="stat-card"><div class="stat-num">${latest?Number(latest.pse).toFixed(1):'—'}</div><div class="stat-label">PSE atual (0–10)</div></div>
+        <div class="stat-card"><div class="stat-num">${metrics.acute.toFixed(0)}</div><div class="stat-label">Carga aguda — 7 dias (UA)</div></div>
+        <div class="stat-card"><div class="stat-num">${metrics.monotony===null?'—':metrics.monotony.toFixed(2)}</div><div class="stat-label">Monotonia</div></div>
+        <div class="stat-card"><div class="stat-num">${metrics.strain===null?'—':metrics.strain.toFixed(0)}</div><div class="stat-label">Strain (UA)</div></div>
+      </div>
+      <div class="profile-card"><h3>Evolução por sessão</h3>
+        <div class="table-wrap"><table><thead><tr><th>Data</th><th>TQR</th><th>PSE</th><th>Min</th><th>UA</th><th>CMJ pré</th><th>CMJ pós</th><th>Δ CMJ</th></tr></thead>
+        <tbody>${(rows||[]).slice().reverse().map(r=>`<tr><td>${safe(r.session_date)}</td><td>${safe(r.psr)}</td><td>${safe(r.pse)}</td><td>${safe(r.duration_min)}</td><td>${safe(r.load_ua)}</td><td>${safe(r.jump_pre_cm)}</td><td>${safe(r.jump_post_cm)}</td><td>${r.jump_pre_cm!=null&&r.jump_post_cm!=null?(Number(r.jump_post_cm)-Number(r.jump_pre_cm)).toFixed(1):'—'}</td></tr>`).join('')}</tbody></table></div>
+      </div>`;
+  }catch(e){console.error('Monitoramento do atleta:',e);host.innerHTML='<div class="empty-state">Não foi possível carregar o monitoramento: '+escapeHtml(e.message||'erro')+'</div>';}
 }
 
 function calcAge(birthDate){
@@ -1967,6 +2119,7 @@ function renderProfileView(){
     <div id="maturity-container">${renderMaturityCard(draft)}</div>
 
     ${!isNew ? renderJumpProgressSection(draft.id) : ''}
+    ${!isNew ? '<div id="coach-monitoring-panel"></div>' : ''}
 
     <div class="profile-section-title">Treino</div>
     ${renderCycleBadge(a.trainingPlan)}
@@ -1981,6 +2134,7 @@ function renderProfileView(){
       ${!isNew ? `<button class="btn btn-danger" onclick="deleteAthlete('${draft.id}')">Excluir atleta</button>` : ''}
     </div>
   `;
+  if(!isNew) loadCoachMonitoringPanel(draft.id);
 }
 
 function renderDadosEditPanel(){
@@ -2743,37 +2897,25 @@ async function deleteSeriesPreset(presetId){
 /* ---- Compartilhar treino com o atleta (link, sem login) ---- */
 
 async function shareTraining(){
-  showToast('O compartilhamento individual será liberado após a criação do acesso do atleta.', 'err'); return;
-  if(isNew){ showToast('Salve o atleta antes de compartilhar.', 'err'); return; }
-  if(dataMode !== 'supabase'){ showToast('O compartilhamento exige conexão com o Supabase.', 'err'); return; }
-  const days = draft.trainingPlan.days || [];
-  if(days.length === 0){ showToast('Monte o treino antes de compartilhar.', 'err'); return; }
-
-  showToast('Gerando link…', 'ok');
+  if(isNew){showToast('Salve o atleta antes de compartilhar.','err');return;}
+  if(!currentUser||!draft||!draft.id){showToast('Entre novamente e abra o cadastro do atleta.','err');return;}
+  const days=draft.trainingPlan?.days||[];
+  if(!days.some(d=>(d.exercises||[]).some(ex=>ex.name&&ex.name.trim()))){showToast('Monte o treino antes de gerar o link.','err');return;}
   try{
-    if(!draft.trainingPlan.shareId){
-      draft.trainingPlan.shareId = (crypto.randomUUID ? crypto.randomUUID() : ('sh-'+Date.now()+'-'+Math.random().toString(16).slice(2))).replace(/-/g,'');
-    }
-    const shareId = draft.trainingPlan.shareId;
-    await db.collection(SHARED_TRAININGS_COLLECTION).doc(shareId).set({
-      athleteName: draft.name || '',
-      sport: draft.sport || '',
-      category: draft.category || '',
-      startDate: draft.trainingPlan.startDate || '',
-      endDate: draft.trainingPlan.endDate || '',
-      days: draft.trainingPlan.days,
-      updatedAt: new Date().toISOString(),
-      ownerId: currentUser.uid
-    });
-    const idx = athletes.findIndex(a => a.id === draft.id);
-    if(idx >= 0) athletes[idx] = JSON.parse(JSON.stringify(draft));
-    await persist(false);
-    const url = `${location.origin}${location.pathname}?treino=${shareId}`;
+    showToast('Gerando link rápido…','ok');
+    const shareId=draft.trainingPlan.shareId||((crypto.randomUUID?crypto.randomUUID():('sh-'+Date.now()+'-'+Math.random().toString(16).slice(2))).replace(/-/g,''));
+    const payload={athleteName:draft.name||'',sport:draft.sport||'',category:draft.category||'',startDate:draft.trainingPlan.startDate||'',endDate:draft.trainingPlan.endDate||'',days};
+    const {error}=await supabaseClient.from('shared_training_links').upsert({
+      id:shareId,team_id:currentProfile.team_id,athlete_id:draft.id,payload,
+      updated_at:new Date().toISOString(),created_by:currentUser.id
+    },{onConflict:'id'});
+    if(error) throw error;
+    draft.trainingPlan.shareId=shareId;
+    const idx=athletes.findIndex(a=>a.id===draft.id);if(idx>=0)athletes[idx]=JSON.parse(JSON.stringify(draft));
+    const ok=await persist(false);if(!ok)throw new Error('O treino foi compartilhado, mas não foi possível sincronizar o cadastro.');
+    const url=`${location.origin}${location.pathname}?treino=${encodeURIComponent(shareId)}`;
     showShareLinkModal(url);
-  }catch(e){
-    console.error(e);
-    showToast('Erro ao gerar o link. Confira se o Firestore está configurado.', 'err');
-  }
+  }catch(e){console.error(e);showToast('Não foi possível gerar o link rápido: '+(e.message||'erro desconhecido'),'err');}
 }
 
 function showShareLinkModal(url){
@@ -3056,12 +3198,25 @@ function renderSharedTraining(data, showLogout){
 }
 
 /* ---------------- INIT ---------------- */
+async function renderPublicSharedTraining(shareId){
+  const root=document.getElementById('shared-view-root');
+  root.style.display='';document.getElementById('login-screen').style.display='none';document.getElementById('app-shell').style.display='none';
+  root.innerHTML='<div class="loading">Carregando treino compartilhado…</div>';
+  try{
+    const {data,error}=await supabaseClient.from('shared_training_links').select('payload,updated_at').eq('id',shareId).maybeSingle();
+    if(error)throw error;if(!data)throw new Error('Este link não existe ou foi desativado pelo treinador.');
+    const p=data.payload||{},days=p.days||[],safe=x=>escapeHtml(x==null?'':String(x));
+    root.innerHTML=`<div class="shared-main"><div class="home-hero"><div class="home-hero-title">Performance Pro</div><div class="shared-athlete-name">${safe(p.athleteName)}</div><div class="shared-athlete-sub">${safe(p.sport)} ${p.category?'· '+safe(p.category):''}</div></div>
+      ${p.startDate||p.endDate?`<section class="panel" style="padding:16px"><b>Período do plano</b><p>${safe(p.startDate)} a ${safe(p.endDate)}</p></section>`:''}
+      ${days.map(d=>`<section class="panel" style="padding:18px;margin:14px 0"><h3>${safe(d.label||'Treino')} · ${safe(d.type||'')}</h3>${(d.exercises||[]).filter(x=>x.name).map(x=>`<div style="padding:12px 0;border-bottom:1px solid var(--border)"><b>${safe(x.name)}</b><p>${safe(x.series)} séries · ${safe(x.reps)} repetições · ${safe(x.carga)}</p>${x.obs?`<small>${safe(x.obs)}</small>`:''}${x.video?`<p><a href="${safe(x.video)}" target="_blank" rel="noopener">Assistir vídeo</a></p>`:''}</div>`).join('')}</section>`).join('')}
+      <p class="muted">Visualização compartilhada pelo treinador. Para responder ao monitoramento e registrar saltos, utilize seu acesso individual.</p></div>`;
+  }catch(e){root.innerHTML='<div class="shared-main"><div class="panel" style="padding:24px"><h2>Link indisponível</h2><p>'+escapeHtml(e.message||'Não foi possível carregar o treino.')+'</p></div></div>';}
+}
 function boot(){
   const params = new URLSearchParams(location.search);
   const sharedId = params.get('treino');
-  if(sharedId){
-    const root=document.getElementById('shared-view-root'); root.style.display=''; root.innerHTML='<div class="empty-state" style="padding:60px 20px;">O acesso por link será reativado após a migração segura dos treinos.</div>';
-  }else{ initSupabase(); }
+  if(sharedId){ renderPublicSharedTraining(sharedId); }
+  else{ initSupabase(); }
 }
 boot();
 </script>
