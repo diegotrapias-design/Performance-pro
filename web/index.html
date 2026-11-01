@@ -2150,6 +2150,8 @@ function renderProfileView(){
       ` : ''}
     </div>
 
+    ${!isNew ? '<div id="coach-monitoring-panel" style="display:none;margin-bottom:18px;"></div>' : ''}
+
     <div class="profile-section-title">Dados pessoais</div>
     <div class="profile-card">
       <div class="profile-grid">
@@ -2165,8 +2167,6 @@ function renderProfileView(){
       </div>
       ${a.notes ? `<div class="profile-notes"><span>Observações</span><p>${escapeHtml(a.notes)}</p></div>` : ''}
     </div>
-
-    ${!isNew ? '<div id="coach-monitoring-panel" style="display:none;margin-bottom:18px;"></div>' : ''}
 
     <div id="maturity-container">${renderMaturityCard(draft)}</div>
 
