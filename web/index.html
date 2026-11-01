@@ -976,10 +976,10 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLI
     <p class="lp-sub">Para atletas de todas as modalidades que querem ir além do próprio limite, com método e acompanhamento de perto.</p>
     <button type="button" class="lp-cta" id="lp-cta" onclick="(function(){var p=document.getElementById('lp-login-panel');if(p){p.hidden=false;p.style.display='block';p.scrollIntoView({behavior:'smooth',block:'center'});}var e=document.getElementById('login-email');if(e)e.focus();})()">ENTRAR <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11L11 3M5 3h6v6"/></svg></button>
     <div id="lp-login-panel" class="lp-login-panel" hidden>
-      <form id="login-form" class="lp-login-form">
+      <form id="login-form" class="lp-login-form" onsubmit="return false">
         <input type="email" id="login-email" placeholder="E-mail" required autocomplete="username">
         <input type="password" id="login-password" placeholder="Senha" required autocomplete="current-password">
-        <button type="submit" id="login-submit" class="lp-cta">ENTRAR <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11L11 3M5 3h6v6"/></svg></button>
+        <button type="button" id="login-submit" class="lp-cta">ENTRAR <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11L11 3M5 3h6v6"/></svg></button>
       </form>
       <div id="login-error" class="login-error"></div>
       <div class="login-hint">Acesso do treinador. Entre com seu e-mail e senha cadastrados.</div>
@@ -1385,9 +1385,6 @@ async function handleLogin(event){
   const button=document.getElementById('login-submit');
   if(button){ button.disabled=true; button.textContent='ENTRANDO...'; }
   try{
-    // Limpa somente uma sessão local inválida antes de autenticar novamente.
-    // Isso evita que um refresh_token antigo bloqueie o login no navegador.
-    await supabaseClient.auth.signOut({scope:'local'});
     const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
     if(error) throw error;
     if(!data?.user) throw new Error('A autenticação não retornou o usuário.');
@@ -1403,7 +1400,13 @@ async function handleLogin(event){
   }
 }
 window.handleLogin = handleLogin;
-// Envio nativo do formulário: funciona por toque e pelo teclado no iOS.
+// Captura o toque no botão em fase de captura (iOS) e também o envio pelo teclado.
+document.addEventListener('click', function(e){
+  const target = e.target && e.target.closest ? e.target.closest('#login-submit') : null;
+  if(!target) return;
+  e.preventDefault();
+  handleLogin(e);
+}, true);
 document.getElementById('login-form')?.addEventListener('submit', handleLogin);
 
 async function sendPasswordRecovery(){
