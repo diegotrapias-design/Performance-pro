@@ -2116,6 +2116,21 @@ function renderAthleteScreen(){
   else renderProfileView();
 }
 
+function toggleCoachMonitoring(athleteId){
+  const host=document.getElementById('coach-monitoring-panel');
+  const button=document.getElementById('coach-monitoring-toggle');
+  if(!host||!button) return;
+  const isOpen=host.style.display!=='none';
+  if(isOpen){
+    host.style.display='none';
+    button.textContent='📊 Ver monitoramento';
+    return;
+  }
+  host.style.display='block';
+  button.textContent='✖ Fechar monitoramento';
+  loadCoachMonitoringPanel(athleteId);
+}
+
 function renderProfileView(){
   const p = document.getElementById('panel-athlete');
   if(!p) return;
@@ -2130,6 +2145,7 @@ function renderProfileView(){
       <button class="btn btn-dark btn-sm" onclick="setAthleteMode('edit-treino')">✏️ Editar treino</button>
       ${!isNew ? `
         <button class="btn btn-primary btn-sm" onclick="createAthleteAccount()">📲 Gerar acesso do atleta</button>
+        <button class="btn btn-outline btn-sm" id="coach-monitoring-toggle" onclick="toggleCoachMonitoring('${draft.id}')">📊 Ver monitoramento</button>
         <button class="btn btn-outline btn-sm" onclick="goSaltoForAthlete('${draft.id}')">🦘 Registrar salto</button>
       ` : ''}
     </div>
@@ -2150,10 +2166,11 @@ function renderProfileView(){
       ${a.notes ? `<div class="profile-notes"><span>Observações</span><p>${escapeHtml(a.notes)}</p></div>` : ''}
     </div>
 
+    ${!isNew ? '<div id="coach-monitoring-panel" style="display:none;margin-bottom:18px;"></div>' : ''}
+
     <div id="maturity-container">${renderMaturityCard(draft)}</div>
 
     ${!isNew ? renderJumpProgressSection(draft.id) : ''}
-    ${!isNew ? '<div id="coach-monitoring-panel"></div>' : ''}
 
     <div class="profile-section-title">Treino</div>
     ${renderCycleBadge(a.trainingPlan)}
@@ -2168,7 +2185,6 @@ function renderProfileView(){
       ${!isNew ? `<button class="btn btn-danger" onclick="deleteAthlete('${draft.id}')">Excluir atleta</button>` : ''}
     </div>
   `;
-  if(!isNew) loadCoachMonitoringPanel(draft.id);
 }
 
 function renderDadosEditPanel(){
