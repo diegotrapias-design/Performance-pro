@@ -92,6 +92,8 @@ export default function Home() {
   const [savingWorkout, setSavingWorkout] = useState(false);
   const [pendingExercises, setPendingExercises] = useState<any[]>([]);
   const [sendingInvite, setSendingInvite] = useState(false);
+  const [inviteWhatsAppUrl, setInviteWhatsAppUrl] = useState('');
+  const [inviteShareNote, setInviteShareNote] = useState('');
   const [actionError, setActionError] = useState('');
 
   useEffect(() => {
@@ -443,14 +445,24 @@ export default function Home() {
       }
 
       const invitedAddress = inviteEmail.trim();
+      const invitedName = name.trim();
+      setInviteWhatsAppUrl('');
+      setInviteShareNote('');
+
+      if (data?.passwordSetupLink) {
+        const message = `Olá, ${invitedName}! Para criar ou redefinir sua senha e acessar o Performance Pro, abra este link: ${data.passwordSetupLink}`;
+        setInviteWhatsAppUrl(`https://wa.me/?text=${encodeURIComponent(message)}`);
+        setInviteShareNote(
+          'Este atleta já possui uma conta. O link seguro foi gerado, mas nenhum e-mail foi enviado neste caso. Envie o acesso pelo botão do WhatsApp abaixo.'
+        );
+      } else {
+        setInviteShareNote(
+          `Convite enviado ao e-mail ${invitedAddress}. Se não chegar, confira o endereço e as configurações de entrega do e-mail do Supabase.`
+        );
+      }
+
       setName('');
       setInviteEmail('');
-
-      Alert.alert(
-        'Convite enviado',
-        `Um convite para criar senha foi enviado para ${invitedAddress}.`
-      );
-
       await loadAthletes();
     } catch (error: unknown) {
       Alert.alert('Convite não enviado', errorMessage(error));
@@ -958,6 +970,24 @@ export default function Home() {
                 {sendingInvite ? 'Enviando convite…' : 'Enviar convite seguro'}
               </Text>
             </Pressable>
+
+            {!!inviteShareNote && (
+              <View style={[s.metricInline, { marginTop: 12 }]}>
+                <Text style={s.muted}>{inviteShareNote}</Text>
+                {!!inviteWhatsAppUrl && (
+                  <Pressable
+                    style={[s.primary, { marginTop: 10 }]}
+                    onPress={() => {
+                      void Linking.openURL(inviteWhatsAppUrl).catch(() =>
+                        Alert.alert('Não foi possível abrir o WhatsApp', 'Copie o link de acesso ou tente novamente pelo navegador.')
+                      );
+                    }}
+                  >
+                    <Text style={s.primaryText}>Enviar acesso pelo WhatsApp</Text>
+                  </Pressable>
+                )}
+              </View>
+            )}
 
             <Text style={[s.cardTitle, { marginTop: 22 }]}>Minha equipe</Text>
             {editingAthleteId && (
