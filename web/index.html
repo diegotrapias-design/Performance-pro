@@ -979,7 +979,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLI
       <form id="login-form" class="lp-login-form" onsubmit="return false">
         <input type="email" id="login-email" placeholder="E-mail" required autocomplete="username">
         <input type="password" id="login-password" placeholder="Senha" required autocomplete="current-password">
-        <button type="submit" class="lp-cta">ENTRAR <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11L11 3M5 3h6v6"/></svg></button>
+        <button type="button" class="lp-cta" onclick="handleLogin(event)">ENTRAR <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11L11 3M5 3h6v6"/></svg></button>
       </form>
       <div id="login-error" class="login-error"></div>
       <div class="login-hint">Acesso do treinador. Entre com seu e-mail e senha cadastrados.</div>
@@ -1400,7 +1400,7 @@ async function handleLogin(event){
   }
 }
 window.handleLogin = handleLogin;
-document.getElementById('login-form').addEventListener('submit', handleLogin);
+// Login acionado diretamente pelo botão para evitar falhas de submit em navegadores móveis.
 
 async function sendPasswordRecovery(){
   const email=document.getElementById('login-email').value.trim().toLowerCase();
