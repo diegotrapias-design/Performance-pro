@@ -2130,7 +2130,6 @@ function renderProfileView(){
       <button class="btn btn-dark btn-sm" onclick="setAthleteMode('edit-treino')">✏️ Editar treino</button>
       ${!isNew ? `
         <button class="btn btn-primary btn-sm" onclick="createAthleteAccount()">📲 Gerar acesso do atleta</button>
-        <button class="btn btn-outline btn-sm" onclick="shareTraining()">🔗 Link rápido (sem login)</button>
         <button class="btn btn-outline btn-sm" onclick="goSaltoForAthlete('${draft.id}')">🦘 Registrar salto</button>
       ` : ''}
     </div>
@@ -2997,7 +2996,7 @@ async function createAthleteAccount(){
   const athlete = athletes.find(x => x.id === currentId) || draft;
   if(!athlete || !athlete.name){ showToast('Salve os dados do atleta antes de gerar o acesso.', 'err'); return; }
   const email = (athlete.email || '').trim().toLowerCase();
-  if(!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)){
+  if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
     showToast('Cadastre um e-mail válido para o atleta antes de gerar o acesso.', 'err'); return;
   }
   if(!confirm('Enviar um convite de acesso para ' + email + '?')) return;
