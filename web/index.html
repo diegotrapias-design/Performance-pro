@@ -1577,7 +1577,7 @@ async function loadAthletePortal(){
       return `<section class="panel" style="margin:14px 0;padding:18px">
         <h3>${safe(w.title)}</h3><div class="muted">${w.scheduled_for?'Data: '+safe(w.scheduled_for):'Treino atribuído'}</div>
         ${list.length?list.map(i=>`<div style="padding:12px 0;border-bottom:1px solid #ddd">
-          <b>${safe(i.exercise_name)}</b><div>${i.sets?safe(i.sets)+' séries · ':''}${safe(i.reps)} ${i.load_text?'· '+safe(i.load_text):''}${i.rest_seconds?'· pausa '+safe(i.rest_seconds)+'s':''}</div>
+          <b>${safe(i.exercise_name)}</b>${String(i.notes||'').includes('[[PP_COMBO:')?'<div style="display:inline-block;margin:4px 0;padding:3px 8px;border-radius:6px;background:#fde8eb;color:#b91c1c;font-size:11px;font-weight:700">🔗 EXERCÍCIO COMBINADO</div>':''}<div>${i.sets?safe(i.sets)+' séries · ':''}${safe(i.reps)} ${i.load_text?'· '+safe(i.load_text):''}${i.rest_seconds?'· pausa '+safe(i.rest_seconds)+'s':''}</div>
           ${i.notes?`<small>${safe(i.notes)}</small>`:''}
           ${i.video_url?`<div style="margin-top:10px;background:#111;border-radius:10px;overflow:hidden"><video controls playsinline preload="metadata" style="display:block;width:100%;max-height:260px;background:#000" src="${safe(i.video_url)}"></video></div>`:'' }
         </div>`).join(''):'<p>Nenhum exercício adicionado.</p>'}
