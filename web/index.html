@@ -1655,6 +1655,15 @@ async function loadCoachMonitoringPanel(athleteId){
     const safe=x=>escapeHtml(x==null?'—':String(x));
     const metrics=calculateMonitoringMetrics(rows||[]);
     const latest=(rows||[]).slice(-1)[0];
+    const videoLinks={};
+    for(const r of (rows||[])){
+      for(const field of ['jump_video_pre_path','jump_video_post_path']){
+        if(r[field]){
+          const {data:signed}=await supabaseClient.storage.from('athlete-media').createSignedUrl(r[field],3600);
+          if(signed?.signedUrl) videoLinks[r.id+'_'+field]=signed.signedUrl;
+        }
+      }
+    }
     host.innerHTML=`<div class="profile-section-title">📊 Monitoramento do atleta</div>
       <div class="stat-grid">
         <div class="stat-card"><div class="stat-num">${latest?Number(latest.psr).toFixed(0):'—'}</div><div class="stat-label">TQR atual (6–20)</div></div>
@@ -1665,7 +1674,7 @@ async function loadCoachMonitoringPanel(athleteId){
       </div>
       <div class="profile-card"><h3>Evolução por sessão</h3>
         <div class="table-wrap"><table><thead><tr><th>Data</th><th>TQR</th><th>PSE</th><th>Min</th><th>UA</th><th>CMJ pré</th><th>CMJ pós</th><th>Δ CMJ</th></tr></thead>
-        <tbody>${(rows||[]).slice().reverse().map(r=>`<tr><td>${safe(r.session_date)}</td><td>${safe(r.psr)}</td><td>${safe(r.pse)}</td><td>${safe(r.duration_min)}</td><td>${safe(r.load_ua)}</td><td>${safe(r.jump_pre_cm)}</td><td>${safe(r.jump_post_cm)}</td><td>${r.jump_pre_cm!=null&&r.jump_post_cm!=null?(Number(r.jump_post_cm)-Number(r.jump_pre_cm)).toFixed(1):'—'}</td></tr>`).join('')}</tbody></table></div>
+        <tbody>${(rows||[]).slice().reverse().map(r=>`<tr><td>${safe(r.session_date)}</td><td>${safe(r.psr)}</td><td>${safe(r.pse)}</td><td>${safe(r.duration_min)}</td><td>${safe(r.load_ua)}</td><td>${safe(r.jump_pre_cm)}</td><td>${safe(r.jump_post_cm)}</td><td>${r.jump_pre_cm!=null&&r.jump_post_cm!=null?(Number(r.jump_post_cm)-Number(r.jump_pre_cm)).toFixed(1):'—'}</td><td>${videoLinks[r.id+'_jump_video_pre_path']?'<a target="_blank" rel="noopener" href="'+videoLinks[r.id+'_jump_video_pre_path']+'">Vídeo pré</a>':''} ${videoLinks[r.id+'_jump_video_post_path']?'<a target="_blank" rel="noopener" href="'+videoLinks[r.id+'_jump_video_post_path']+'">Vídeo pós</a>':''}</td></tr>`).join('')}</tbody></table></div>
       </div>`;
   }catch(e){console.error('Monitoramento do atleta:',e);host.innerHTML='<div class="empty-state">Não foi possível carregar o monitoramento: '+escapeHtml(e.message||'erro')+'</div>';}
 }
@@ -2975,8 +2984,18 @@ async function createAthleteAccount(){
     });
     if(error) throw error;
     if(data && data.error) throw new Error(data.error);
-    showToast('Convite enviado para ' + email + '. O atleta deve abrir o e-mail e criar a senha.', 'ok');
     await persist(false);
+    if(data && data.passwordSetupLink){
+      const message='Olá! Para criar ou redefinir sua senha do Performance Pro, acesse este link seguro: '+data.passwordSetupLink;
+      document.getElementById('share-modal-body').innerHTML=`<p class="modal-desc">A conta deste atleta já existe. Envie este link seguro para ele criar ou redefinir a senha.</p>
+        <input class="share-link-input" readonly value="${escapeHtml(data.passwordSetupLink)}" onclick="this.select()">
+        <div class="actions-row"><button class="btn btn-dark btn-sm" onclick="copyGenericText('${data.passwordSetupLink.replace(/'/g,"\\'")}')">Copiar link</button>
+        <a class="btn btn-primary btn-sm" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(message)}">Enviar por WhatsApp</a></div>`;
+      document.getElementById('share-modal').style.display='flex';
+      showToast('Link seguro gerado. Envie ao atleta.', 'ok');
+    }else{
+      showToast('Convite enviado para ' + email + '. O atleta deve abrir o e-mail para criar a senha.', 'ok');
+    }
   }catch(e){
     console.error('Erro ao convidar atleta:', e);
     showToast('Não foi possível enviar o convite: ' + (e.message || 'erro desconhecido'), 'err');
@@ -3497,9 +3516,24 @@ boot();
     jumpLog.push(entry);
     try {
       await persistLog();
+      if(athleteId && currentUser && entry.type === 'CMJ'){
+        const jumpField = jumpTypeInput.value.toLowerCase().includes('pré') ? 'jump_pre_cm' : 'jump_post_cm';
+        const {data:existing,error:findError}=await supabaseClient.from('monitoring_sessions')
+          .select('id').eq('athlete_id',athleteId).eq('session_date',entry.date).maybeSingle();
+        if(findError) throw findError;
+        if(existing){
+          const {error:updateError}=await supabaseClient.from('monitoring_sessions').update({[jumpField]:currentHeightCm}).eq('id',existing.id);
+          if(updateError) throw updateError;
+        }else{
+          const jumpPayload={athlete_id:athleteId,session_date:entry.date,[jumpField]:currentHeightCm,created_by:currentUser.id};
+          const {error:insertError}=await supabaseClient.from('monitoring_sessions').insert(jumpPayload);
+          if(insertError) throw insertError;
+        }
+      }
     } catch (e) {
+      console.error('Erro ao sincronizar avaliação CMJ:',e);
       jumpLog.pop();
-      saveMsg.textContent = 'Não foi possível salvar. Tente novamente.';
+      saveMsg.textContent = 'Não foi possível sincronizar o salto no monitoramento: '+(e.message||'erro');
       return;
     }
     saveMsg.textContent = '';
@@ -3644,10 +3678,21 @@ boot();
     dateInput.value = todayStr();
     updatePlayIcon(false);
 
+    var activeVideoObjectUrl = null;
     function loadVideoFile(file){
       if (!file) return;
-      var url = URL.createObjectURL(file);
-      video.src = url;
+      if (!file.type || !file.type.startsWith('video/')) {
+        saveMsg.textContent = 'O arquivo selecionado não é um vídeo compatível.';
+        return;
+      }
+      if (activeVideoObjectUrl) URL.revokeObjectURL(activeVideoObjectUrl);
+      activeVideoObjectUrl = URL.createObjectURL(file);
+      video.pause();
+      video.removeAttribute('src');
+      video.src = activeVideoObjectUrl;
+      video.load();
+      viewfinder.classList.remove('has-video');
+      saveMsg.textContent = 'Carregando vídeo…';
     }
     fileInput.addEventListener('change', function (e) {
       loadVideoFile(e.target.files[0]);
@@ -3660,6 +3705,10 @@ boot();
       viewfinder.classList.add('has-video');
       resetMarks();
       updateReadout();
+      saveMsg.textContent = '';
+    });
+    video.addEventListener('error', function () {
+      saveMsg.textContent = 'Não foi possível decodificar este vídeo. Tente um arquivo MP4 ou MOV.';
     });
     video.addEventListener('timeupdate', updateReadout);
     video.addEventListener('seeked', updateReadout);
