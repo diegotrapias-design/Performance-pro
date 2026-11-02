@@ -2401,12 +2401,17 @@ function renderList(filter){
         </div>`;
     }).join('') + '</div>';
   }
-  app.innerHTML = `
-    <div class="back-link" onclick="renderHome()">← Menu principal</div>
-    <h2 class="section-title">${isTreinoMode ? 'Treinos' : 'Atletas'}</h2>
-    <div class="toolbar"><input type="search" placeholder="Buscar por nome ou esporte…" oninput="renderList(this.value)" value="${escapeHtml(filter||'')}"><button class="btn btn-primary" onclick="newAthlete()">+ Novo atleta</button></div>
-    ${cardsHtml}
-  `;
+  let results = document.getElementById('athlete-list-results');
+  if(!results){
+    app.innerHTML = `
+      <div class="back-link" onclick="renderHome()">← Menu principal</div>
+      <h2 class="section-title">${isTreinoMode ? 'Treinos' : 'Atletas'}</h2>
+      <div class="toolbar"><input type="search" id="athlete-list-search" placeholder="Buscar por nome ou esporte…" oninput="renderList(this.value)" value="${escapeHtml(filter||'')}"><button class="btn btn-primary" onclick="newAthlete()">+ Novo atleta</button></div>
+      <div id="athlete-list-results">${cardsHtml}</div>
+    `;
+  }else{
+    results.innerHTML = cardsHtml;
+  }
 }
 
 /* ---------------- DETAIL VIEW ---------------- */
