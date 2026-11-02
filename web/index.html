@@ -1712,6 +1712,29 @@ async function loadAthletePortal(){
   }
 }
 
+function showAthleteSection(section){
+  const ids=['home','trainings','extras','assessments','progress','invoices','files','workout-detail'];
+  ids.forEach(id=>{const el=document.getElementById('athlete-'+id);if(el)el.hidden=(id!==section);});
+  if(section==='trainings') setAthleteWorkoutTab('routines');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function setAthleteWorkoutTab(tab){
+  const routines=document.getElementById('athlete-routines-list');
+  const aerobic=document.getElementById('athlete-aerobic-list');
+  const a=document.getElementById('athlete-tab-routines');
+  const b=document.getElementById('athlete-tab-aerobic');
+  if(routines) routines.hidden=tab!=='routines';
+  if(aerobic) aerobic.hidden=tab!=='aerobic';
+  if(a){a.classList.toggle('btn-primary',tab==='routines');a.classList.toggle('btn-outline',tab!=='routines');}
+  if(b){b.classList.toggle('btn-primary',tab==='aerobic');b.classList.toggle('btn-outline',tab!=='aerobic');}
+}
+function showAthleteWorkout(workoutId){
+  const content=document.getElementById('athlete-workout-detail-content');
+  const html=window.__athleteWorkoutHtmlById&&window.__athleteWorkoutHtmlById[workoutId];
+  if(!content||!html)return;
+  content.innerHTML=html;
+  showAthleteSection('workout-detail');
+}
 function selectAthleteScale(type,value){
   if(!window.__athleteScale) window.__athleteScale={tqr:null,pse:null};
   window.__athleteScale[type]=value;
