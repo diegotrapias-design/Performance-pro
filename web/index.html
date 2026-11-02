@@ -1763,7 +1763,7 @@ async function loadAthletePortal(){
         <div id="athlete-aerobic-list" hidden>${workoutCards(aerobicWorkouts,'Ainda não há treinos aeróbicos atribuídos.')}</div>
       </section>
       <section id="athlete-extras" hidden>${backButton}<h2>Treinos Extras</h2>${workoutCards(allWorkouts.filter(w=>/extra|complementar/i.test((w.title||'')+' '+(w.notes||''))),'Nenhum treino extra foi identificado nos treinos atribuídos.')}</section>
-      <section id="athlete-workout-detail" hidden>${backButton}<div id="athlete-workout-detail-content"></div></section>
+      <section id="athlete-workout-detail" hidden><button type="button" class="btn btn-outline btn-sm" onclick="backFromAthleteWorkout('${athlete.id}')" style="margin:8px 0 16px">← Voltar aos treinos</button><div id="athlete-workout-detail-content"></div></section>
       <section id="athlete-assessments" hidden>${backButton}
         <div id="athlete-assessment-form-slot"></div>
         <section class="panel" style="padding:18px;margin-top:8px" id="athlete-monitor-form">
@@ -1816,6 +1816,18 @@ function setAthleteWorkoutTab(tab){
   if(aerobic) aerobic.hidden=tab!=='aerobic';
   if(a){a.classList.toggle('btn-primary',tab==='routines');a.classList.toggle('btn-outline',tab!=='routines');}
   if(b){b.classList.toggle('btn-primary',tab==='aerobic');b.classList.toggle('btn-outline',tab!=='aerobic');}
+}
+async function backFromAthleteWorkout(athleteId){
+  const msg=document.getElementById('athlete-monitor-message');
+  try{
+    await saveAthleteProgress(athleteId,{quiet:true});
+    if(msg)msg.textContent='Progresso salvo. Você pode voltar ao treino quando quiser.';
+  }catch(e){
+    console.error('Falha ao salvar antes de voltar aos treinos:',e);
+    if(msg)msg.textContent='Não foi possível salvar o progresso. Permaneça nesta tela e tente novamente.';
+    return;
+  }
+  showAthleteSection('trainings');
 }
 function showAthleteWorkout(workoutId){
   const content=document.getElementById('athlete-workout-detail-content');
