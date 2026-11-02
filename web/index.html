@@ -344,7 +344,7 @@ window.handleLogin = async function(event){
   .athlete-exercise-prescription b{color:#222226;}
   .athlete-exercise-notes{font-size:11px;color:#697586;line-height:1.45;margin:7px 0;}
   .athlete-exercise-video{margin-top:10px;background:#101820;border-radius:9px;overflow:hidden;}
-  .athlete-exercise-video video{display:block;width:100%;max-height:280px;background:#000;}
+  .athlete-exercise-video video,.athlete-exercise-video iframe{display:block;width:100%;height:auto;min-height:190px;max-height:280px;background:#000;border:0;aspect-ratio:16/9;}
   .athlete-workout-notes{background:#fff;border:1px solid #e2e7ee;border-radius:10px;padding:13px;font-size:12px;color:#536174;}
   .athlete-workout-notes p{margin:6px 0 0;line-height:1.5;}
   @media print{header,.back-link,.btn,.athlete-download-btn,.athlete-start-btn{display:none!important}.athlete-workout-screen{background:#fff}.athlete-workout-top{background:#fff;color:#111;border-bottom:2px solid #c92532}.athlete-workout-top h2{color:#111}.athlete-view-hint,.athlete-workout-date{color:#444}}
@@ -1736,7 +1736,7 @@ async function loadAthletePortal(){
                 ${i.rest_seconds?'<span>Descanso: <b>'+safe(i.rest_seconds)+'s</b></span>':''}
               </div>
               ${cleanNotes(i)?'<p class="athlete-exercise-notes">'+safe(cleanNotes(i))+'</p>':''}
-              ${i.video_url?`<div class="athlete-exercise-video"><video controls playsinline preload="metadata" src="${safe(i.video_url)}"></video></div>`:''}
+              ${i.video_url?renderAthleteExerciseVideo(i.video_url,i.exercise_name):''}
             </div>
           </article>`).join(''):'<div class="empty-state">Nenhum exercício adicionado.</div>'}
           ${w.notes?'<div class="athlete-workout-notes"><b>Observações do treino</b><p>'+safe(w.notes)+'</p></div>':''}
@@ -1801,6 +1801,29 @@ async function loadAthletePortal(){
     console.error('Falha ao carregar portal do atleta:',e);
     app.innerHTML=`<div class="panel" style="padding:20px"><h2>Não foi possível carregar sua área</h2><p>${escapeHtml(e.message||'Falha de conexão')}</p><button class="btn btn-primary" onclick="loadAthletePortal()">Tentar novamente</button></div>`;
   }
+}
+
+function renderAthleteExerciseVideo(url,title){
+  if(!url) return '';
+  let parsed;
+  try{parsed=new URL(url,location.href);}catch(e){return '<div class="athlete-exercise-notes">Vídeo indisponível.</div>';}
+  if(!['http:','https:'].includes(parsed.protocol)) return '<div class="athlete-exercise-notes">Vídeo indisponível.</div>';
+  const host=parsed.hostname.replace(/^www\./,'').toLowerCase();
+  let videoId='';
+  if(host==='youtu.be') videoId=parsed.pathname.split('/').filter(Boolean)[0]||'';
+  else if(host==='youtube.com'||host.endsWith('.youtube.com')) videoId=parsed.searchParams.get('v')||parsed.pathname.split('/').filter(Boolean).pop()||'';
+  const safeTitle=escapeHtml(title||'Demonstração do exercício');
+  if(videoId&&/^[A-Za-z0-9_-]{11}$/.test(videoId)){
+    return '<div class="athlete-exercise-video"><iframe class="exercise-video-frame" src="https://www.youtube-nocookie.com/embed/'+videoId+'?playsinline=1&rel=0" title="'+safeTitle+'" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>';
+  }
+  if(host==='vimeo.com'||host==='player.vimeo.com'){
+    const id=parsed.pathname.match(/^\/(?:video\/)?(\d+)(?:\/|$)/)?.[1]||'';
+    if(id) return '<div class="athlete-exercise-video"><iframe class="exercise-video-frame" src="https://player.vimeo.com/video/'+id+'" title="'+safeTitle+'" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div>';
+  }
+  if(/\.(mp4|m4v|mov|webm)(\?|$)/i.test(parsed.pathname+parsed.search)||host.includes('supabase')){
+    return '<div class="athlete-exercise-video"><video controls playsinline preload="metadata"><source src="'+escapeHtml(parsed.href)+'" type="video/mp4">Seu navegador não conseguiu carregar este vídeo.</video></div>';
+  }
+  return '<div class="athlete-exercise-notes">Formato de vídeo não reconhecido.</div>';
 }
 
 function showAthleteSection(section){
