@@ -1747,10 +1747,8 @@ async function loadAthletePortal(){
         <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
           ${tile('🏋️','Treinos','trainings','Suas rotinas')}
           ${tile('⚡','Treinos Extras','extras','Atividades adicionais')}
-          ${tile('📋','Avaliações','assessments','Registros e monitoramento')}
           ${tile('📈','Meu Progresso','progress','Gráficos de evolução')}
           ${tile('＄','Faturas','invoices','Informações financeiras')}
-          ${tile('📁','Arquivos','files','Materiais e documentos')}
         </div>
         <footer class="athlete-menu-manifesto" aria-label="Princípios da alta performance">
           <div class="athlete-manifesto-line"><span class="athlete-manifesto-arrow">↗</span><strong>Constância constrói.</strong></div>
@@ -1784,13 +1782,13 @@ async function loadAthletePortal(){
       </section>
       <section id="athlete-progress" hidden>${backButton}<section class="panel" style="padding:18px;margin-top:8px">${buildMonitoringCharts((monitoring||[]).slice().reverse())}</section></section>
       <section id="athlete-invoices" hidden>${backButton}<h2>Faturas</h2><div class="empty-state">Não há faturas disponíveis no seu acesso.</div></section>
-      <section id="athlete-files" hidden>${backButton}<h2>Arquivos</h2><div class="empty-state">Não há arquivos disponibilizados pelo treinador.</div></section>`;
+`;
     window.__athleteWorkouts=allWorkouts;
     window.__athleteWorkoutHtmlById=Object.fromEntries(allWorkouts.map(w=>[w.id,workoutDetails(w)]));
     window.__athleteMonitoringId=athlete.id;
     window.__athleteScale={tqr:null,pse:null};
     showAthleteSection('home');
-    if(typeof loadAthleteMonitoringMetrics==='function') loadAthleteMonitoringMetrics(athlete.id).catch(console.error);
+    // Carga aguda, monotonia e strain são exibidos exclusivamente no painel do treinador.
 
   }catch(e){
     console.error('Falha ao carregar portal do atleta:',e);
@@ -1799,7 +1797,7 @@ async function loadAthletePortal(){
 }
 
 function showAthleteSection(section){
-  const ids=['home','trainings','extras','assessments','progress','invoices','files','workout-detail'];
+  const ids=['home','trainings','extras','assessments','progress','invoices','workout-detail'];
   ids.forEach(id=>{const el=document.getElementById('athlete-'+id);if(el)el.hidden=(id!==section);});
   const monitor=document.getElementById('athlete-monitor-form');
   const homeSlot=document.getElementById('athlete-assessment-form-slot');
