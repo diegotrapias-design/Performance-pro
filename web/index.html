@@ -3218,7 +3218,15 @@ function closeSaltoScreen(){
     saltoReturnAthleteId = null;
     if(saltoReturnToAthletePortal){
       saltoReturnToAthletePortal = false;
-      loadAthletePortal();
+      // Mantém a tela e o formulário do treino abertos; não recarrega o portal,
+      // pois isso levaria o atleta de volta ao menu e poderia descartar o estado visual.
+      const workoutId = window.__activeAthleteWorkoutId;
+      if(workoutId){
+        showAthleteSection('workout-detail');
+        loadAthleteProgressForWorkout(id,workoutId);
+      }else{
+        showAthleteSection('home');
+      }
     }else{
       openAthlete(id);
     }
