@@ -1198,6 +1198,11 @@ window.handleLogin = async function(event){
       <label>Nome da nova categoria</label>
       <input type="text" id="ex-form-newgroup" placeholder="Ex: Mobilidade">
     </div>
+    <div class="field" style="margin-bottom:14px;">
+      <label>Vídeo do exercício (opcional)</label>
+      <input type="file" id="ex-form-video" accept="video/*">
+      <small style="color:var(--gray);">Selecione um vídeo da galeria para anexar ao exercício.</small>
+    </div>
     <div class="actions-row" style="justify-content:flex-start;">
       <button class="btn btn-primary" onclick="submitExerciseForm()">Salvar</button>
     </div>
@@ -3307,6 +3312,7 @@ function openCreateExerciseForm(){
   populateGroupSelect('');
   document.getElementById('ex-form-newgroup-wrap').hidden = true;
   document.getElementById('ex-form-newgroup').value = '';
+  document.getElementById('ex-form-video').value = '';
   document.getElementById('exercise-form-modal').style.display = 'flex';
 }
 
@@ -3319,6 +3325,7 @@ function editLibraryExercise(exId){
   populateGroupSelect(ex.group);
   document.getElementById('ex-form-newgroup-wrap').hidden = true;
   document.getElementById('ex-form-newgroup').value = '';
+  document.getElementById('ex-form-video').value = '';
   document.getElementById('exercise-form-modal').style.display = 'flex';
 }
 
@@ -3335,16 +3342,46 @@ async function submitExerciseForm(){
     group = document.getElementById('ex-form-newgroup').value.trim();
     if(!group){ showToast('Digite o nome da categoria.', 'err'); return; }
   }
-  if(editingExerciseId){
-    const ex = exerciseLibrary.find(x => x.id === editingExerciseId);
-    if(ex){ ex.name = name; ex.group = group; }
-  }else{
-    exerciseLibrary.push({ id: uid(), name, group, video:'', favorite:false });
+
+  const videoInput = document.getElementById('ex-form-video');
+  const videoFile = videoInput && videoInput.files ? videoInput.files[0] : null;
+  const saveButton = document.querySelector('#exercise-form-modal .actions-row button');
+  if(saveButton){ saveButton.disabled = true; saveButton.textContent = videoFile ? 'Enviando vídeo...' : 'Salvando...'; }
+
+  try{
+    let videoUrl = '';
+    if(editingExerciseId){
+      const existing = exerciseLibrary.find(x => x.id === editingExerciseId);
+      videoUrl = existing ? (existing.video || '') : '';
+    }
+
+    if(videoFile){
+      if(!supabaseStorageIsConfigured()) throw new Error('Entre no aplicativo para enviar vídeos ao armazenamento seguro.');
+      if(!videoFile.type.startsWith('video/')) throw new Error('Selecione um arquivo de vídeo válido.');
+      const maxBytes = 150 * 1024 * 1024;
+      if(videoFile.size > maxBytes) throw new Error('Vídeo muito grande (máximo de 150 MB).');
+      showToast('Enviando vídeo...', 'ok');
+      videoUrl = await uploadToSupabaseStorage(videoFile);
+    }
+
+    if(editingExerciseId){
+      const ex = exerciseLibrary.find(x => x.id === editingExerciseId);
+      if(ex){ ex.name = name; ex.group = group; if(videoFile) ex.video = videoUrl; }
+    }else{
+      exerciseLibrary.push({ id: uid(), name, group, video:videoUrl, favorite:false });
+    }
+
+    const ok = await persist(false);
+    if(!ok) throw new Error('Não foi possível salvar o exercício. Tente novamente.');
+    showToast('Exercício salvo' + (videoUrl ? ' com vídeo.' : '.'), 'ok');
+    closeExerciseForm();
+    if(currentScreen === 'library') renderLibraryScreen(document.getElementById('lib-screen-search') ? document.getElementById('lib-screen-search').value : '');
+  }catch(e){
+    console.error('Erro ao salvar exercício:',e);
+    showToast(e && e.message ? e.message : 'Não foi possível salvar o exercício.', 'err');
+  }finally{
+    if(saveButton){ saveButton.disabled = false; saveButton.textContent = 'Salvar'; }
   }
-  const ok = await persist(false);
-  if(ok) showToast('Exercício salvo.', 'ok');
-  closeExerciseForm();
-  if(currentScreen === 'library') renderLibraryScreen(document.getElementById('lib-screen-search') ? document.getElementById('lib-screen-search').value : '');
 }
 
 async function deleteLibraryExercise(exId){
