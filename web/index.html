@@ -324,30 +324,30 @@ window.handleLogin = async function(event){
 
   /* ---- Tela do treino do atleta: referência visual MFit ---- */
   .athlete-workout-screen{margin:10px 0 24px;background:#f4f6f9;border-radius:14px;overflow:hidden;}
-  .athlete-workout-top{background:#173c69;color:#fff;padding:17px 16px 14px;}
-  .athlete-workout-topline{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:10px;font-weight:800;letter-spacing:1px;color:#d8e7fa;}
+  .athlete-workout-top{background:linear-gradient(145deg,#242428,#090909);color:#fff;padding:17px 16px 14px;border-bottom:3px solid #c92532;}
+  .athlete-workout-topline{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:10px;font-weight:800;letter-spacing:1px;color:#d2d3d6;}
   .athlete-download-btn{border:1px solid rgba(255,255,255,.35);border-radius:8px;padding:7px 10px;background:rgba(255,255,255,.1);color:#fff;font-size:11px;font-weight:700;}
   .athlete-workout-top h2{margin:14px 0 4px;font-size:20px;color:#fff;}
-  .athlete-workout-date{font-size:12px;color:#d8e7fa;}
-  .athlete-start-btn{width:100%;margin-top:14px;padding:13px;border:0;border-radius:9px;background:#31a66b;color:#fff;font-weight:800;font-size:14px;letter-spacing:.4px;}
-  .athlete-start-btn.started{background:#173f2e;}
-  .athlete-view-hint{text-align:center;font-size:11px;line-height:1.45;color:#e5edf7;margin-top:9px;}
+  .athlete-workout-date{font-size:12px;color:#c9cbd0;}
+  .athlete-start-btn{width:100%;margin-top:14px;padding:13px;border:0;border-radius:9px;background:#c92532;border:1px solid #c92532;color:#fff;font-weight:800;font-size:14px;letter-spacing:.4px;}
+  .athlete-start-btn.started{background:#242428;border-color:#999ba1;color:#fff;}
+  .athlete-view-hint{text-align:center;font-size:11px;line-height:1.45;color:#c9cbd0;margin-top:9px;}
   .athlete-exercise-list{padding:10px;}
   .athlete-exercise-card{display:flex;gap:10px;background:#fff;border:1px solid #e2e7ee;border-radius:11px;padding:13px 11px;margin:0 0 10px;box-shadow:0 1px 3px rgba(15,23,42,.04);}
-  .athlete-exercise-index{width:25px;height:25px;flex:0 0 25px;border-radius:50%;display:grid;place-items:center;background:#e8eef7;color:#23466f;font-size:11px;font-weight:800;}
+  .athlete-exercise-index{width:25px;height:25px;flex:0 0 25px;border-radius:50%;display:grid;place-items:center;background:#ececef;color:#333338;font-size:11px;font-weight:800;}
   .athlete-exercise-main{min-width:0;flex:1;}
   .athlete-exercise-heading{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
   .athlete-exercise-heading h3{margin:1px 0 5px;font-size:14px;line-height:1.35;color:#273449;}
-  .athlete-combo-tag{font-size:9px;font-weight:800;color:#c44755;background:#fff0f1;border-radius:5px;padding:4px 6px;}
+  .athlete-combo-tag{font-size:9px;font-weight:800;color:#b51f2d;background:#fff0f1;border-radius:5px;padding:4px 6px;}
   .athlete-exercise-prescription{display:flex;flex-wrap:wrap;gap:6px;margin:7px 0;color:#536174;font-size:11px;}
-  .athlete-exercise-prescription span{background:#f1f4f8;border-radius:6px;padding:6px 7px;}
-  .athlete-exercise-prescription b{color:#26364b;}
+  .athlete-exercise-prescription span{background:#f0f0f2;border-radius:6px;padding:6px 7px;}
+  .athlete-exercise-prescription b{color:#222226;}
   .athlete-exercise-notes{font-size:11px;color:#697586;line-height:1.45;margin:7px 0;}
   .athlete-exercise-video{margin-top:10px;background:#101820;border-radius:9px;overflow:hidden;}
   .athlete-exercise-video video{display:block;width:100%;max-height:280px;background:#000;}
   .athlete-workout-notes{background:#fff;border:1px solid #e2e7ee;border-radius:10px;padding:13px;font-size:12px;color:#536174;}
   .athlete-workout-notes p{margin:6px 0 0;line-height:1.5;}
-  @media print{header,.back-link,.btn,.athlete-download-btn,.athlete-start-btn{display:none!important}.athlete-workout-screen{background:#fff}.athlete-workout-top{background:#fff;color:#111;border-bottom:2px solid #173c69}.athlete-workout-top h2{color:#111}.athlete-view-hint,.athlete-workout-date{color:#444}}
+  @media print{header,.back-link,.btn,.athlete-download-btn,.athlete-start-btn{display:none!important}.athlete-workout-screen{background:#fff}.athlete-workout-top{background:#fff;color:#111;border-bottom:2px solid #c92532}.athlete-workout-top h2{color:#111}.athlete-view-hint,.athlete-workout-date{color:#444}}
 
   /* ---- Treino: toolbar view/edit ---- */
   .view-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
@@ -1714,7 +1714,9 @@ async function loadAthletePortal(){
           <div class="athlete-workout-topline"><span>SEU TREINO</span><button type="button" onclick="window.print()" class="athlete-download-btn">⇩ Baixar treino</button></div>
           <h2>${safe(w.title)}</h2>
           <div class="athlete-workout-date">${w.scheduled_for?'Data: '+safe(w.scheduled_for):'Treino atribuído'} · ${list.length} exercícios</div>
-          <button type="button" class="athlete-start-btn" onclick="this.textContent=this.dataset.started==='1'?'INICIAR':'TREINO INICIADO';this.dataset.started=this.dataset.started==='1'?'0':'1';this.classList.toggle('started',this.dataset.started==='1')">INICIAR</button>
+          <div id="athlete-monitor-form-slot" style="margin-top:16px"></div>
+
+          <button type="button" class="athlete-start-btn" onclick="this.textContent=this.dataset.started==='1'?'INICIAR TREINO':'TREINO INICIADO';this.dataset.started=this.dataset.started==='1'?'0':'1';this.classList.toggle('started',this.dataset.started==='1')">INICIAR TREINO</button>
           <div class="athlete-view-hint">Você está no modo visualização. Aperte INICIAR para começar seu treino.</div>
         </div>
         <div class="athlete-exercise-list">
@@ -1765,6 +1767,7 @@ async function loadAthletePortal(){
       <section id="athlete-extras" hidden>${backButton}<h2>Treinos Extras</h2>${workoutCards(allWorkouts.filter(w=>/extra|complementar/i.test((w.title||'')+' '+(w.notes||''))),'Nenhum treino extra foi identificado nos treinos atribuídos.')}</section>
       <section id="athlete-workout-detail" hidden>${backButton}<div id="athlete-workout-detail-content"></div></section>
       <section id="athlete-assessments" hidden>${backButton}
+        <div id="athlete-assessment-form-slot"></div>
         <section class="panel" style="padding:18px;margin-top:8px" id="athlete-monitor-form">
           <h2>Registrar sessão</h2><p class="muted">Responda ao terminar cada sessão. Os dados serão enviados automaticamente ao treinador.</p>
           <label class="field-label" for="athlete-monitor-date">Data da sessão</label><input id="athlete-monitor-date" type="date" value="${performanceProLocalDateISO()}" style="width:100%;margin:6px 0 16px">
@@ -1798,6 +1801,9 @@ async function loadAthletePortal(){
 function showAthleteSection(section){
   const ids=['home','trainings','extras','assessments','progress','invoices','files','workout-detail'];
   ids.forEach(id=>{const el=document.getElementById('athlete-'+id);if(el)el.hidden=(id!==section);});
+  const monitor=document.getElementById('athlete-monitor-form');
+  const homeSlot=document.getElementById('athlete-assessment-form-slot');
+  if(section!=='workout-detail' && monitor && homeSlot) homeSlot.appendChild(monitor);
   if(section==='trainings') setAthleteWorkoutTab('routines');
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -1816,6 +1822,9 @@ function showAthleteWorkout(workoutId){
   const html=window.__athleteWorkoutHtmlById&&window.__athleteWorkoutHtmlById[workoutId];
   if(!content||!html)return;
   content.innerHTML=html;
+  const monitor=document.getElementById('athlete-monitor-form');
+  const slot=document.getElementById('athlete-monitor-form-slot');
+  if(monitor && slot) slot.appendChild(monitor);
   showAthleteSection('workout-detail');
 }
 function selectAthleteScale(type,value){
