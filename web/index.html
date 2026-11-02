@@ -1777,7 +1777,9 @@ async function loadAthletePortal(){
           <h3>🦘 Avaliação CMJ — salto vertical</h3><p class="muted">Faça a avaliação por vídeo antes e depois do treino. O aplicativo calcula a altura do salto pela marcação dos quadros.</p>
           <div class="field-grid" style="grid-template-columns:1fr 1fr;gap:10px"><button class="btn btn-primary" type="button" onclick="goSaltoForAthlete('${athlete.id}','pre','${safe(athlete.full_name)}')">🎥 Avaliar salto pré-treino</button><button class="btn btn-outline" type="button" onclick="goSaltoForAthlete('${athlete.id}','post','${safe(athlete.full_name)}')">🎥 Avaliar salto pós-treino</button></div>
           <div class="muted" style="margin-top:10px">Os resultados serão registrados no gráfico de evolução do salto.</div><p class="muted" style="margin-top:10px">A carga da sessão é calculada automaticamente: PSE × duração.</p>
-          <button class="btn btn-primary" id="athlete-monitor-submit" type="button" onclick="submitAthleteMonitoring('${athlete.id}')">Salvar monitoramento</button><p id="athlete-monitor-message" class="muted" role="status" style="margin-top:10px"></p>
+          <button class="btn btn-primary" id="athlete-monitor-submit" type="button" onclick="saveAthleteProgress('${athlete.id}')">Salvar progresso</button>
+          <button class="btn btn-outline" id="athlete-workout-complete" type="button" style="margin:10px 0 0;width:100%" onclick="toggleAthleteWorkoutCompletion('${athlete.id}')">Marcar treino como concluído</button>
+          <p id="athlete-monitor-message" class="muted" role="status" style="margin-top:10px">TQR e salto pré-sessão podem ser salvos antes de terminar. Depois, registre PSE e salto pós-sessão.</p>
         </section>
       </section>
       <section id="athlete-progress" hidden>${backButton}<section class="panel" style="padding:18px;margin-top:8px">${buildMonitoringCharts((monitoring||[]).slice().reverse())}</section></section>
@@ -1820,10 +1822,12 @@ function showAthleteWorkout(workoutId){
   const html=window.__athleteWorkoutHtmlById&&window.__athleteWorkoutHtmlById[workoutId];
   if(!content||!html)return;
   content.innerHTML=html;
+  window.__activeAthleteWorkoutId=workoutId;
   const monitor=document.getElementById('athlete-monitor-form');
   const slot=document.getElementById('athlete-monitor-form-slot');
   if(monitor && slot) slot.appendChild(monitor);
   showAthleteSection('workout-detail');
+  loadAthleteProgressForWorkout(window.__athleteMonitoringId,workoutId);
 }
 function selectAthleteScale(type,value){
   if(!window.__athleteScale) window.__athleteScale={tqr:null,pse:null};
@@ -1834,6 +1838,8 @@ function selectAthleteScale(type,value){
     b.classList.toggle('btn-primary',active);
     b.classList.toggle('btn-outline',!active);
   });
+  if(window.__athleteMonitoringId && window.__activeAthleteWorkoutId)
+    saveAthleteProgress(window.__athleteMonitoringId,{quiet:true});
 }
 
 async function uploadJumpAssessmentVideo(file,athleteId,phase){
@@ -1885,53 +1891,97 @@ async function loadAthleteMonitoringMetrics(athleteId){
   host.appendChild(box);
 }
 
-async function submitAthleteMonitoring(athleteId){
+async function findAthleteSessionRow(athleteId,date){
+  const {data,error}=await supabaseClient.from('monitoring_sessions')
+    .select('id,psr,pse,duration_min,jump_pre_cm,jump_post_cm,completed_workout_ids')
+    .eq('athlete_id',athleteId).eq('session_date',date)
+    .order('created_at',{ascending:false}).limit(1).maybeSingle();
+  if(error) throw error;
+  return data||null;
+}
+
+async function saveAthleteProgress(athleteId,options={}){
   const msg=document.getElementById('athlete-monitor-message');
   const btn=document.getElementById('athlete-monitor-submit');
   const scale=window.__athleteScale||{};
-  const date=document.getElementById('athlete-monitor-date').value;
-  const duration=Number(document.getElementById('athlete-duration').value);
-  const tqr=Number(scale.tqr), pse=Number(scale.pse);
-  const preEl=document.getElementById('athlete-jump-pre');
-  const postEl=document.getElementById('athlete-jump-post');
-  const pre=preEl?preEl.value:'';
-  const post=postEl?postEl.value:'';
-  if(!date||scale.tqr==null||scale.pse==null||!Number.isInteger(duration)||duration<1||duration>600){
-    msg.textContent='Preencha data, TQR, PSE e duração válida do treino.';return;
+  const date=document.getElementById('athlete-monitor-date')?.value;
+  if(!date){if(msg)msg.textContent='Informe a data da sessão.';return;}
+  const durationRaw=document.getElementById('athlete-duration')?.value||'';
+  const pre=document.getElementById('athlete-jump-pre')?.value||'';
+  const post=document.getElementById('athlete-jump-post')?.value||'';
+  const values={created_by:currentUser.id};
+  if(scale.tqr!=null) values.psr=Number(scale.tqr);
+  if(scale.pse!=null) values.pse=Number(scale.pse);
+  if(durationRaw!==''){
+    const duration=Number(durationRaw);
+    if(!Number.isInteger(duration)||duration<1||duration>600){if(msg)msg.textContent='A duração deve ser de 1 a 600 minutos.';return;}
+    values.duration_min=duration;
   }
-  if(btn){btn.disabled=true;btn.textContent='SALVANDO…';}
-  msg.textContent='Enviando respostas e vídeos…';
+  if(pre!=='') values.jump_pre_cm=Number(pre);
+  if(post!=='') values.jump_post_cm=Number(post);
+  if(Object.keys(values).length===1){if(msg&&!options.quiet)msg.textContent='Selecione ou registre pelo menos um dado para salvar.';return;}
+  if(btn&&!options.quiet){btn.disabled=true;btn.textContent='SALVANDO…';}
   try{
-    const preVideo=document.getElementById('athlete-video-pre');
-    const postVideo=document.getElementById('athlete-video-post');
-    const prePath=preVideo&&preVideo.files[0]?await uploadJumpAssessmentVideo(preVideo.files[0],athleteId,'pre'):null;
-    const postPath=postVideo&&postVideo.files[0]?await uploadJumpAssessmentVideo(postVideo.files[0],athleteId,'post'):null;
-    const values={psr:tqr,pse,duration_min:duration,created_by:currentUser.id};
-    if(pre!=='') values.jump_pre_cm=Number(pre);
-    if(post!=='') values.jump_post_cm=Number(post);
-    if(prePath) values.jump_video_pre_path=prePath;
-    if(postPath) values.jump_video_post_path=postPath;
-    const {data:existing,error:findError}=await supabaseClient.from('monitoring_sessions')
-      .select('id').eq('athlete_id',athleteId).eq('session_date',date)
-      .order('created_at',{ascending:false}).limit(1).maybeSingle();
-    if(findError) throw findError;
+    const existing=await findAthleteSessionRow(athleteId,date);
     const result=existing
       ? await supabaseClient.from('monitoring_sessions').update(values).eq('id',existing.id)
       : await supabaseClient.from('monitoring_sessions').insert({athlete_id:athleteId,session_date:date,...values});
     if(result.error) throw result.error;
-    msg.textContent='Monitoramento salvo. Seu treinador já pode visualizar os dados.';
-    document.getElementById('athlete-duration').value='';
-    if(preEl) preEl.value='';
-    if(postEl) postEl.value='';
-    if(preVideo) preVideo.value='';
-    if(postVideo) postVideo.value='';
-    window.__athleteScale={tqr:null,pse:null};
-    document.querySelectorAll('#athlete-tqr-options button,#athlete-pse-options button').forEach(b=>{b.classList.remove('btn-primary');b.classList.add('btn-outline');});
-    await loadAthletePortal();
+    if(msg&&!options.quiet)msg.textContent='Progresso salvo. Você pode continuar o treino depois; os dados já estão disponíveis para o treinador.';
   }catch(e){
-    console.error('Erro ao salvar monitoramento:',e);
-    msg.textContent='Não foi possível salvar: '+(e.message||'erro de conexão');
-  }finally{if(btn){btn.disabled=false;btn.textContent='Salvar monitoramento';}}
+    console.error('Erro ao salvar progresso do atleta:',e);
+    if(msg&&!options.quiet)msg.textContent='Não foi possível salvar: '+(e.message||'erro de conexão');
+  }finally{if(btn&&!options.quiet){btn.disabled=false;btn.textContent='Salvar progresso';}}
+}
+
+async function loadAthleteProgressForWorkout(athleteId,workoutId){
+  const dateEl=document.getElementById('athlete-monitor-date');
+  const date=dateEl?.value;
+  if(!athleteId||!date)return;
+  try{
+    const row=await findAthleteSessionRow(athleteId,date);
+    if(!row)return;
+    window.__athleteScale={tqr:row.psr==null?null:Number(row.psr),pse:row.pse==null?null:Number(row.pse)};
+    ['tqr','pse'].forEach(type=>{
+      const value=window.__athleteScale[type];
+      const attr=type==='tqr'?'data-tqr':'data-pse';
+      document.querySelectorAll('#athlete-'+type+'-options button').forEach(b=>{
+        const active=value!=null&&Number(b.getAttribute(attr))===value;
+        b.classList.toggle('btn-primary',active);b.classList.toggle('btn-outline',!active);
+      });
+    });
+    const duration=document.getElementById('athlete-duration');
+    if(duration&&row.duration_min!=null)duration.value=row.duration_min;
+    const pre=document.getElementById('athlete-jump-pre');
+    const post=document.getElementById('athlete-jump-post');
+    if(pre&&row.jump_pre_cm!=null)pre.value=row.jump_pre_cm;
+    if(post&&row.jump_post_cm!=null)post.value=row.jump_post_cm;
+    const complete=(row.completed_workout_ids||[]).includes(workoutId);
+    const button=document.getElementById('athlete-workout-complete');
+    if(button){button.textContent=complete?'Desmarcar treino como concluído':'Marcar treino como concluído';button.classList.toggle('btn-primary',complete);button.classList.toggle('btn-outline',!complete);}
+    const msg=document.getElementById('athlete-monitor-message');
+    if(msg)msg.textContent=complete?'Treino concluído. Você pode desmarcar se precisar reabrir.':'Progresso recuperado. Continue de onde parou.';
+  }catch(e){console.error('Não foi possível recuperar o progresso:',e);}
+}
+
+async function toggleAthleteWorkoutCompletion(athleteId){
+  const workoutId=window.__activeAthleteWorkoutId;
+  const date=document.getElementById('athlete-monitor-date')?.value;
+  const button=document.getElementById('athlete-workout-complete');
+  const msg=document.getElementById('athlete-monitor-message');
+  if(!workoutId||!date)return;
+  try{
+    await saveAthleteProgress(athleteId,{quiet:true});
+    const row=await findAthleteSessionRow(athleteId,date);
+    const ids=Array.isArray(row?.completed_workout_ids)?row.completed_workout_ids:[];
+    const completed=ids.includes(workoutId);
+    const next=completed?ids.filter(id=>id!==workoutId):[...ids,workoutId];
+    const result=await supabaseClient.from('monitoring_sessions')
+      .update({completed_workout_ids:next}).eq('id',row.id);
+    if(result.error)throw result.error;
+    if(button){button.textContent=completed?'Marcar treino como concluído':'Desmarcar treino como concluído';button.classList.toggle('btn-primary',!completed);button.classList.toggle('btn-outline',completed);}
+    if(msg)msg.textContent=completed?'Treino reaberto. Você pode continuar registrando seu progresso.':'Treino marcado como concluído. Todo o progresso foi salvo.';
+  }catch(e){console.error('Erro ao atualizar conclusão:',e);if(msg)msg.textContent='Não foi possível atualizar a conclusão: '+(e.message||'erro');}
 }
 
 function buildMonitoringCharts(rows){
