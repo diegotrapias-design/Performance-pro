@@ -1478,6 +1478,24 @@ async function onAuthChange(user){
     if(transition !== authTransition) return;
     if(!profile || !profile.role) throw new Error('Perfil de acesso não encontrado. Solicite ao treinador que reenvie o convite.');
     currentProfile = profile;
+    if(profile.role === 'athlete'){
+      const {data: accessRow,error:accessError}=await supabaseClient.from('athletes')
+        .select('id,is_blocked,block_reason').eq('user_id',user.id).maybeSingle();
+      if(accessError) throw accessError;
+      if(accessRow?.is_blocked){
+        if(transition !== authTransition) return;
+        loginScreen.style.display='none'; appShell.style.display=''; sharedRoot.style.display='none';
+        const app=document.getElementById('app');
+        app.innerHTML=`<section style="max-width:520px;margin:36px auto;padding:28px 20px;text-align:center;background:#17171b;color:#fff;border:1px solid #3a3a40;border-top:4px solid #c92532;border-radius:14px">
+          <div style="font-size:42px;margin-bottom:12px">🔒</div>
+          <h2 style="margin:0 0 10px">Acesso temporariamente suspenso</h2>
+          <p style="color:#c9cbd0;line-height:1.6">O acesso à sua área de atleta está suspenso. Entre em contato com seu treinador para regularizar a situação e solicitar a liberação.</p>
+          ${accessRow.block_reason?'<p style="color:#e7a1a7;font-size:13px">Motivo: '+String(accessRow.block_reason).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]))+'</p>':''}
+          <button class="btn btn-outline" style="margin-top:14px" onclick="handleLogout()">Sair</button>
+        </section>`;
+        return;
+      }
+    }
     loginScreen.style.display='none'; appShell.style.display=''; sharedRoot.style.display='none';
     if(profile.role === 'coach'){
       if(!profile.team_id) throw new Error('A conta do treinador está sem equipe vinculada.');
@@ -1559,6 +1577,11 @@ async function loadAthletes(){
     const payload=data?.payload || {};
     athletes=payload.athletes || []; exerciseLibrary=payload.library || null; seriesPresets=payload.seriesPresets || null;
     window.__cloudJumpLog = Array.isArray(payload.jumpLog) ? payload.jumpLog : null;
+    const {data: accessRows,error:accessError}=await supabaseClient.from('athletes')
+      .select('id,is_blocked,block_reason').eq('team_id',currentProfile.team_id);
+    if(accessError) throw accessError;
+    const accessById=new Map((accessRows||[]).map(row=>[row.id,row]));
+    athletes=athletes.map(a=>({...a,is_blocked:!!accessById.get(a.id)?.is_blocked,block_reason:accessById.get(a.id)?.block_reason||''}));
   }catch(e){
     console.error(e); athletes=[]; exerciseLibrary=null; seriesPresets=null;
     showToast('Não foi possível carregar os dados sincronizados.', 'err');
@@ -2243,6 +2266,29 @@ function goList(mode){
   renderList();
 }
 
+async function toggleAthleteAccess(athleteId){
+  const athlete=athletes.find(a=>a.id===athleteId);
+  if(!athlete || currentProfile?.role!=='coach' || !currentProfile.team_id) return;
+  const shouldBlock=!athlete.is_blocked;
+  const action=shouldBlock?'bloquear o acesso deste atleta por inadimplência':'desbloquear o acesso deste atleta';
+  if(!confirm('Deseja realmente '+action+'?')) return;
+  try{
+    const {data,error}=await supabaseClient.from('athletes')
+      .update({is_blocked:shouldBlock,block_reason:shouldBlock?'Inadimplência':null})
+      .eq('id',athleteId).eq('team_id',currentProfile.team_id)
+      .select('id,is_blocked,block_reason').maybeSingle();
+    if(error) throw error;
+    if(!data) throw new Error('Não foi possível localizar o cadastro relacional deste atleta. Salve o cadastro e tente novamente.');
+    athlete.is_blocked=!!data.is_blocked;
+    athlete.block_reason=data.block_reason||'';
+    renderList(document.querySelector('.toolbar input[type="search"]')?.value||'');
+    showToast(shouldBlock?'Acesso do atleta bloqueado.':'Acesso do atleta liberado novamente.','ok');
+  }catch(e){
+    console.error('Falha ao alterar acesso do atleta:',e);
+    showToast(e.message||'Não foi possível alterar o acesso.','err');
+  }
+}
+
 /* ---------------- LIST VIEW ---------------- */
 
 function renderList(filter){
@@ -2271,9 +2317,11 @@ function renderList(filter){
           <div class="name">${escapeHtml(a.name)}</div>
           <div class="meta">${age !== null ? `<span>${age} anos${a.sex ? ' · ' + (a.sex==='M'?'Masculino':'Feminino') : ''}</span>` : ''}<span>${days.length} dia(s) · ${exerciseCount} exercício(s)</span></div>
           ${isTreinoMode ? `<div class="training-day-list">${daySummary}</div>` : ''}
+          ${a.is_blocked?'<div style="margin:9px 0;padding:7px 9px;border-radius:7px;background:#fff0f1;color:#b42332;font-size:12px;font-weight:700">🔒 ACESSO BLOQUEADO · INADIMPLÊNCIA</div>':''}
           <div class="actions">
             <button class="btn btn-dark btn-sm" onclick="openAthlete('${a.id}')">${isTreinoMode?'Abrir treino':'Ver perfil'}</button>
             ${secondaryBtn}
+            <button class="btn ${a.is_blocked?'btn-primary':'btn-outline'} btn-sm" onclick="toggleAthleteAccess('${a.id}')">${a.is_blocked?'Desbloquear acesso':'Bloquear acesso'}</button>
             <button class="btn btn-danger btn-sm" onclick="deleteAthlete('${a.id}')">Excluir</button>
           </div>
         </div>`;
