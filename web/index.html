@@ -1639,12 +1639,11 @@ async function loadAthletePortal(){
         </div>`).join(''):'<p>Nenhum exercício adicionado.</p>'}
         ${w.notes?`<p>${safe(w.notes)}</p>`:''}</section>`;
     }).join(''):'<div class="empty-state">Ainda não há treinos atribuídos a você.</div>';
-    const monitorHtml=(monitoring||[]).length?`<div class="table-wrap"><table><thead><tr><th>Data</th><th>TQR</th><th>PSE</th><th>Duração</th><th>UA</th><th>CMJ pré</th><th>CMJ pós</th></tr></thead><tbody>${monitoring.map(m=>`<tr><td>${safe(m.session_date)}</td><td>${safe(m.psr)}</td><td>${safe(m.pse)}</td><td>${safe(m.duration_min)} min</td><td>${safe(m.load_ua)}</td><td>${safe(m.jump_pre_cm)}</td><td>${safe(m.jump_post_cm)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty-state">Você ainda não enviou respostas de monitoramento.</div>';
     app.innerHTML=`<div class="home-hero"><div class="home-hero-title">Olá, ${safe(athlete.full_name)}</div><div class="home-hero-sub">Sua área individual de acompanhamento</div></div>
       <section class="panel" style="padding:18px"><h3>Meu cadastro</h3><p>${safe(athlete.sport)} ${athlete.category?'· '+safe(athlete.category):''}</p></section>
       <h2 style="margin-top:24px">Meus treinos</h2>${workoutHtml}
       <section class="panel" style="padding:18px;margin-top:24px" id="athlete-monitor-form">
-        <h2>📊 Monitoramento — prontidão e esforço</h2>
+        <h2>Registrar sessão</h2>
         <p class="muted">Responda ao terminar cada sessão. Os dados serão enviados automaticamente ao treinador.</p>
         <label class="field-label" for="athlete-monitor-date">Data da sessão</label>
         <input id="athlete-monitor-date" type="date" value="${performanceProLocalDateISO()}" style="width:100%;margin:6px 0 16px">
@@ -1673,10 +1672,10 @@ async function loadAthletePortal(){
         <button class="btn btn-primary" id="athlete-monitor-submit" type="button" onclick="submitAthleteMonitoring('${athlete.id}')">Salvar monitoramento</button>
         <p id="athlete-monitor-message" class="muted" role="status" style="margin-top:10px"></p>
       </section>
-      <h2 style="margin-top:24px">Meu histórico de monitoramento</h2>${monitorHtml}`;
+      <section class="panel" style="padding:18px;margin-top:24px">${buildMonitoringCharts((monitoring||[]).slice().reverse())}</section>`;
     window.__athleteMonitoringId=athlete.id;
     window.__athleteScale={tqr:null,pse:null};
-    loadAthleteMonitoringMetrics(athlete.id);
+
   }catch(e){
     console.error('Falha ao carregar portal do atleta:',e);
     app.innerHTML=`<div class="panel" style="padding:20px"><h2>Não foi possível carregar sua área</h2><p>${escapeHtml(e.message||'Falha de conexão')}</p><button class="btn btn-primary" onclick="loadAthletePortal()">Tentar novamente</button></div>`;
