@@ -1579,6 +1579,21 @@ async function syncCoachDataToRelational(){
     const {error}=await supabaseClient.from('workout_items').upsert(itemRows,{onConflict:'id'});
     if(error) throw error;
   }
+  // Remove da base relacional os treinos que já não existem no planejamento atual.
+  const athleteIds=athleteRows.map(a=>a.id);
+  if(athleteIds.length){
+    const {data:existing,error:existingError}=await supabaseClient.from('workouts')
+      .select('id').eq('team_id',teamId).in('athlete_id',athleteIds);
+    if(existingError) throw existingError;
+    const activeIds=new Set(workoutRows.map(w=>w.id));
+    const staleIds=(existing||[]).map(w=>w.id).filter(id=>!activeIds.has(id));
+    if(staleIds.length){
+      const {error:itemDeleteError}=await supabaseClient.from('workout_items').delete().in('workout_id',staleIds);
+      if(itemDeleteError) throw itemDeleteError;
+      const {error:workoutDeleteError}=await supabaseClient.from('workouts').delete().eq('team_id',teamId).in('id',staleIds);
+      if(workoutDeleteError) throw workoutDeleteError;
+    }
+  }
 }
 
 async function persist(showMsg){
@@ -1634,7 +1649,7 @@ async function loadAthletePortal(){
         <h3>${safe(w.title)}</h3><div class="muted">${w.scheduled_for?'Data: '+safe(w.scheduled_for):'Treino atribuído'}</div>
         ${list.length?list.map(i=>`<div style="padding:12px 0;border-bottom:1px solid #ddd">
           <b>${safe(i.exercise_name)}</b>${String(i.notes||'').includes('[[PP_COMBO:')?'<div style="display:inline-block;margin:4px 0;padding:3px 8px;border-radius:6px;background:#fde8eb;color:#b91c1c;font-size:11px;font-weight:700">🔗 EXERCÍCIO COMBINADO</div>':''}<div>${i.sets?safe(i.sets)+' séries · ':''}${safe(i.reps)} ${i.load_text?'· '+safe(i.load_text):''}${i.rest_seconds?'· pausa '+safe(i.rest_seconds)+'s':''}</div>
-          ${i.notes?`<small>${safe(i.notes)}</small>`:''}
+          ${(i.notes||'').replace(/\\[\\[PP_COMBO:[^\\]]+\\]\\]/g,'').trim()?`<small>${safe((i.notes||'').replace(/\\[\\[PP_COMBO:[^\\]]+\\]\\]/g,'').trim())}</small>`:''}
           ${i.video_url?`<div style="margin-top:10px;background:#111;border-radius:10px;overflow:hidden"><video controls playsinline preload="metadata" style="display:block;width:100%;max-height:260px;background:#000" src="${safe(i.video_url)}"></video></div>`:'' }
         </div>`).join(''):'<p>Nenhum exercício adicionado.</p>'}
         ${w.notes?`<p>${safe(w.notes)}</p>`:''}</section>`;
@@ -1802,10 +1817,10 @@ function buildMonitoringCharts(rows){
   }).join('');
   return `<div class="profile-card"><h3>📈 Evolução do CMJ (cm)</h3><svg viewBox="0 0 640 290" role="img" aria-label="Gráfico de evolução dos saltos CMJ com valores e datas" style="width:100%;height:auto">
     ${[0,1,2,3,4].map(i=>{const yy=28+i*39.5;return `<line x1="50" y1="${yy}" x2="610" y2="${yy}" stroke="currentColor" opacity=".12"/><text x="42" y="${yy+4}" text-anchor="end" fill="currentColor" opacity=".65" font-size="10">${(max-i*range/4).toFixed(0)}</text>`;}).join('')}
-    <path d="${path(pre)}" fill="none" stroke="#58b8d5" stroke-width="3"/><path d="${path(post)}" fill="none" stroke="#57b88a" stroke-width="3"/>
-    ${points('jump_pre_cm','#58b8d5','pre')}${points('jump_post_cm','#57b88a','post')}
+    <path d="${path(pre)}" fill="none" stroke="#2583e8" stroke-width="3"/><path d="${path(post)}" fill="none" stroke="#e53945" stroke-width="3"/>
+    ${points('jump_pre_cm','#2583e8','pre')}${points('jump_post_cm','#e53945','post')}
     ${dates}
-    <text x="48" y="280" fill="#58b8d5" font-size="12">● Pré-sessão</text><text x="160" y="280" fill="#57b88a" font-size="12">● Pós-sessão</text>
+    <text x="48" y="280" fill="#2583e8" font-size="12">● Pré-sessão</text><text x="160" y="280" fill="#e53945" font-size="12">● Pós-sessão</text>
   </svg></div>`;
 }
 async function loadCoachMonitoringPanel(athleteId){
