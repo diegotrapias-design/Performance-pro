@@ -1680,6 +1680,108 @@ async function persist(showMsg){
 
 
 
+const ATHLETE_WORKOUT_SESSION_PREFIX='performance_pro_workout_session_v1';
+let athleteWorkoutClockInterval=null;
+function athleteWorkoutSessionKey(){
+  const athleteId=window.__athleteMonitoringId||'';
+  const workoutId=window.__activeAthleteWorkoutId||'';
+  const date=document.getElementById('athlete-monitor-date')?.value||performanceProLocalDateISO();
+  return ATHLETE_WORKOUT_SESSION_PREFIX+':'+athleteId+':'+workoutId+':'+date;
+}
+function readAthleteWorkoutSession(){
+  try{return JSON.parse(localStorage.getItem(athleteWorkoutSessionKey())||'null');}catch(e){return null;}
+}
+function writeAthleteWorkoutSession(session){
+  try{localStorage.setItem(athleteWorkoutSessionKey(),JSON.stringify(session));}catch(e){console.error('Não foi possível guardar a sessão localmente:',e);}
+}
+function athleteWorkoutElapsedMs(session){
+  if(!session)return 0;
+  return Math.max(0,Number(session.elapsedMs)||0)+(session.status==='running'&&session.resumedAt?Math.max(0,Date.now()-session.resumedAt):0);
+}
+function formatAthleteWorkoutClock(ms){
+  const total=Math.floor(ms/1000),h=Math.floor(total/3600),m=Math.floor((total%3600)/60),sec=total%60;
+  return [h,m,sec].map(n=>String(n).padStart(2,'0')).join(':');
+}
+function renderAthleteWorkoutSession(){
+  const session=readAthleteWorkoutSession();
+  const status=document.getElementById('athlete-session-status');
+  const clock=document.getElementById('athlete-session-clock');
+  const start=document.getElementById('athlete-session-start');
+  const pause=document.getElementById('athlete-session-pause');
+  const resume=document.getElementById('athlete-session-resume');
+  const finish=document.getElementById('athlete-session-finish');
+  if(!clock||!status)return;
+  const state=session?.status||'idle';
+  status.textContent=state==='running'?'TREINO EM ANDAMENTO':state==='paused'?'TREINO PAUSADO':state==='finished'?'TREINO FINALIZADO':'TREINO NÃO INICIADO';
+  clock.textContent=formatAthleteWorkoutClock(athleteWorkoutElapsedMs(session));
+  if(start)start.hidden=state!=='idle';
+  if(pause)pause.hidden=state!=='running';
+  if(resume)resume.hidden=state!=='paused';
+  if(finish)finish.hidden=!['running','paused'].includes(state);
+}
+function startAthleteWorkoutClock(){
+  if(athleteWorkoutClockInterval)clearInterval(athleteWorkoutClockInterval);
+  athleteWorkoutClockInterval=setInterval(renderAthleteWorkoutSession,1000);
+  renderAthleteWorkoutSession();
+}
+function startAthleteWorkoutSession(){
+  if(!window.__activeAthleteWorkoutId||!window.__athleteMonitoringId)return;
+  const session={status:'running',elapsedMs:0,resumedAt:Date.now(),startedAt:Date.now()};
+  writeAthleteWorkoutSession(session);
+  startAthleteWorkoutClock();
+}
+function pauseAthleteWorkoutSession(){
+  const session=readAthleteWorkoutSession();
+  if(!session||session.status!=='running')return;
+  session.elapsedMs=athleteWorkoutElapsedMs(session);
+  session.resumedAt=null;session.status='paused';
+  writeAthleteWorkoutSession(session);renderAthleteWorkoutSession();
+}
+function resumeAthleteWorkoutSession(){
+  const session=readAthleteWorkoutSession();
+  if(!session||session.status!=='paused')return;
+  session.status='running';session.resumedAt=Date.now();
+  writeAthleteWorkoutSession(session);startAthleteWorkoutClock();
+}
+async function finishAthleteWorkoutSession(){
+  const session=readAthleteWorkoutSession();
+  if(!session||!['running','paused'].includes(session.status))return;
+  const elapsed=athleteWorkoutElapsedMs(session);
+  const minutes=Math.max(1,Math.round(elapsed/60000));
+  const duration=document.getElementById('athlete-duration');
+  if(duration)duration.value=String(minutes);
+  const finish=document.getElementById('athlete-session-finish');
+  if(finish){finish.disabled=true;finish.textContent='SALVANDO…';}
+  try{
+    const saved=await saveAthleteProgress(window.__athleteMonitoringId,{quiet:true});
+    if(saved!==true)throw new Error('Não foi possível salvar a duração no monitoramento. Tente novamente.');
+    const date=document.getElementById('athlete-monitor-date')?.value;
+    const row=await findAthleteSessionRow(window.__athleteMonitoringId,date);
+    if(!row)throw new Error('Registro de monitoramento não encontrado após salvar.');
+    const ids=Array.isArray(row.completed_workout_ids)?row.completed_workout_ids:[];
+    const workoutId=window.__activeAthleteWorkoutId;
+    if(!ids.includes(workoutId)){
+      const result=await supabaseClient.from('monitoring_sessions').update({completed_workout_ids:[...ids,workoutId]}).eq('id',row.id);
+      if(result.error)throw result.error;
+    }
+    session.elapsedMs=elapsed;session.resumedAt=null;session.status='finished';session.finishedAt=Date.now();
+    writeAthleteWorkoutSession(session);
+    if(athleteWorkoutClockInterval){clearInterval(athleteWorkoutClockInterval);athleteWorkoutClockInterval=null;}
+    renderAthleteWorkoutSession();
+    const complete=document.getElementById('athlete-workout-complete');
+    if(complete){complete.textContent='Desmarcar treino como concluído';complete.classList.add('btn-primary');complete.classList.remove('btn-outline');}
+    const msg=document.getElementById('athlete-monitor-message');
+    if(msg)msg.textContent='Treino finalizado. Duração registrada: '+minutes+' min. Progresso enviado ao treinador.';
+  }catch(e){
+    console.error('Falha ao finalizar treino:',e);
+    if(finish){finish.disabled=false;finish.textContent='Finalizar treino';}
+    const msg=document.getElementById('athlete-monitor-message');
+    if(msg)msg.textContent=e.message||'Não foi possível finalizar o treino. Tente novamente.';
+  }finally{
+    if(finish&&finish.disabled){finish.disabled=false;finish.textContent='Finalizar treino';}
+  }
+}
+
 async function loadAthletePortal(){
   const app=document.getElementById('app');
   app.innerHTML='<div class="loading">Carregando sua área do atleta…</div>';
@@ -1721,8 +1823,17 @@ async function loadAthletePortal(){
           <div class="athlete-workout-date">${w.scheduled_for?'Data: '+safe(w.scheduled_for):'Treino atribuído'} · ${list.length} exercícios</div>
           <div id="athlete-monitor-form-slot" style="margin-top:16px"></div>
 
-          <button type="button" class="athlete-start-btn" onclick="this.textContent=this.dataset.started==='1'?'INICIAR TREINO':'TREINO INICIADO';this.dataset.started=this.dataset.started==='1'?'0':'1';this.classList.toggle('started',this.dataset.started==='1')">INICIAR TREINO</button>
-          <div class="athlete-view-hint">Você está no modo visualização. Aperte INICIAR para começar seu treino.</div>
+          <div id="athlete-session-timer-panel" style="margin-top:16px;padding:14px;border:1px solid rgba(201,37,50,.45);border-radius:12px;background:#17171b">
+            <div id="athlete-session-status" style="font-size:11px;font-weight:800;letter-spacing:1px;color:#c9cbd0">TREINO NÃO INICIADO</div>
+            <div id="athlete-session-clock" style="font-size:34px;font-weight:800;letter-spacing:2px;margin:6px 0 12px;font-variant-numeric:tabular-nums">00:00:00</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button type="button" class="athlete-start-btn" id="athlete-session-start" onclick="startAthleteWorkoutSession()">INICIAR TREINO</button>
+              <button type="button" class="btn btn-outline" id="athlete-session-pause" onclick="pauseAthleteWorkoutSession()" hidden>Pausar</button>
+              <button type="button" class="btn btn-outline" id="athlete-session-resume" onclick="resumeAthleteWorkoutSession()" hidden>Retomar</button>
+              <button type="button" class="btn btn-primary" id="athlete-session-finish" onclick="finishAthleteWorkoutSession()" hidden>Finalizar treino</button>
+            </div>
+            <div class="athlete-view-hint" style="margin-top:10px">O tempo conta somente enquanto o treino estiver em execução. Ao finalizar, a duração será registrada automaticamente.</div>
+          </div>
         </div>
         <div class="athlete-exercise-list">
           ${list.length?list.map((i,index)=>`<article class="athlete-exercise-card">
@@ -1868,6 +1979,7 @@ function showAthleteWorkout(workoutId){
   if(monitor && slot) slot.appendChild(monitor);
   showAthleteSection('workout-detail');
   loadAthleteProgressForWorkout(window.__athleteMonitoringId,workoutId);
+  startAthleteWorkoutClock();
 }
 function selectAthleteScale(type,value){
   if(!window.__athleteScale) window.__athleteScale={tqr:null,pse:null};
@@ -1968,9 +2080,11 @@ async function saveAthleteProgress(athleteId,options={}){
       : await supabaseClient.from('monitoring_sessions').insert({athlete_id:athleteId,session_date:date,...values});
     if(result.error) throw result.error;
     if(msg)msg.textContent=options.quiet?'Progresso salvo automaticamente.':'Progresso salvo. Você pode continuar o treino depois; os dados já estão disponíveis para o treinador.';
+    return true;
   }catch(e){
     console.error('Erro ao salvar progresso do atleta:',e);
     if(msg)msg.textContent='Não foi possível salvar: '+(e.message||'erro de conexão');
+    return false;
   }finally{if(btn&&!options.quiet){btn.disabled=false;btn.textContent='Salvar progresso';}}
 }
 
