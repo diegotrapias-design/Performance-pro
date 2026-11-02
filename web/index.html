@@ -1784,17 +1784,28 @@ function buildMonitoringCharts(rows){
   if(!valid.length)return '<div class="empty-state">Os gráficos CMJ aparecerão quando houver avaliações pré e/ou pós-sessão.</div>';
   const values=valid.flatMap(r=>[r.jump_pre_cm,r.jump_post_cm]).filter(v=>v!=null).map(Number);
   const min=Math.floor(Math.min(...values)-2),max=Math.ceil(Math.max(...values)+2),range=Math.max(1,max-min);
-  const x=i=>48+(i*(560/Math.max(1,valid.length-1)));
-  const y=v=>18+(190-(Number(v)-min)/range*170);
-  const series=(field,color)=>valid.map((r,i)=>r[field]==null?null:`${x(i)},${y(r[field])}`).filter(Boolean);
+  const x=i=>58+(i*(540/Math.max(1,valid.length-1)));
+  const y=v=>28+(178-(Number(v)-min)/range*158);
+  const series=field=>valid.map((r,i)=>r[field]==null?null:`${x(i)},${y(r[field])}`).filter(Boolean);
   const path=pts=>pts.length>1?'M '+pts.join(' L '):'';
-  const pre=series('jump_pre_cm','#58b8d5'),post=series('jump_post_cm','#57b88a');
-  const circles=(field,color)=>valid.map((r,i)=>r[field]==null?'':`<circle cx="${x(i)}" cy="${y(r[field])}" r="5" fill="${color}"><title>${escapeHtml(r.session_date)}: ${Number(r[field]).toFixed(1)} cm</title></circle>`).join('');
-  return `<div class="profile-card"><h3>📈 Evolução do CMJ (cm)</h3><svg viewBox="0 0 640 250" role="img" aria-label="Gráfico de evolução dos saltos CMJ" style="width:100%;height:auto">
-    ${[0,1,2,3,4].map(i=>{const yy=18+i*42;return `<line x1="42" y1="${yy}" x2="610" y2="${yy}" stroke="currentColor" opacity=".12"/><text x="34" y="${yy+4}" text-anchor="end" fill="currentColor" opacity=".65" font-size="10">${(max-i*range/4).toFixed(0)}</text>`;}).join('')}
+  const pre=series('jump_pre_cm'),post=series('jump_post_cm');
+  const points=(field,color,side)=>valid.map((r,i)=>{
+    if(r[field]==null)return '';
+    const px=x(i),py=y(r[field]),value=Number(r[field]).toFixed(1);
+    const tx=px+(side==='pre'?-8:8),anchor=side==='pre'?'end':'start';
+    return `<circle cx="${px}" cy="${py}" r="5" fill="${color}"><title>${escapeHtml(r.session_date)}: ${value} cm</title></circle><text x="${tx}" y="${py-9}" text-anchor="${anchor}" fill="currentColor" font-size="10" font-weight="700">${value}</text>`;
+  }).join('');
+  const dates=valid.map((r,i)=>{
+    const d=String(r.session_date||'').slice(0,10).split('-');
+    const label=d.length===3?`${d[2]}/${d[1]}`:String(r.session_date||'');
+    return `<text x="${x(i)}" y="232" transform="rotate(-35 ${x(i)} 232)" text-anchor="end" fill="currentColor" opacity=".75" font-size="10">${escapeHtml(label)}</text>`;
+  }).join('');
+  return `<div class="profile-card"><h3>📈 Evolução do CMJ (cm)</h3><svg viewBox="0 0 640 290" role="img" aria-label="Gráfico de evolução dos saltos CMJ com valores e datas" style="width:100%;height:auto">
+    ${[0,1,2,3,4].map(i=>{const yy=28+i*39.5;return `<line x1="50" y1="${yy}" x2="610" y2="${yy}" stroke="currentColor" opacity=".12"/><text x="42" y="${yy+4}" text-anchor="end" fill="currentColor" opacity=".65" font-size="10">${(max-i*range/4).toFixed(0)}</text>`;}).join('')}
     <path d="${path(pre)}" fill="none" stroke="#58b8d5" stroke-width="3"/><path d="${path(post)}" fill="none" stroke="#57b88a" stroke-width="3"/>
-    ${circles('jump_pre_cm','#58b8d5')}${circles('jump_post_cm','#57b88a')}
-    <text x="48" y="238" fill="#58b8d5" font-size="12">● Pré-sessão</text><text x="160" y="238" fill="#57b88a" font-size="12">● Pós-sessão</text>
+    ${points('jump_pre_cm','#58b8d5','pre')}${points('jump_post_cm','#57b88a','post')}
+    ${dates}
+    <text x="48" y="280" fill="#58b8d5" font-size="12">● Pré-sessão</text><text x="160" y="280" fill="#57b88a" font-size="12">● Pós-sessão</text>
   </svg></div>`;
 }
 async function loadCoachMonitoringPanel(athleteId){
