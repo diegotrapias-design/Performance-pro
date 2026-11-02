@@ -1770,13 +1770,23 @@ async function submitAthleteMonitoring(athleteId){
   if(btn){btn.disabled=true;btn.textContent='SALVANDO…';}
   msg.textContent='Enviando respostas e vídeos…';
   try{
-    const prePath=await uploadJumpAssessmentVideo(document.getElementById('athlete-video-pre').files[0],athleteId,'pre');
-    const postPath=await uploadJumpAssessmentVideo(document.getElementById('athlete-video-post').files[0],athleteId,'post');
-    const payload={athlete_id:athleteId,session_date:date,psr:tqr,pse,duration_min:duration,
-      jump_pre_cm:pre===''?null:Number(pre),jump_post_cm:post===''?null:Number(post),
-      jump_video_pre_path:prePath,jump_video_post_path:postPath,created_by:currentUser.id};
-    const {error}=await supabaseClient.from('monitoring_sessions').insert(payload);
-    if(error) throw error;
+    const preVideo=document.getElementById('athlete-video-pre');
+    const postVideo=document.getElementById('athlete-video-post');
+    const prePath=preVideo&&preVideo.files[0]?await uploadJumpAssessmentVideo(preVideo.files[0],athleteId,'pre'):null;
+    const postPath=postVideo&&postVideo.files[0]?await uploadJumpAssessmentVideo(postVideo.files[0],athleteId,'post'):null;
+    const values={psr:tqr,pse,duration_min:duration,created_by:currentUser.id};
+    if(pre!=='') values.jump_pre_cm=Number(pre);
+    if(post!=='') values.jump_post_cm=Number(post);
+    if(prePath) values.jump_video_pre_path=prePath;
+    if(postPath) values.jump_video_post_path=postPath;
+    const {data:existing,error:findError}=await supabaseClient.from('monitoring_sessions')
+      .select('id').eq('athlete_id',athleteId).eq('session_date',date)
+      .order('created_at',{ascending:false}).limit(1).maybeSingle();
+    if(findError) throw findError;
+    const result=existing
+      ? await supabaseClient.from('monitoring_sessions').update(values).eq('id',existing.id)
+      : await supabaseClient.from('monitoring_sessions').insert({athlete_id:athleteId,session_date:date,...values});
+    if(result.error) throw result.error;
     msg.textContent='Monitoramento salvo. Seu treinador já pode visualizar os dados.';
     document.getElementById('athlete-duration').value='';
     document.getElementById('athlete-jump-pre').value='';
@@ -3813,7 +3823,7 @@ boot();
       var list = (typeof athletes !== 'undefined' && Array.isArray(athletes)) ? athletes : [];
       var found = list.find(function(a){ return a.id === selectedId; });
       athleteId = selectedId;
-      athlete = found ? found.name : '';
+      athlete = found ? found.name : (saltoReturnToAthletePortal ? saltoAthleteName : '');
     } else {
       athlete = athleteInput.value.trim();
     }
