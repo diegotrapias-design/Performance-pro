@@ -3576,7 +3576,16 @@ async function createAthleteAccount(){
   const btn = buttons.find(b => b.textContent.includes('Gerar acesso'));
   if(btn){ btn.disabled = true; btn.textContent = 'ENVIANDO CONVITE...'; }
   try{
+    const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+    if(sessionError) throw new Error('Não foi possível validar sua sessão: ' + sessionError.message);
+    let accessToken = sessionData.session?.access_token;
+    if(!accessToken){
+      const { data: refreshed, error: refreshError } = await supabaseClient.auth.refreshSession();
+      if(refreshError || !refreshed.session?.access_token) throw new Error('Sua sessão expirou. Saia e entre novamente no Performance Pro.');
+      accessToken = refreshed.session.access_token;
+    }
     const { data, error } = await supabaseClient.functions.invoke('invite-athlete', {
+      headers: { Authorization: 'Bearer ' + accessToken },
       body: { full_name: athlete.name.trim(), email, sport: athlete.sport || '' }
     });
     if(error) throw error;
