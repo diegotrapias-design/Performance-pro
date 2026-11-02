@@ -3172,7 +3172,7 @@ let libraryMultiSelect=false;
 let selectedLibraryIds=[];
 function toggleLibraryMultiSelect(){libraryMultiSelect=!libraryMultiSelect;selectedLibraryIds=[];renderLibraryList(document.getElementById('library-search').value);}
 function toggleLibraryId(id,checked){if(checked){if(!selectedLibraryIds.includes(id))selectedLibraryIds.push(id);}else selectedLibraryIds=selectedLibraryIds.filter(x=>x!==id);const c=document.getElementById('library-multi-count');if(c)c.textContent=selectedLibraryIds.length+' selecionados';}
-function addSelectedLibraryIds(){const d=draft.trainingPlan.days.find(x=>x.id===libraryTargetDayId);if(!d)return;selectedLibraryIds.forEach(id=>{const lib=exerciseLibrary.find(x=>x.id===id);if(lib){const ex=newExercise();ex.name=lib.name;ex.video=lib.video||'';d.exercises.push(ex);}});const n=selectedLibraryIds.length;selectedLibraryIds=[];libraryMultiSelect=false;closeExerciseLibrary();renderTreinoEditPanel();showToast(n+' exercícios adicionados.','ok');}
+function addSelectedLibraryIds(){const d=draft.trainingPlan.days.find(x=>x.id===libraryTargetDayId);if(!d)return;selectedLibraryIds.forEach(id=>{const lib=exerciseLibrary.find(x=>x.id===id);if(lib){const ex=newExercise();ex.name=lib.name;ex.video=lib.video||'';ex.obs=lib.description||'';d.exercises.push(ex);}});const n=selectedLibraryIds.length;selectedLibraryIds=[];libraryMultiSelect=false;closeExerciseLibrary();renderTreinoEditPanel();showToast(n+' exercícios adicionados.','ok');}
 function renderLibraryList(filter){
   const q=(filter||'').toLowerCase();
   const group=document.getElementById('library-group-filter').value;
@@ -3180,7 +3180,7 @@ function renderLibraryList(filter){
   const filtered=exerciseLibrary.filter(ex=>(!q||(ex.name||'').toLowerCase().includes(q))&&(!group||ex.group===group)&&(!category||exerciseCategory(ex)===category)&&(libraryPickerTab!=='favorites'||ex.favorite));
   const container=document.getElementById('library-list');
   const header='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><button class="btn btn-outline btn-sm" onclick="toggleLibraryMultiSelect()">'+(libraryMultiSelect?'Cancelar seleção':'Selecionar vários')+'</button>'+(libraryMultiSelect?'<span id="library-multi-count">'+selectedLibraryIds.length+' selecionados</span><button class="btn btn-primary btn-sm" onclick="addSelectedLibraryIds()">Adicionar selecionados</button>':'')+'</div>';
-  container.innerHTML=header+(filtered.length?filtered.map(ex=>libraryMultiSelect?'<div class="library-exercise-card"><label style="display:flex;align-items:center;gap:10px;width:100%"><input type="checkbox" '+(selectedLibraryIds.includes(ex.id)?'checked':'')+' onchange="toggleLibraryId(\''+ex.id+'\',this.checked)"><span><b>'+escapeHtml(ex.name)+'</b><small style="display:block">'+escapeHtml(ex.group||'Sem grupo')+'</small></span></label></div>':'<div class="library-exercise-card" onclick="addFromLibrary(\''+ex.id+'\')"><div><div class="library-exercise-name">'+(ex.favorite?'⭐ ':'')+escapeHtml(ex.name)+'</div><div class="library-exercise-meta">'+escapeHtml(ex.group||'Sem grupo')+' · '+escapeHtml(exerciseCategory(ex))+(ex.video?' · Vídeo':'')+'</div></div><span class="library-exercise-add">+</span></div>').join(''):'<div class="empty-state" style="padding:24px 0">Nenhum exercício encontrado com esses filtros.</div>');
+  container.innerHTML=header+(filtered.length?filtered.map(ex=>libraryMultiSelect?'<div class="library-exercise-card"><label style="display:flex;align-items:center;gap:10px;width:100%"><input type="checkbox" '+(selectedLibraryIds.includes(ex.id)?'checked':'')+' onchange="toggleLibraryId(\''+ex.id+'\',this.checked)"><span><b>'+escapeHtml(ex.name)+'</b><small style="display:block">'+escapeHtml(ex.group||'Sem grupo')+'</small></span></label></div>':'<div class="library-exercise-card" onclick="addFromLibrary(\''+ex.id+'\')"><div><div class="library-exercise-name">'+(ex.favorite?'⭐ ':'')+escapeHtml(ex.name)+'</div><div class="library-exercise-meta">'+escapeHtml(ex.group||'Sem grupo')+' · '+escapeHtml(exerciseCategory(ex))+(ex.video?' · Vídeo':(ex.description?' · Descrição':''))+'</div>'+(ex.description?'<div class="library-exercise-meta" style="margin-top:6px;line-height:1.4">'+escapeHtml(ex.description)+'</div>':'')+'</div><span class="library-exercise-add">+</span></div>').join(''):'<div class="empty-state" style="padding:24px 0">Nenhum exercício encontrado com esses filtros.</div>');
 }
 function addFromLibrary(libExId){
   const libEx = exerciseLibrary.find(x => x.id === libExId);
@@ -3193,12 +3193,14 @@ function addFromLibrary(libExId){
     if(ex){
       ex.name = libEx.name;
       if(libEx.video) ex.video = libEx.video;
+      if(libEx.description) ex.obs = libEx.description;
       showToast(`Substituído por ${libEx.name}.`, 'ok');
     }
   }else{
     const ex = newExercise();
     ex.name = libEx.name;
     ex.video = libEx.video || '';
+    ex.obs = libEx.description || '';
     d.exercises.push(ex);
     showToast(libEx.name + ' adicionado.', 'ok');
   }
@@ -3297,7 +3299,7 @@ function renderLibraryScreen(filter){
             <button class="lib-fav-btn ${ex.favorite?'active':''}" onclick="toggleLibraryFavorite('${ex.id}')" title="Favoritar">⭐</button>
             <div class="lib-manage-info">
               <div class="lib-manage-name">${escapeHtml(ex.name)}</div>
-              <div class="lib-manage-meta">${ex.video ? 'Vídeo anexado' : 'Sem vídeo'}</div>
+              <div class="lib-manage-meta">${ex.video ? 'Vídeo anexado' : (ex.description ? 'Descrição disponível' : 'Sem vídeo')}</div>
             </div>
             <label class="video-upload-btn" title="Enviar vídeo da galeria">
               🎥
