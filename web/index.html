@@ -1773,7 +1773,7 @@ async function loadAthletePortal(){
           <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin:10px 0 18px" id="athlete-tqr-options">${Array.from({length:15},(_,i)=>i+6).map(n=>`<button type="button" class="btn btn-outline" data-tqr="${n}" onclick="selectAthleteScale('tqr',${n})" style="padding:10px 2px">${n}</button>`).join('')}</div>
           <label class="field-label">PSE — esforço (0–10)</label><p class="muted">Como foi o esforço desta sessão?</p>
           <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;margin:10px 0 18px" id="athlete-pse-options">${Array.from({length:11},(_,i)=>i).map(n=>`<button type="button" class="btn btn-outline" data-pse="${n}" onclick="selectAthleteScale('pse',${n})" style="padding:10px 2px">${n}</button>`).join('')}</div>
-          <label class="field-label" for="athlete-duration">Duração real do treino (minutos)</label><input id="athlete-duration" type="number" min="1" max="600" inputmode="numeric" placeholder="Ex.: 60" style="width:100%;margin:6px 0 18px">
+          <label class="field-label" for="athlete-duration">Duração real do treino (minutos)</label><input id="athlete-duration" type="number" min="1" max="600" inputmode="numeric" placeholder="Ex.: 60" onchange="saveAthleteProgress('${athlete.id}',{quiet:true})" style="width:100%;margin:6px 0 18px">
           <h3>🦘 Avaliação CMJ — salto vertical</h3><p class="muted">Faça a avaliação por vídeo antes e depois do treino. O aplicativo calcula a altura do salto pela marcação dos quadros.</p>
           <div class="field-grid" style="grid-template-columns:1fr 1fr;gap:10px"><button class="btn btn-primary" type="button" onclick="goSaltoForAthlete('${athlete.id}','pre','${safe(athlete.full_name)}')">🎥 Avaliar salto pré-treino</button><button class="btn btn-outline" type="button" onclick="goSaltoForAthlete('${athlete.id}','post','${safe(athlete.full_name)}')">🎥 Avaliar salto pós-treino</button></div>
           <div class="muted" style="margin-top:10px">Os resultados serão registrados no gráfico de evolução do salto.</div><p class="muted" style="margin-top:10px">A carga da sessão é calculada automaticamente: PSE × duração.</p>
@@ -1919,7 +1919,7 @@ async function saveAthleteProgress(athleteId,options={}){
   }
   if(pre!=='') values.jump_pre_cm=Number(pre);
   if(post!=='') values.jump_post_cm=Number(post);
-  if(Object.keys(values).length===1){if(msg&&!options.quiet)msg.textContent='Selecione ou registre pelo menos um dado para salvar.';return;}
+  // Permite criar o registro mesmo quando o atleta marca o treino como concluído sem outros campos.
   if(btn&&!options.quiet){btn.disabled=true;btn.textContent='SALVANDO…';}
   try{
     const existing=await findAthleteSessionRow(athleteId,date);
@@ -1927,10 +1927,10 @@ async function saveAthleteProgress(athleteId,options={}){
       ? await supabaseClient.from('monitoring_sessions').update(values).eq('id',existing.id)
       : await supabaseClient.from('monitoring_sessions').insert({athlete_id:athleteId,session_date:date,...values});
     if(result.error) throw result.error;
-    if(msg&&!options.quiet)msg.textContent='Progresso salvo. Você pode continuar o treino depois; os dados já estão disponíveis para o treinador.';
+    if(msg)msg.textContent=options.quiet?'Progresso salvo automaticamente.':'Progresso salvo. Você pode continuar o treino depois; os dados já estão disponíveis para o treinador.';
   }catch(e){
     console.error('Erro ao salvar progresso do atleta:',e);
-    if(msg&&!options.quiet)msg.textContent='Não foi possível salvar: '+(e.message||'erro de conexão');
+    if(msg)msg.textContent='Não foi possível salvar: '+(e.message||'erro de conexão');
   }finally{if(btn&&!options.quiet){btn.disabled=false;btn.textContent='Salvar progresso';}}
 }
 
