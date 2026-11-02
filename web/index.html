@@ -1643,51 +1643,68 @@ async function loadAthletePortal(){
       .eq('athlete_id',athlete.id).order('session_date',{ascending:false}).limit(30);
     if(monitorError) throw monitorError;
     const safe=x=>escapeHtml(x==null?'':String(x));
-    const workoutHtml=(workouts||[]).length ? workouts.map(w=>{
+    const allWorkouts=workouts||[];
+    const isAerobic=w=>/aer[oó]b|cardio|corrida|bike|ciclismo|esteira/i.test((w.title||'')+' '+(w.notes||''));
+    const routineWorkouts=allWorkouts.filter(w=>!isAerobic(w));
+    const aerobicWorkouts=allWorkouts.filter(isAerobic);
+    const workoutDetails=w=>{
       const list=items.filter(i=>i.workout_id===w.id);
-      return `<section class="panel" style="margin:14px 0;padding:18px">
+      return `<section class="panel" style="margin:12px 0;padding:16px">
         <h3>${safe(w.title)}</h3><div class="muted">${w.scheduled_for?'Data: '+safe(w.scheduled_for):'Treino atribuído'}</div>
-        ${list.length?list.map(i=>`<div style="padding:12px 0;border-bottom:1px solid #ddd">
-          <b>${safe(i.exercise_name)}</b>${String(i.notes||'').includes('[[PP_COMBO:')?'<div style="display:inline-block;margin:4px 0;padding:3px 8px;border-radius:6px;background:#fde8eb;color:#b91c1c;font-size:11px;font-weight:700">🔗 EXERCÍCIO COMBINADO</div>':''}<div>${i.sets?safe(i.sets)+' séries · ':''}${safe(i.reps)} ${i.load_text?'· '+safe(i.load_text):''}${i.rest_seconds?'· pausa '+safe(i.rest_seconds)+'s':''}</div>
-          ${(i.notes||'').replace(/\\[\\[PP_COMBO:[^\\]]+\\]\\]/g,'').trim()?`<small>${safe((i.notes||'').replace(/\\[\\[PP_COMBO:[^\\]]+\\]\\]/g,'').trim())}</small>`:''}
-          ${i.video_url?`<div style="margin-top:10px;background:#111;border-radius:10px;overflow:hidden"><video controls playsinline preload="metadata" style="display:block;width:100%;max-height:260px;background:#000" src="${safe(i.video_url)}"></video></div>`:'' }
+        ${list.length?list.map(i=>`<div style="padding:12px 0;border-bottom:1px solid var(--border,#ddd)">
+          <b>${safe(i.exercise_name)}</b>${String(i.notes||'').includes('[[PP_COMBO:')?'<div style="display:inline-block;margin:4px 0;padding:3px 8px;border-radius:6px;background:#fde8eb;color:#b91c1c;font-size:11px;font-weight:700">🔗 EXERCÍCIO COMBINADO</div>':''}
+          <div>${i.sets?safe(i.sets)+' séries · ':''}${safe(i.reps)} ${i.load_text?'· '+safe(i.load_text):''}${i.rest_seconds?'· pausa '+safe(i.rest_seconds)+'s':''}</div>
+          ${(i.notes||'').replace(/\\[\\[PP_COMBO:[^\\]]+\\]\\]/g,'').trim()?'<small>'+safe((i.notes||'').replace(/\\[\\[PP_COMBO:[^\\]]+\\]\\]/g,'').trim())+'</small>':''}
+          ${i.video_url?`<div style="margin-top:10px;background:#111;border-radius:10px;overflow:hidden"><video controls playsinline preload="metadata" style="display:block;width:100%;max-height:260px;background:#000" src="${safe(i.video_url)}"></video></div>`:''}
         </div>`).join(''):'<p>Nenhum exercício adicionado.</p>'}
-        ${w.notes?`<p>${safe(w.notes)}</p>`:''}</section>`;
-    }).join(''):'<div class="empty-state">Ainda não há treinos atribuídos a você.</div>';
-    app.innerHTML=`<div class="home-hero"><div class="home-hero-title">Olá, ${safe(athlete.full_name)}</div><div class="home-hero-sub">Sua área individual de acompanhamento</div></div>
-      <section class="panel" style="padding:18px"><h3>Meu cadastro</h3><p>${safe(athlete.sport)} ${athlete.category?'· '+safe(athlete.category):''}</p></section>
-      <h2 style="margin-top:24px">Meus treinos</h2>${workoutHtml}
-      <section class="panel" style="padding:18px;margin-top:24px" id="athlete-monitor-form">
-        <h2>Registrar sessão</h2>
-        <p class="muted">Responda ao terminar cada sessão. Os dados serão enviados automaticamente ao treinador.</p>
-        <label class="field-label" for="athlete-monitor-date">Data da sessão</label>
-        <input id="athlete-monitor-date" type="date" value="${performanceProLocalDateISO()}" style="width:100%;margin:6px 0 16px">
-        <label class="field-label">TQR — recuperação (6–20)</label>
-        <p class="muted">Como foi sua recuperação até esta sessão?</p>
-        <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin:10px 0 18px" id="athlete-tqr-options">
-          ${Array.from({length:15},(_,i)=>i+6).map(n=>`<button type="button" class="btn btn-outline" data-tqr="${n}" onclick="selectAthleteScale('tqr',${n})" style="padding:10px 2px">${n}</button>`).join('')}
+        ${w.notes?'<p>'+safe(w.notes)+'</p>':''}</section>`;
+    };
+    const workoutCards=(list,empty)=>list.length?list.map(w=>`<button type="button" class="panel" onclick="showAthleteWorkout('${w.id}')" style="display:block;width:100%;text-align:left;margin:10px 0;padding:16px;border:1px solid var(--border,#ddd);color:inherit;background:var(--panel,#fff);cursor:pointer"><b>${safe(w.title)}</b><div class="muted" style="margin-top:6px">${w.scheduled_for?'Data: '+safe(w.scheduled_for):'Treino atribuído'} · ${items.filter(i=>i.workout_id===w.id).length} exercícios</div><div style="text-align:right;color:var(--red,#c92532);font-weight:700;margin-top:8px">Ver treino →</div></button>`).join(''): `<div class="empty-state">${empty}</div>`;
+    const tile=(icon,label,section,sub='')=>`<button type="button" onclick="showAthleteSection('${section}')" style="min-height:92px;border:1px solid rgba(255,255,255,.12);border-radius:10px;background:linear-gradient(145deg,#29292f,#19191d);color:#fff;padding:14px 10px;text-align:left;display:flex;align-items:center;gap:12px"><span style="width:42px;height:42px;flex:0 0 42px;border-radius:50%;background:#c92532;display:grid;place-items:center;font-size:20px">${icon}</span><span><b style="display:block;font-size:14px">${label}</b><small style="color:#c9cbd0">${sub}</small></span></button>`;
+    const backButton='<button type="button" class="btn btn-outline btn-sm" onclick="showAthleteSection(\'home\')" style="margin:8px 0 16px">← Voltar ao menu</button>';
+    app.innerHTML=`<div class="home-hero"><div class="home-hero-title">Olá, ${safe(athlete.full_name)}</div><div class="home-hero-sub">${safe(athlete.sport)} ${athlete.category?'· '+safe(athlete.category):''} · Sua área individual</div></div>
+      <section id="athlete-home" style="padding:8px 0 24px">
+        <div class="panel" style="padding:16px;margin:12px 0"><div style="font-weight:700">Bem-vindo à sua área de atleta</div><div class="muted" style="margin-top:4px">Acesse seus treinos e acompanhe sua evolução.</div></div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+          ${tile('🏋️','Treinos','trainings','Suas rotinas')}
+          ${tile('⚡','Treinos Extras','extras','Atividades adicionais')}
+          ${tile('📋','Avaliações','assessments','Registros e monitoramento')}
+          ${tile('📈','Meu Progresso','progress','Gráficos de evolução')}
+          ${tile('＄','Faturas','invoices','Informações financeiras')}
+          ${tile('📁','Arquivos','files','Materiais e documentos')}
         </div>
-        <label class="field-label">PSE — esforço (0–10)</label>
-        <p class="muted">Como foi o esforço desta sessão?</p>
-        <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;margin:10px 0 18px" id="athlete-pse-options">
-          ${Array.from({length:11},(_,i)=>i).map(n=>`<button type="button" class="btn btn-outline" data-pse="${n}" onclick="selectAthleteScale('pse',${n})" style="padding:10px 2px">${n}</button>`).join('')}
-        </div>
-        <label class="field-label" for="athlete-duration">Duração real do treino (minutos)</label>
-        <input id="athlete-duration" type="number" min="1" max="600" inputmode="numeric" placeholder="Ex.: 60" style="width:100%;margin:6px 0 18px">
-        <h3>🦘 Avaliação CMJ — salto vertical</h3>
-        <p class="muted">Faça a avaliação por vídeo antes e depois do treino. O aplicativo calcula a altura do salto pela marcação dos quadros.</p>
-        <div class="field-grid" style="grid-template-columns:1fr 1fr;gap:10px">
-          <button class="btn btn-primary" type="button" onclick="goSaltoForAthlete('${athlete.id}','pre','${safe(athlete.full_name)}')">🎥 Avaliar salto pré-treino</button>
-          <button class="btn btn-outline" type="button" onclick="goSaltoForAthlete('${athlete.id}','post','${safe(athlete.full_name)}')">🎥 Avaliar salto pós-treino</button>
-        </div>
-        <div class="muted" style="margin-top:10px">Os resultados serão registrados no gráfico de evolução do salto.</div>
-        <p class="muted" style="margin-top:10px">A carga da sessão é calculada automaticamente: PSE × duração.</p>
-        <button class="btn btn-primary" id="athlete-monitor-submit" type="button" onclick="submitAthleteMonitoring('${athlete.id}')">Salvar monitoramento</button>
-        <p id="athlete-monitor-message" class="muted" role="status" style="margin-top:10px"></p>
       </section>
-      <section class="panel" style="padding:18px;margin-top:24px">${buildMonitoringCharts((monitoring||[]).slice().reverse())}</section>`;
+      <section id="athlete-trainings" hidden>${backButton}<h2>Treinos</h2>
+        <div style="display:flex;gap:8px;margin:12px 0"><button class="btn btn-primary" id="athlete-tab-routines" onclick="setAthleteWorkoutTab('routines')">Rotinas de Treinos</button><button class="btn btn-outline" id="athlete-tab-aerobic" onclick="setAthleteWorkoutTab('aerobic')">Aeróbico</button></div>
+        <div id="athlete-routines-list">${workoutCards(routineWorkouts,'Ainda não há rotinas de treino atribuídas.')}</div>
+        <div id="athlete-aerobic-list" hidden>${workoutCards(aerobicWorkouts,'Ainda não há treinos aeróbicos atribuídos.')}</div>
+      </section>
+      <section id="athlete-extras" hidden>${backButton}<h2>Treinos Extras</h2>${workoutCards(allWorkouts.filter(w=>/extra|complementar/i.test((w.title||'')+' '+(w.notes||''))),'Nenhum treino extra foi identificado nos treinos atribuídos.')}</section>
+      <section id="athlete-workout-detail" hidden>${backButton}<div id="athlete-workout-detail-content"></div></section>
+      <section id="athlete-assessments" hidden>${backButton}
+        <section class="panel" style="padding:18px;margin-top:8px" id="athlete-monitor-form">
+          <h2>Registrar sessão</h2><p class="muted">Responda ao terminar cada sessão. Os dados serão enviados automaticamente ao treinador.</p>
+          <label class="field-label" for="athlete-monitor-date">Data da sessão</label><input id="athlete-monitor-date" type="date" value="${performanceProLocalDateISO()}" style="width:100%;margin:6px 0 16px">
+          <label class="field-label">TQR — recuperação (6–20)</label><p class="muted">Como foi sua recuperação até esta sessão?</p>
+          <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin:10px 0 18px" id="athlete-tqr-options">${Array.from({length:15},(_,i)=>i+6).map(n=>`<button type="button" class="btn btn-outline" data-tqr="${n}" onclick="selectAthleteScale('tqr',${n})" style="padding:10px 2px">${n}</button>`).join('')}</div>
+          <label class="field-label">PSE — esforço (0–10)</label><p class="muted">Como foi o esforço desta sessão?</p>
+          <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;margin:10px 0 18px" id="athlete-pse-options">${Array.from({length:11},(_,i)=>i).map(n=>`<button type="button" class="btn btn-outline" data-pse="${n}" onclick="selectAthleteScale('pse',${n})" style="padding:10px 2px">${n}</button>`).join('')}</div>
+          <label class="field-label" for="athlete-duration">Duração real do treino (minutos)</label><input id="athlete-duration" type="number" min="1" max="600" inputmode="numeric" placeholder="Ex.: 60" style="width:100%;margin:6px 0 18px">
+          <h3>🦘 Avaliação CMJ — salto vertical</h3><p class="muted">Faça a avaliação por vídeo antes e depois do treino. O aplicativo calcula a altura do salto pela marcação dos quadros.</p>
+          <div class="field-grid" style="grid-template-columns:1fr 1fr;gap:10px"><button class="btn btn-primary" type="button" onclick="goSaltoForAthlete('${athlete.id}','pre','${safe(athlete.full_name)}')">🎥 Avaliar salto pré-treino</button><button class="btn btn-outline" type="button" onclick="goSaltoForAthlete('${athlete.id}','post','${safe(athlete.full_name)}')">🎥 Avaliar salto pós-treino</button></div>
+          <div class="muted" style="margin-top:10px">Os resultados serão registrados no gráfico de evolução do salto.</div><p class="muted" style="margin-top:10px">A carga da sessão é calculada automaticamente: PSE × duração.</p>
+          <button class="btn btn-primary" id="athlete-monitor-submit" type="button" onclick="submitAthleteMonitoring('${athlete.id}')">Salvar monitoramento</button><p id="athlete-monitor-message" class="muted" role="status" style="margin-top:10px"></p>
+        </section>
+      </section>
+      <section id="athlete-progress" hidden>${backButton}<section class="panel" style="padding:18px;margin-top:8px">${buildMonitoringCharts((monitoring||[]).slice().reverse())}</section></section>
+      <section id="athlete-invoices" hidden>${backButton}<h2>Faturas</h2><div class="empty-state">Não há faturas disponíveis no seu acesso.</div></section>
+      <section id="athlete-files" hidden>${backButton}<h2>Arquivos</h2><div class="empty-state">Não há arquivos disponibilizados pelo treinador.</div></section>`;
+    window.__athleteWorkouts=allWorkouts;
+    window.__athleteWorkoutHtmlById=Object.fromEntries(allWorkouts.map(w=>[w.id,workoutDetails(w)]));
     window.__athleteMonitoringId=athlete.id;
     window.__athleteScale={tqr:null,pse:null};
+    showAthleteSection('home');
+    if(typeof loadAthleteMonitoringMetrics==='function') loadAthleteMonitoringMetrics(athlete.id).catch(console.error);
 
   }catch(e){
     console.error('Falha ao carregar portal do atleta:',e);
