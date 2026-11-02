@@ -314,6 +314,14 @@ window.handleLogin = async function(event){
   }
 
 
+  /* ---- Assinatura institucional no rodapé do menu do atleta ---- */
+  .athlete-menu-manifesto{margin:26px -12px -24px;padding:42px 22px 34px;background:#090909;color:#fff;}
+  .athlete-manifesto-line{padding:0 0 30px;margin:0 0 28px;border-bottom:2px solid #454545;display:flex;flex-direction:column;gap:30px;}
+  .athlete-manifesto-line:last-of-type{border-bottom:0;margin-bottom:34px;padding-bottom:0;}
+  .athlete-manifesto-arrow{font-size:40px;line-height:1;color:#c92532;font-weight:800;}
+  .athlete-manifesto-line strong{font-size:clamp(23px,5vw,30px);line-height:1.2;font-weight:800;letter-spacing:-.5px;}
+  .athlete-manifesto-brand{font-size:clamp(11px,2.7vw,15px);line-height:1.8;letter-spacing:4px;color:#999ba1;font-weight:500;}
+
   /* ---- Tela do treino do atleta: referência visual MFit ---- */
   .athlete-workout-screen{margin:10px 0 24px;background:#f4f6f9;border-radius:14px;overflow:hidden;}
   .athlete-workout-top{background:#173c69;color:#fff;padding:17px 16px 14px;}
@@ -1719,6 +1727,12 @@ async function loadAthletePortal(){
           ${tile('＄','Faturas','invoices','Informações financeiras')}
           ${tile('📁','Arquivos','files','Materiais e documentos')}
         </div>
+        <footer class="athlete-menu-manifesto" aria-label="Princípios da alta performance">
+          <div class="athlete-manifesto-line"><span class="athlete-manifesto-arrow">↗</span><strong>Constância constrói.</strong></div>
+          <div class="athlete-manifesto-line"><span class="athlete-manifesto-arrow">↗</span><strong>Foco conduz.</strong></div>
+          <div class="athlete-manifesto-line"><span class="athlete-manifesto-arrow">↗</span><strong>Esforço entrega.</strong></div>
+          <div class="athlete-manifesto-brand">DIEGO TRAPIÁ · ALTA PERFORMANCE · ACOMPANHAMENTO ONLINE</div>
+        </footer>
       </section>
       <section id="athlete-trainings" hidden>${backButton}<h2>Treinos</h2>
         <div style="display:flex;gap:8px;margin:12px 0"><button class="btn btn-primary" id="athlete-tab-routines" onclick="setAthleteWorkoutTab('routines')">Rotinas de Treinos</button><button class="btn btn-outline" id="athlete-tab-aerobic" onclick="setAthleteWorkoutTab('aerobic')">Aeróbico</button></div>
