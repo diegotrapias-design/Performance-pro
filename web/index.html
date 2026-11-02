@@ -1674,15 +1674,13 @@ async function loadAthletePortal(){
         </div>
         <label class="field-label" for="athlete-duration">Duração real do treino (minutos)</label>
         <input id="athlete-duration" type="number" min="1" max="600" inputmode="numeric" placeholder="Ex.: 60" style="width:100%;margin:6px 0 18px">
-        <h3>🦘 CMJ — salto (cm)</h3>
-        <div class="field-grid" style="grid-template-columns:1fr 1fr">
-          <div><label class="field-label" for="athlete-jump-pre">Pré-sessão</label><input id="athlete-jump-pre" type="number" step="0.1" min="0" max="100" placeholder="Ex.: 44.0" style="width:100%"></div>
-          <div><label class="field-label" for="athlete-jump-post">Pós-sessão</label><input id="athlete-jump-post" type="number" step="0.1" min="0" max="100" placeholder="Ex.: 42.5" style="width:100%"></div>
+        <h3>🦘 Avaliação CMJ — salto vertical</h3>
+        <p class="muted">Faça a avaliação por vídeo antes e depois do treino. O aplicativo calcula a altura do salto pela marcação dos quadros.</p>
+        <div class="field-grid" style="grid-template-columns:1fr 1fr;gap:10px">
+          <button class="btn btn-primary" type="button" onclick="goSaltoForAthlete('${athlete.id}','pre','${safe(athlete.full_name)}')">🎥 Avaliar salto pré-treino</button>
+          <button class="btn btn-outline" type="button" onclick="goSaltoForAthlete('${athlete.id}','post','${safe(athlete.full_name)}')">🎥 Avaliar salto pós-treino</button>
         </div>
-        <div class="field-grid" style="grid-template-columns:1fr 1fr;margin-top:12px">
-          <div><label class="field-label" for="athlete-video-pre">Vídeo CMJ pré (opcional)</label><input id="athlete-video-pre" type="file" accept="video/*" style="width:100%"></div>
-          <div><label class="field-label" for="athlete-video-post">Vídeo CMJ pós (opcional)</label><input id="athlete-video-post" type="file" accept="video/*" style="width:100%"></div>
-        </div>
+        <div class="muted" style="margin-top:10px">Os resultados serão registrados no gráfico de evolução do salto.</div>
         <p class="muted" style="margin-top:10px">A carga da sessão é calculada automaticamente: PSE × duração.</p>
         <button class="btn btn-primary" id="athlete-monitor-submit" type="button" onclick="submitAthleteMonitoring('${athlete.id}')">Salvar monitoramento</button>
         <p id="athlete-monitor-message" class="muted" role="status" style="margin-top:10px"></p>
@@ -2951,6 +2949,8 @@ function addFromLibrary(libExId){
 /* ---------------- SALTO (CMJ) — embutido no app ---------------- */
 
 let saltoReturnAthleteId = null;
+let saltoReturnToAthletePortal = false;
+let saltoAthleteName = '';
 
 function goSalto(preselectAthleteId){
   saltoReturnAthleteId = null;
@@ -2961,13 +2961,22 @@ function goSalto(preselectAthleteId){
   if(window.saltoPopulateAthletes) window.saltoPopulateAthletes(preselectAthleteId || null);
 }
 
-function goSaltoForAthlete(athleteId){
+function goSaltoForAthlete(athleteId, phase, athleteName){
   saltoReturnAthleteId = athleteId;
+  saltoReturnToAthletePortal = true;
+  saltoAthleteName = athleteName || 'Atleta';
   const app = document.getElementById('app');
   const root = document.getElementById('salto-root');
   app.style.display = 'none';
   root.style.display = 'block';
-  if(window.saltoPopulateAthletes) window.saltoPopulateAthletes(athleteId);
+  if(window.saltoPopulateAthletes) window.saltoPopulateAthletes(athleteId, saltoAthleteName);
+  const type = document.getElementById('jumpTypeInput');
+  const date = document.getElementById('dateInput');
+  const sessionDate = document.getElementById('athlete-monitor-date');
+  if(type) type.value = phase === 'pre' ? 'CMJ Pré-sessão' : 'CMJ Pós-sessão';
+  if(date) date.value = sessionDate && sessionDate.value ? sessionDate.value : (new Date()).toISOString().slice(0,10);
+  const title = document.querySelector('#salto-root .back-link');
+  if(title) title.textContent = '← Voltar para minha área';
 }
 
 function closeSaltoScreen(){
@@ -2978,7 +2987,12 @@ function closeSaltoScreen(){
   if(saltoReturnAthleteId){
     const id = saltoReturnAthleteId;
     saltoReturnAthleteId = null;
-    openAthlete(id);
+    if(saltoReturnToAthletePortal){
+      saltoReturnToAthletePortal = false;
+      loadAthletePortal();
+    }else{
+      openAthlete(id);
+    }
   }else{
     renderHome();
   }
@@ -3769,18 +3783,24 @@ boot();
     window.__cloudJumpLog = jumpLog;
   }
 
-  function populateAthleteSelect(preselectId) {
+  function populateAthleteSelect(preselectId, preselectName) {
     if (!athleteSelect) return;
     var list = (typeof athletes !== 'undefined' && Array.isArray(athletes)) ? athletes : [];
     var opts = '<option value="">Selecione…</option>';
     list.slice().sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); }).forEach(function(a){
       opts += '<option value="' + a.id + '">' + (a.name || 'Sem nome') + '</option>';
     });
+    if(preselectId && !list.some(function(a){return a.id===preselectId;})){
+      opts += '<option value="' + preselectId + '">' + escapeHtml(preselectName || 'Meu cadastro') + '</option>';
+    }
     opts += '<option value="__other__">Outro (digitar nome)</option>';
     athleteSelect.innerHTML = opts;
     if (preselectId) {
       athleteSelect.value = preselectId;
+      athleteSelect.disabled = true;
       $('athleteInputWrap').hidden = true;
+    } else {
+      athleteSelect.disabled = false;
     }
   }
   window.saltoPopulateAthletes = populateAthleteSelect;
@@ -3803,6 +3823,9 @@ boot();
       return;
     }
     if (currentHeightCm == null) return;
+    if(athleteId && saltoReturnToAthletePortal && currentUser){
+      athlete = saltoAthleteName || athlete;
+    }
     var entry = {
       id: Date.now() + '-' + Math.random().toString(36).slice(2, 8),
       athlete: athlete,
