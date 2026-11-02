@@ -1762,8 +1762,10 @@ async function submitAthleteMonitoring(athleteId){
   const date=document.getElementById('athlete-monitor-date').value;
   const duration=Number(document.getElementById('athlete-duration').value);
   const tqr=Number(scale.tqr), pse=Number(scale.pse);
-  const pre=document.getElementById('athlete-jump-pre').value;
-  const post=document.getElementById('athlete-jump-post').value;
+  const preEl=document.getElementById('athlete-jump-pre');
+  const postEl=document.getElementById('athlete-jump-post');
+  const pre=preEl?preEl.value:'';
+  const post=postEl?postEl.value:'';
   if(!date||scale.tqr==null||scale.pse==null||!Number.isInteger(duration)||duration<1||duration>600){
     msg.textContent='Preencha data, TQR, PSE e duração válida do treino.';return;
   }
@@ -1789,10 +1791,10 @@ async function submitAthleteMonitoring(athleteId){
     if(result.error) throw result.error;
     msg.textContent='Monitoramento salvo. Seu treinador já pode visualizar os dados.';
     document.getElementById('athlete-duration').value='';
-    document.getElementById('athlete-jump-pre').value='';
-    document.getElementById('athlete-jump-post').value='';
-    document.getElementById('athlete-video-pre').value='';
-    document.getElementById('athlete-video-post').value='';
+    if(preEl) preEl.value='';
+    if(postEl) postEl.value='';
+    if(preVideo) preVideo.value='';
+    if(postVideo) postVideo.value='';
     window.__athleteScale={tqr:null,pse:null};
     document.querySelectorAll('#athlete-tqr-options button,#athlete-pse-options button').forEach(b=>{b.classList.remove('btn-primary');b.classList.add('btn-outline');});
     await loadAthletePortal();
