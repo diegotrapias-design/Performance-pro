@@ -3258,39 +3258,50 @@ function renderLibraryScreen(filter){
 
   const groups = {};
   list.forEach(ex => (groups[ex.group] = groups[ex.group] || []).push(ex));
-  const groupNames = Object.keys(groups).sort();
+  const groupNames = Object.keys(groups);
 
-  app.innerHTML = `
-    <div class="back-link" onclick="renderHome()">← Menu principal</div>
-    <h2 class="section-title">Biblioteca de exercícios</h2>
-    <div class="toolbar">
-      <input type="search" id="lib-screen-search" placeholder="Buscar exercício…" oninput="renderLibraryScreen(this.value)" value="${escapeHtml(filter||'')}">
-      <button class="btn ${libraryFilterFavOnly?'btn-primary':'btn-outline'} btn-sm" onclick="toggleLibraryFavFilter()">⭐ Favoritos</button>
-      <button class="btn btn-primary" onclick="openCreateExerciseForm()">+ Novo exercício</button>
-    </div>
-    ${groupNames.length === 0 ? '<div class="empty-state"><div class="icon">📚</div><div>Nenhum exercício encontrado.</div></div>' :
-      groupNames.map(g => `
-        <div class="profile-section-title">${escapeHtml(g)}</div>
-        <div class="lib-manage-list">
-          ${groups[g].map(ex => `
-            <div class="lib-manage-row">
-              <button class="lib-fav-btn ${ex.favorite?'active':''}" onclick="toggleLibraryFavorite('${ex.id}')" title="Favoritar">⭐</button>
-              <div class="lib-manage-info">
-                <div class="lib-manage-name">${escapeHtml(ex.name)}</div>
-                <div class="lib-manage-meta">${ex.video ? 'Vídeo anexado' : 'Sem vídeo'}</div>
-              </div>
-              <label class="video-upload-btn" title="Enviar vídeo da galeria">
-                🎥
-                <input type="file" accept="video/*" style="display:none" onchange="handleLibraryVideoUpload(event,'${ex.id}')">
-              </label>
-              ${ex.video ? `<button type="button" onclick="openExerciseVideo('${escapeHtml(ex.video)}','${escapeHtml(ex.name)}')" class="video-open-btn exercise-video-open" title="Assistir vídeo">▶</button>` : ''}
-              <button class="btn btn-outline btn-sm" onclick="editLibraryExercise('${ex.id}')">✏️</button>
-              <button class="btn btn-danger btn-sm" onclick="deleteLibraryExercise('${ex.id}')">🗑</button>
+  const resultsHtml = groupNames.length === 0 ? '<div class="empty-state"><div class="icon">📚</div><div>Nenhum exercício encontrado.</div></div>' :
+    groupNames.sort().map(g => `
+      <div class="profile-section-title">${escapeHtml(g)}</div>
+      <div class="lib-manage-list">
+        ${groups[g].map(ex => `
+          <div class="lib-manage-row">
+            <button class="lib-fav-btn ${ex.favorite?'active':''}" onclick="toggleLibraryFavorite('${ex.id}')" title="Favoritar">⭐</button>
+            <div class="lib-manage-info">
+              <div class="lib-manage-name">${escapeHtml(ex.name)}</div>
+              <div class="lib-manage-meta">${ex.video ? 'Vídeo anexado' : 'Sem vídeo'}</div>
             </div>
-          `).join('')}
-        </div>
-      `).join('')}
-  `;
+            <label class="video-upload-btn" title="Enviar vídeo da galeria">
+              🎥
+              <input type="file" accept="video/*" style="display:none" onchange="handleLibraryVideoUpload(event,'${ex.id}')">
+            </label>
+            ${ex.video ? `<button type="button" onclick="openExerciseVideo('${escapeHtml(ex.video)}','${escapeHtml(ex.name)}')" class="video-open-btn exercise-video-open" title="Assistir vídeo">▶</button>` : ''}
+            <button class="btn btn-outline btn-sm" onclick="editLibraryExercise('${ex.id}')">✏️</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteLibraryExercise('${ex.id}')">🗑</button>
+          </div>
+        `).join('')}
+      </div>
+    `).join('');
+
+  // Atualiza somente os resultados. Recriar app.innerHTML a cada tecla removia
+  // o campo de busca do DOM e fazia o teclado do iPhone perder o foco.
+  let results = document.getElementById('lib-screen-results');
+  if(!results){
+    app.innerHTML = `
+      <div class="back-link" onclick="renderHome()">← Menu principal</div>
+      <h2 class="section-title">Biblioteca de exercícios</h2>
+      <div class="toolbar">
+        <input type="search" id="lib-screen-search" placeholder="Buscar exercício…" oninput="renderLibraryScreen(this.value)" value="${escapeHtml(filter||'')}">
+        <button id="lib-screen-favorites" class="btn ${libraryFilterFavOnly?'btn-primary':'btn-outline'} btn-sm" onclick="toggleLibraryFavFilter()">⭐ Favoritos</button>
+        <button class="btn btn-primary" onclick="openCreateExerciseForm()">+ Novo exercício</button>
+      </div>
+      <div id="lib-screen-results">${resultsHtml}</div>
+    `;
+  }else{
+    results.innerHTML = resultsHtml;
+    const favoritesButton = document.getElementById('lib-screen-favorites');
+    if(favoritesButton) favoritesButton.className = 'btn ' + (libraryFilterFavOnly?'btn-primary':'btn-outline') + ' btn-sm';
+  }
 }
 
 let editingExerciseId = null;
