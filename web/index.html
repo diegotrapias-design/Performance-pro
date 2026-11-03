@@ -1207,6 +1207,12 @@ window.handleLogin = async function(event){
       <input type="file" id="ex-form-video" accept="video/*">
       <small style="color:var(--gray);">Selecione um vídeo da galeria para anexar ao exercício.</small>
     </div>
+    <div style="margin-bottom:14px;">
+      <label style="display:flex;align-items:center;gap:9px;font-size:14px;font-weight:600;color:var(--black);">
+        <input type="checkbox" id="ex-form-favorite" style="width:18px;height:18px;accent-color:var(--red);">
+        ⭐ Favoritar exercício ao salvar
+      </label>
+    </div>
     <div class="actions-row" style="justify-content:flex-start;">
       <button class="btn btn-primary" onclick="submitExerciseForm()">Salvar</button>
     </div>
@@ -3515,6 +3521,7 @@ function openCreateExerciseForm(){
   document.getElementById('ex-form-newgroup-wrap').hidden = true;
   document.getElementById('ex-form-newgroup').value = '';
   document.getElementById('ex-form-video').value = '';
+  document.getElementById('ex-form-favorite').checked = false;
   document.getElementById('exercise-form-modal').style.display = 'flex';
 }
 
@@ -3528,6 +3535,7 @@ function editLibraryExercise(exId){
   document.getElementById('ex-form-newgroup-wrap').hidden = true;
   document.getElementById('ex-form-newgroup').value = '';
   document.getElementById('ex-form-video').value = '';
+  document.getElementById('ex-form-favorite').checked = !!ex.favorite;
   document.getElementById('exercise-form-modal').style.display = 'flex';
 }
 
@@ -3545,6 +3553,7 @@ async function submitExerciseForm(){
     if(!group){ showToast('Digite o nome da categoria.', 'err'); return; }
   }
 
+  const favorite = document.getElementById('ex-form-favorite').checked;
   const videoInput = document.getElementById('ex-form-video');
   const videoFile = videoInput && videoInput.files ? videoInput.files[0] : null;
   const saveButton = document.querySelector('#exercise-form-modal .actions-row button');
@@ -3568,9 +3577,9 @@ async function submitExerciseForm(){
 
     if(editingExerciseId){
       const ex = exerciseLibrary.find(x => x.id === editingExerciseId);
-      if(ex){ ex.name = name; ex.group = group; if(videoFile) ex.video = videoUrl; }
+      if(ex){ ex.name = name; ex.group = group; ex.favorite = favorite; if(videoFile) ex.video = videoUrl; }
     }else{
-      exerciseLibrary.push({ id: uid(), name, group, video:videoUrl, favorite:false });
+      exerciseLibrary.push({ id: uid(), name, group, video:videoUrl, favorite });
     }
 
     const ok = await persist(false);
