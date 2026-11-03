@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#c92532">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Diego Trapiá | Alta Performance</title>
@@ -1505,6 +1509,7 @@ async function onAuthChange(user){
     if(profile.role === 'coach'){
       if(!profile.team_id) throw new Error('A conta do treinador está sem equipe vinculada.');
       await loadAthletes();
+      setupCoachPushNotifications();
     }else if(profile.role === 'athlete'){
       await loadAthletePortal();
     }else{
@@ -1515,6 +1520,45 @@ async function onAuthChange(user){
     console.error(e); await supabaseClient.auth.signOut();
     showLoginError(e.message || 'Não foi possível validar o acesso de treinador.');
   }
+}
+
+// Notificações push: ativação explícita pelo treinador.
+const PP_PUSH_PUBLIC_KEY = 'BJizbD8fCcBXCMdaCFkE55mP1MWF1BXeghC-3kdGfwOCibkVv1ZbWvworEjvifyJYi5BgjwVgKSgfSUaxzyGLq0';
+function ppUrlBase64ToUint8Array(value){
+  const padding='='.repeat((4-value.length%4)%4);
+  const raw=atob((value+padding).replace(/-/g,'+').replace(/_/g,'/'));
+  return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
+}
+async function setupCoachPushNotifications(){
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!currentUser)return;
+  try{
+    const reg=await navigator.serviceWorker.register('/sw.js');
+    let button=document.getElementById('pp-enable-push');
+    if(!button){
+      button=document.createElement('button');button.id='pp-enable-push';
+      button.type='button';button.textContent='ATIVAR AVISOS DE TREINOS';
+      button.className='btn btn-outline';
+      button.style.cssText='position:fixed;right:14px;bottom:18px;z-index:9999;max-width:220px;background:#17171b;color:#fff;border:1px solid #c92532';
+      document.body.appendChild(button);
+    }
+    button.onclick=async()=>{
+      button.disabled=true;button.textContent='ATIVANDO…';
+      try{
+        const permission=await Notification.requestPermission();
+        if(permission!=='granted')throw new Error('Permita notificações nas configurações do navegador.');
+        const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:ppUrlBase64ToUint8Array(PP_PUSH_PUBLIC_KEY)});
+        const {error}=await supabaseClient.functions.invoke('push-notifications',{body:{action:'subscribe',subscription:sub.toJSON()}});
+        if(error)throw error;
+        button.textContent='AVISOS ATIVADOS';button.style.background='#1d5134';
+        showToast('Notificações de treinos ativadas.');
+      }catch(e){button.disabled=false;button.textContent='ATIVAR AVISOS DE TREINOS';showToast(e.message||'Não foi possível ativar os avisos.','error');}
+    };
+    const existing=await reg.pushManager.getSubscription();
+    if(existing){
+      const {error}=await supabaseClient.functions.invoke('push-notifications',{body:{action:'subscribe',subscription:existing.toJSON()}});
+      if(!error){button.textContent='AVISOS ATIVADOS';button.style.background='#1d5134';}
+    }
+  }catch(e){console.warn('Push não disponível neste navegador:',e);}
 }
 
 // Expor explicitamente o fluxo de autenticação para o bootstrap inicial.
@@ -1772,6 +1816,9 @@ async function finishAthleteWorkoutSession(){
     if(complete){complete.textContent='Desmarcar treino como concluído';complete.classList.add('btn-primary');complete.classList.remove('btn-outline');}
     const msg=document.getElementById('athlete-monitor-message');
     if(msg)msg.textContent='Treino finalizado. Duração registrada: '+minutes+' min. Progresso enviado ao treinador.';
+    try {
+      await supabaseClient.functions.invoke('push-notifications',{body:{action:'workout_finished',workoutId:window.__activeAthleteWorkoutId}});
+    } catch(pushError) { console.warn('Aviso ao treinador não enviado:',pushError); }
   }catch(e){
     console.error('Falha ao finalizar treino:',e);
     if(finish){finish.disabled=false;finish.textContent='Finalizar treino';}
