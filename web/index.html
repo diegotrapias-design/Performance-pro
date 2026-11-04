@@ -1204,8 +1204,16 @@ window.handleLogin = async function(event){
     </div>
     <div class="field" style="margin-bottom:14px;">
       <label>Vídeo do exercício (opcional)</label>
-      <input type="file" id="ex-form-video" accept="video/*">
-      <small style="color:var(--gray);">Selecione um vídeo da galeria para anexar ao exercício.</small>
+      <input type="file" id="ex-form-video" accept="video/*" onchange="previewExerciseVideoSelection(event)">
+      <small style="color:var(--gray);">Escolha um vídeo, assista à prévia e confirme antes de salvar.</small>
+      <div id="ex-form-video-preview" style="display:none;margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:10px;">
+        <video id="ex-form-video-player" controls playsinline preload="metadata" style="width:100%;max-height:260px;background:#000;border-radius:8px;"></video>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+          <button type="button" class="btn btn-primary btn-sm" onclick="confirmExerciseVideoSelection()">Usar este vídeo</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="chooseAnotherExerciseVideo()">Escolher outro</button>
+        </div>
+        <small id="ex-form-video-status" style="display:block;margin-top:7px;color:var(--gray);">Assista ao vídeo e confirme para anexá-lo.</small>
+      </div>
     </div>
     <div style="margin-bottom:14px;">
       <label style="display:flex;align-items:center;gap:9px;font-size:14px;font-weight:600;color:var(--black);">
@@ -3556,6 +3564,41 @@ function populateGroupSelect(selected){
   };
 }
 
+let exerciseVideoPreviewUrl = '';
+let exerciseVideoConfirmed = false;
+
+function previewExerciseVideoSelection(event){
+  const input=event.target, file=input.files&&input.files[0];
+  const wrap=document.getElementById('ex-form-video-preview');
+  const player=document.getElementById('ex-form-video-player');
+  const status=document.getElementById('ex-form-video-status');
+  exerciseVideoConfirmed=false;
+  if(exerciseVideoPreviewUrl){ URL.revokeObjectURL(exerciseVideoPreviewUrl); exerciseVideoPreviewUrl=''; }
+  if(!file){ wrap.style.display='none'; player.removeAttribute('src'); player.load(); return; }
+  if(!file.type.startsWith('video/')){ input.value=''; wrap.style.display='none'; showToast('Selecione um arquivo de vídeo válido.','err'); return; }
+  exerciseVideoPreviewUrl=URL.createObjectURL(file);
+  player.src=exerciseVideoPreviewUrl;
+  player.load();
+  wrap.style.display='block';
+  status.textContent='Assista ao vídeo e toque em “Usar este vídeo” para confirmar.';
+}
+function confirmExerciseVideoSelection(){
+  const input=document.getElementById('ex-form-video');
+  if(!input.files||!input.files[0]) return;
+  exerciseVideoConfirmed=true;
+  document.getElementById('ex-form-video-status').textContent='Vídeo confirmado. Ele será anexado ao exercício ao salvar.';
+}
+function chooseAnotherExerciseVideo(){
+  const input=document.getElementById('ex-form-video');
+  input.value='';
+  exerciseVideoConfirmed=false;
+  document.getElementById('ex-form-video-preview').style.display='none';
+  const player=document.getElementById('ex-form-video-player');
+  player.pause(); player.removeAttribute('src'); player.load();
+  if(exerciseVideoPreviewUrl){ URL.revokeObjectURL(exerciseVideoPreviewUrl); exerciseVideoPreviewUrl=''; }
+  input.click();
+}
+
 function openCreateExerciseForm(){
   editingExerciseId = null;
   document.getElementById('exercise-form-title').textContent = 'Novo exercício';
@@ -3582,6 +3625,15 @@ function editLibraryExercise(exId){
   document.getElementById('exercise-form-modal').style.display = 'flex';
 }
 
+function resetExerciseVideoPreview(){
+  exerciseVideoConfirmed=false;
+  const wrap=document.getElementById('ex-form-video-preview');
+  const player=document.getElementById('ex-form-video-player');
+  if(wrap) wrap.style.display='none';
+  if(player){ player.pause(); player.removeAttribute('src'); player.load(); }
+  if(exerciseVideoPreviewUrl){ URL.revokeObjectURL(exerciseVideoPreviewUrl); exerciseVideoPreviewUrl=''; }
+}
+
 function closeExerciseForm(){
   document.getElementById('exercise-form-modal').style.display = 'none';
 }
@@ -3599,6 +3651,7 @@ async function submitExerciseForm(){
   const favorite = document.getElementById('ex-form-favorite').checked;
   const videoInput = document.getElementById('ex-form-video');
   const videoFile = videoInput && videoInput.files ? videoInput.files[0] : null;
+  if(videoFile && !exerciseVideoConfirmed){ showToast('Assista à prévia e confirme o vídeo antes de salvar.','err'); return; }
   const saveButton = document.querySelector('#exercise-form-modal .actions-row button');
   if(saveButton){ saveButton.disabled = true; saveButton.textContent = videoFile ? 'Enviando vídeo...' : 'Salvando...'; }
 
