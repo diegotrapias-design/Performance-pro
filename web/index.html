@@ -3008,7 +3008,7 @@ function openExerciseVideo(url,title,loop){
     if(host==='youtu.be') videoId=parsed.pathname.split('/').filter(Boolean)[0]||'';
     else if(host.endsWith('youtube.com')) videoId=parsed.searchParams.get('v')||parsed.pathname.split('/').filter(Boolean).pop()||'';
     if(videoId && /^[A-Za-z0-9_-]{11}$/.test(videoId)){
-      player.innerHTML='<iframe class="exercise-video-frame" src="https://www.youtube-nocookie.com/embed/'+videoId+'?playsinline=1&rel=0" title="Demonstração: '+escapeHtml(safeTitle)+'" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>';
+      player.innerHTML='<iframe class="exercise-video-frame" src="https://www.youtube-nocookie.com/embed/'+videoId+'?playsinline=1&rel=0'+(loop?'&loop=1&playlist='+videoId:'')+'" title="Demonstração: '+escapeHtml(safeTitle)+'" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>';
     }else if(host==='vimeo.com' || host==='player.vimeo.com'){
       const vimeoId=parsed.pathname.match(/^\/(?:video\/)?(\d+)(?:\/|$)/)?.[1]||'';
       if(vimeoId){
