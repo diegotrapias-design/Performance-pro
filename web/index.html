@@ -318,6 +318,34 @@ window.handleLogin = async function(event){
   }
 
 
+
+  /* Ajustes exclusivos para a tela de montagem de treino em celulares */
+  .training-template-tabs{display:grid;gap:9px;margin:0 0 12px;}
+  .training-template-group{border:1px solid var(--border);border-radius:10px;background:#fff;overflow:hidden;}
+  .training-template-group summary{padding:12px 14px;font-weight:700;font-size:13px;cursor:pointer;color:var(--text);list-style:none;}
+  .training-template-group summary::-webkit-details-marker{display:none;}
+  .training-template-group summary:after{content:'＋';float:right;color:var(--red);font-size:17px;line-height:14px;}
+  .training-template-group[open] summary:after{content:'−';}
+  .training-template-options{display:flex;flex-wrap:wrap;gap:8px;padding:0 12px 12px;}
+  @media(max-width:600px){
+    #panel-athlete{min-width:0;width:100%;overflow-x:hidden;}
+    .day-block,.day-body,.ex-card{min-width:0;max-width:100%;}
+    .day-head{gap:7px;padding:10px;}
+    .day-head input[type=text]{min-width:0;width:100%;flex:1 1 100%;}
+    .day-head select{flex:1 1 auto;min-width:0;}
+    .day-body{padding:8px;}
+    .ex-card{padding:10px;}
+    .ex-card-top{display:flex;flex-wrap:wrap;align-items:center;gap:7px;}
+    .ex-card-top .ex-name-input{order:3;flex:1 1 100%;width:100%;min-width:0;font-size:14px;}
+    .ex-card-top>div{margin-left:auto;}
+    .ex-card-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+    .ex-card-grid>div{min-width:0;}
+    .ex-card-grid input{min-width:0;box-sizing:border-box;}
+    .video-cell{min-width:0;}
+    .video-cell input[type=url]{min-width:0;width:100%;}
+    .day-foot .btn{max-width:100%;white-space:normal;}
+  }
+
   /* ---- Assinatura institucional no rodapé do menu do atleta ---- */
   .athlete-menu-manifesto{margin:26px -12px -24px;padding:42px 22px 34px;background:#090909;color:#fff;}
   .athlete-manifesto-line{padding:0 0 30px;margin:0 0 28px;border-bottom:2px solid #454545;display:flex;flex-direction:column;gap:30px;}
@@ -2943,19 +2971,27 @@ async function deleteAthlete(id){
 /* ---------------- TREINO PANEL ---------------- */
 
 function applyPreset(kind){
-  if(draft.trainingPlan.days.length > 0){
-    if(!confirm('Isso vai substituir os dias de treino atuais. Continuar?')) return;
-  }
-  if(kind === '3f2m'){
-    draft.trainingPlan.days = [
-      newDay('Dia 1', 'Funcional'),
-      newDay('Dia 2', 'Funcional'),
-      newDay('Dia 3', 'Funcional'),
-      newDay('Dia 4', 'Musculação'),
-      newDay('Dia 5', 'Musculação'),
-    ];
-  }else if(kind === 'blank'){
-    draft.trainingPlan.days = [ newDay('Dia 1', 'Funcional') ];
+  const templates={
+    '3f2m':{functional:3,weights:2},
+    'f2':{functional:2,weights:0},
+    'f3':{functional:3,weights:0},
+    'f5':{functional:5,weights:0},
+    'm2':{functional:0,weights:2},
+    'm3':{functional:0,weights:3},
+    'm4':{functional:0,weights:4},
+    'm5':{functional:0,weights:5}
+  };
+  if(kind==='blank'){
+    if(draft.trainingPlan.days.length>0&&!confirm('Isso vai substituir os dias de treino atuais. Continuar?'))return;
+    draft.trainingPlan.days=[newDay('Dia 1','Funcional')];
+  }else{
+    const t=templates[kind];if(!t)return;
+    const total=t.functional+t.weights;
+    if(draft.trainingPlan.days.length>0&&!confirm('Isso vai substituir os dias de treino atuais por '+total+' dias. Continuar?'))return;
+    const days=[];
+    for(let i=1;i<=t.functional;i++)days.push(newDay('Dia '+i,'Funcional'));
+    for(let i=1;i<=t.weights;i++)days.push(newDay('Dia '+(t.functional+i),'Musculação'));
+    draft.trainingPlan.days=days;
   }
   renderTreinoEditPanel();
 }
@@ -3312,6 +3348,25 @@ function renderTreinoEditPanel(){
         <label>Fim do ciclo</label>
         <input type="date" value="${draft.trainingPlan.endDate||''}" oninput="updateCycleField('endDate', this.value)">
       </div>
+    </div>
+    <div class="training-template-tabs">
+      <details class="training-template-group">
+        <summary>🏃 Treino padrão funcional</summary>
+        <div class="training-template-options">
+          <button class="btn btn-outline btn-sm" onclick="applyPreset('f2')">2x funcional</button>
+          <button class="btn btn-outline btn-sm" onclick="applyPreset('f3')">3x funcional</button>
+          <button class="btn btn-outline btn-sm" onclick="applyPreset('f5')">5x funcional</button>
+        </div>
+      </details>
+      <details class="training-template-group">
+        <summary>🏋️ Treino padrão musculação</summary>
+        <div class="training-template-options">
+          <button class="btn btn-outline btn-sm" onclick="applyPreset('m2')">2x musculação</button>
+          <button class="btn btn-outline btn-sm" onclick="applyPreset('m3')">3x musculação</button>
+          <button class="btn btn-outline btn-sm" onclick="applyPreset('m4')">4x musculação</button>
+          <button class="btn btn-outline btn-sm" onclick="applyPreset('m5')">5x musculação</button>
+        </div>
+      </details>
     </div>
     <div class="preset-row">
       <button class="btn btn-outline btn-sm" onclick="applyPreset('3f2m')">Aplicar padrão: 3 Funcional + 2 Musculação</button>
