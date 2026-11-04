@@ -3266,6 +3266,7 @@ function renderTreinoEditPanel(){
             ${ex.comboId ? '<div class="combo-group-heading">🔗 BLOCO COMBINADO · '+escapeHtml(ex.comboType||'Bi-set')+'</div>' : ''}
             <div class="ex-card-top">
               <label class="combine-select" title="Selecionar para combinar"><input type="checkbox" data-combine-day="${d.id}" value="${ex.id}"> Combinar</label>
+              <label class="combine-select" title="Selecionar para aplicar preset"><input type="checkbox" data-preset-select-day="${d.id}" value="${ex.id}"> Preset</label>
               <button type="button" class="exercise-video-thumb" onclick="openExerciseVideo('${escapeHtml(ex.video||'')}','${escapeHtml(ex.name||'Exercício')}')" title="Ver demonstração">${ex.video?'▶':'＋'}</button>
               <input type="text" class="ex-name-input" value="${escapeHtml(ex.name)}" oninput="updateExerciseField('${d.id}','${ex.id}','name',this.value)" placeholder="Nome do exercício">
               <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;"><button type="button" class="btn btn-outline btn-sm" style="padding:5px 8px" onclick="moveExercise('${d.id}','${ex.id}',-1)" title="Mover para cima">↑</button><button type="button" class="btn btn-outline btn-sm" style="padding:5px 8px" onclick="moveExercise('${d.id}','${ex.id}',1)" title="Mover para baixo">↓</button><button type="button" class="rm-btn" onclick="removeExercise('${d.id}','${ex.id}',event)" title="Excluir exercício" aria-label="Excluir exercício">🗑</button></div>
@@ -3293,6 +3294,7 @@ function renderTreinoEditPanel(){
         `).join('')}
         <div class="day-foot">
           <button class="btn btn-primary btn-sm" onclick="combineSelectedExercises('${d.id}')">🔗 Combinar selecionados</button>
+          <button class="btn btn-outline btn-sm" onclick="openPresetPickerForSelected('${d.id}')">⚡ Aplicar preset aos selecionados</button>
           <button class="btn btn-outline btn-sm" onclick="addExercise('${d.id}')">+ Exercício</button>
           <button class="btn btn-outline btn-sm" onclick="openExerciseLibrary('${d.id}')">📚 Biblioteca de exercícios</button>
         </div>
@@ -3349,13 +3351,13 @@ function seedDefaultLibrary(){
 }
 
 const SERIES_PRESETS_SEED = [
-  { label:'3x12', series:'3', reps:'12' },
-  { label:'4x10', series:'4', reps:'10' },
-  { label:'3x8-10', series:'3', reps:'8-10' },
-  { label:'5x5 (força)', series:'5', reps:'5' },
-  { label:'4x6 (força)', series:'4', reps:'6' },
-  { label:'3x15 (resistência)', series:'3', reps:'15' },
-  { label:'Pirâmide 12-10-8-6', series:'4', reps:'12-10-8-6' }
+  { label:'3x12', series:'3', reps:'12', descanso:'60s' },
+  { label:'4x10', series:'4', reps:'10', descanso:'60s' },
+  { label:'3x8-10', series:'3', reps:'8-10', descanso:'60s' },
+  { label:'5x5 (força)', series:'5', reps:'5', descanso:'180s' },
+  { label:'4x6 (força)', series:'4', reps:'6', descanso:'120s' },
+  { label:'3x15 (resistência)', series:'3', reps:'15', descanso:'45s' },
+  { label:'Pirâmide 12-10-8-6', series:'4', reps:'12-10-8-6', descanso:'90s' }
 ];
 
 function seedDefaultPresets(){
@@ -3749,58 +3751,76 @@ async function handleLibraryVideoUpload(event, exId){
 /* ---- Presets de série/repetição ---- */
 
 function openPresetPicker(dayId, exId){
-  presetTarget = { dayId, exId };
+  presetTarget = { dayId, exIds:[exId] };
   renderPresetList();
   document.getElementById('preset-modal').style.display = 'flex';
 }
-
+function openPresetPickerForSelected(dayId){
+  const selected=[...document.querySelectorAll('[data-preset-select-day="'+dayId+'"]:checked')].map(el=>el.value);
+  if(!selected.length){showToast('Selecione ao menos um exercício para aplicar o preset.','err');return;}
+  presetTarget={dayId,exIds:selected};
+  renderPresetList();
+  document.getElementById('preset-modal').style.display='flex';
+}
 function closePresetPicker(){
   document.getElementById('preset-modal').style.display = 'none';
 }
-
 function renderPresetList(){
   const list = document.getElementById('preset-list');
   list.innerHTML = seriesPresets.map(p => `
     <div class="lib-item preset-item">
-      <span onclick="applySeriesPreset('${p.id}')">${escapeHtml(p.label)}</span>
-      <span class="preset-del" onclick="deleteSeriesPreset('${p.id}')" title="Excluir preset">×</span>
+      <span onclick="applySeriesPreset('${p.id}')"><b>${escapeHtml(p.label)}</b><small style="display:block;color:var(--gray)">${escapeHtml(p.series||'—')} séries · ${escapeHtml(p.reps||'—')} reps · descanso ${escapeHtml(p.descanso||'60s')}</small></span>
+      <button type="button" class="btn btn-outline btn-sm" onclick="duplicateSeriesPreset('${p.id}')">Duplicar</button>
+      <span class="preset-del" onclick="deleteSeriesPreset('${p.id}')">×</span>
     </div>
   `).join('') + `<div class="lib-item add-preset-item" onclick="saveCurrentAsPreset()">+ Salvar valores atuais como novo preset</div>`;
 }
-
 async function applySeriesPreset(presetId){
-  const p=seriesPresets.find(x=>x.id===presetId);
-  if(!p || !presetTarget || !draft?.trainingPlan?.days) return;
+  const preset=seriesPresets.find(x=>String(x.id)===String(presetId));
+  if(!preset || !presetTarget || !draft?.trainingPlan?.days) return;
   const day=draft.trainingPlan.days.find(x=>x.id===presetTarget.dayId);
-  const exercise=day?.exercises?.find(x=>x.id===presetTarget.exId);
-  if(!exercise) return;
-  ['series','reps','carga','descanso','obs'].forEach(field=>{
-    if(Object.prototype.hasOwnProperty.call(p,field)) exercise[field]=String(p[field]??'');
+  if(!day) return;
+  const ids=presetTarget.exIds||[];
+  const targets=day.exercises.filter(x=>ids.includes(x.id));
+  if(!targets.length) return;
+  targets.forEach(ex=>{
+    ex.series=String(preset.series??'');
+    ex.reps=String(preset.reps??'');
+    ex.carga=String(preset.carga??'');
+    ex.descanso=String(preset.descanso??'60s');
+    ex.obs=String(preset.obs??'');
   });
+  const count=targets.length;
   closePresetPicker();
   renderTreinoEditPanel();
-  ['series','reps','carga','descanso'].forEach(field=>{
-    const input=document.querySelector('[data-day-id="'+presetTarget.dayId+'"][data-ex-id="'+presetTarget.exId+'"][data-ex-field="'+field+'"]');
-    if(input) input.value=String(exercise[field]??'');
-  });
-  showToast('Preset preenchido. Salve o treino para gravar as alterações.','ok');
+  showToast('Preset aplicado a '+count+' exercício(s). Clique em Salvar treino para gravar.','ok');
 }
-
+async function duplicateSeriesPreset(presetId){
+  const original=seriesPresets.find(x=>String(x.id)===String(presetId));
+  if(!original) return;
+  const label=prompt('Nome do preset duplicado:',original.label+' (cópia)');
+  if(!label||!label.trim()) return;
+  const copy={...original,id:uid(),label:label.trim()};
+  seriesPresets.push(copy);
+  const saved=await persist(false);
+  if(!saved){seriesPresets=seriesPresets.filter(x=>x.id!==copy.id);return;}
+  renderPresetList();
+  showToast('Preset duplicado e salvo.','ok');
+}
 async function saveCurrentAsPreset(){
   if(!presetTarget) return;
   const d=draft.trainingPlan.days.find(x=>x.id===presetTarget.dayId);
-  const ex=d && d.exercises.find(e=>e.id===presetTarget.exId);
+  const ex=d && d.exercises.find(e=>e.id===(presetTarget.exIds||[])[0]);
   if(!ex) return;
   const label=prompt('Nome do preset:', `${ex.series||''}x${ex.reps||''}`);
-  if(!label) return;
-  const preset={id:uid(),label,series:ex.series||'',reps:ex.reps||'',carga:ex.carga||'',descanso:ex.descanso||'',obs:ex.obs||''};
+  if(!label||!label.trim()) return;
+  const preset={id:uid(),label:label.trim(),series:ex.series||'',reps:ex.reps||'',carga:ex.carga||'',descanso:ex.descanso||'60s',obs:ex.obs||''};
   seriesPresets.push(preset);
   const saved=await persist(false);
-  if(!saved){seriesPresets=seriesPresets.filter(x=>x.id!==preset.id);return;}
+  if(!saved){seriesPresets=seriesPresets.filter(x=>x.id!==preset.id);showToast('Não foi possível salvar o preset na nuvem.','err');return;}
   renderPresetList();
-  showToast('Preset salvo com todos os campos preenchidos.','ok');
+  showToast('Preset salvo. Selecione-o para aplicar ao(s) exercício(s).','ok');
 }
-
 async function deleteSeriesPreset(presetId){
   seriesPresets = seriesPresets.filter(p => p.id !== presetId);
   await persist(false);
