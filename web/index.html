@@ -397,6 +397,10 @@ window.handleLogin = async function(event){
     background:#fff;border-radius:18px 18px 0 0;width:100%;max-width:480px;max-height:80vh;
     display:flex;flex-direction:column;padding:18px;overflow:hidden;
   }
+  /* Rolagem exclusiva do formulário de exercício para alcançar a prévia do vídeo no celular */
+  #exercise-form-modal{align-items:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;padding: max(12px, env(safe-area-inset-top)) 0 max(12px, env(safe-area-inset-bottom));}
+  #exercise-form-modal .modal-box{flex-shrink:0;max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px);overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;margin:auto;}
+  #exercise-form-modal .modal-box>*{flex-shrink:0;}
   @media(min-width:640px){.modal-box{border-radius:16px;}}
   .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
   .modal-title{font-family:'Poppins',sans-serif;font-weight:700;font-size:16px;}
