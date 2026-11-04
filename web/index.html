@@ -2989,6 +2989,16 @@ function addExercise(dayId){
   if(d) d.exercises.push(newExercise());
   renderTreinoEditPanel();
 }
+function moveExercise(dayId, exId, direction){
+  const day=draft?.trainingPlan?.days?.find(x=>x.id===dayId);
+  if(!day) return;
+  const index=day.exercises.findIndex(x=>String(x.id)===String(exId));
+  const target=index+direction;
+  if(index<0||target<0||target>=day.exercises.length) return;
+  const item=day.exercises.splice(index,1)[0];
+  day.exercises.splice(target,0,item);
+  renderTreinoEditPanel();
+}
 function removeExercise(dayId, exId, event){
   if(event){event.preventDefault();event.stopPropagation();}
   const day = draft?.trainingPlan?.days?.find(x => x.id === dayId);
@@ -3258,7 +3268,7 @@ function renderTreinoEditPanel(){
               <label class="combine-select" title="Selecionar para combinar"><input type="checkbox" data-combine-day="${d.id}" value="${ex.id}"> Combinar</label>
               <button type="button" class="exercise-video-thumb" onclick="openExerciseVideo('${escapeHtml(ex.video||'')}','${escapeHtml(ex.name||'Exercício')}')" title="Ver demonstração">${ex.video?'▶':'＋'}</button>
               <input type="text" class="ex-name-input" value="${escapeHtml(ex.name)}" oninput="updateExerciseField('${d.id}','${ex.id}','name',this.value)" placeholder="Nome do exercício">
-              <button type="button" class="rm-btn" onclick="removeExercise('${d.id}','${ex.id}',event)" title="Excluir exercício" aria-label="Excluir exercício">🗑</button>
+              <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;"><button type="button" class="btn btn-outline btn-sm" style="padding:5px 8px" onclick="moveExercise('${d.id}','${ex.id}',-1)" title="Mover para cima">↑</button><button type="button" class="btn btn-outline btn-sm" style="padding:5px 8px" onclick="moveExercise('${d.id}','${ex.id}',1)" title="Mover para baixo">↓</button><button type="button" class="rm-btn" onclick="removeExercise('${d.id}','${ex.id}',event)" title="Excluir exercício" aria-label="Excluir exercício">🗑</button></div>
             </div>
             <div class="ex-card-grid">
               <div><label>Séries</label><input type="text" data-day-id="${d.id}" data-ex-id="${ex.id}" data-ex-field="series" value="${escapeHtml(ex.series)}" oninput="updateExerciseField('${d.id}','${ex.id}','series',this.value)" placeholder="4"></div>
@@ -3400,6 +3410,7 @@ function renderLibraryList(filter){
   const group=document.getElementById('library-group-filter').value;
   const category=document.getElementById('library-category-filter').value;
   const filtered=exerciseLibrary.filter(ex=>(!q||(ex.name||'').toLowerCase().includes(q))&&(!group||ex.group===group)&&(!category||exerciseCategory(ex)===category)&&(libraryPickerTab!=='favorites'||ex.favorite));
+  filtered.sort((x,y)=>(x.name||'').localeCompare(y.name||'','pt-BR',{sensitivity:'base'}));
   const container=document.getElementById('library-list');
   const header='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><button class="btn btn-outline btn-sm" onclick="toggleLibraryMultiSelect()">'+(libraryMultiSelect?'Cancelar seleção':'Selecionar vários')+'</button>'+(libraryMultiSelect?'<span id="library-multi-count">'+selectedLibraryIds.length+' selecionados</span><button class="btn btn-primary btn-sm" onclick="addSelectedLibraryIds()">Adicionar selecionados</button>':'')+'</div>';
   container.innerHTML=header+(filtered.length?filtered.map(ex=>libraryMultiSelect?'<div class="library-exercise-card"><label style="display:flex;align-items:center;gap:10px;width:100%"><input type="checkbox" '+(selectedLibraryIds.includes(ex.id)?'checked':'')+' onchange="toggleLibraryId(\''+ex.id+'\',this.checked)"><span><b>'+escapeHtml(ex.name)+'</b><small style="display:block">'+escapeHtml(ex.group||'Sem grupo')+'</small></span></label></div>':'<div class="library-exercise-card" onclick="addFromLibrary(\''+ex.id+'\')"><div style="flex:1;min-width:0"><div class="library-exercise-name">'+(ex.favorite?'⭐ ':'')+escapeHtml(ex.name)+'</div><div class="library-exercise-meta">'+escapeHtml(ex.group||'Sem grupo')+' · '+escapeHtml(exerciseCategory(ex))+(ex.video?' · Vídeo':(ex.description?' · Descrição':''))+'</div>'+(ex.description?'<div class="library-exercise-meta" style="margin-top:6px;line-height:1.4">'+escapeHtml(ex.description)+'</div>':'')+'</div>'+(ex.video?'<button type="button" class="btn btn-outline btn-sm" style="flex-shrink:0" onclick="event.stopPropagation();openExerciseVideo(\''+escapeHtml(ex.video)+'\',\''+escapeHtml(ex.name)+'\',true)">▶ Loop</button>':'')+'<span class="library-exercise-add">+</span></div>').join(''):'<div class="empty-state" style="padding:24px 0">Nenhum exercício encontrado com esses filtros.</div>');
@@ -3506,6 +3517,7 @@ function renderLibraryScreen(filter){
   const app = document.getElementById('app');
   const q = (filter || '').toLowerCase();
   let list = exerciseLibrary.filter(ex => !q || ex.name.toLowerCase().includes(q));
+  list.sort((x,y)=>(x.name||'').localeCompare(y.name||'','pt-BR',{sensitivity:'base'}));
   if(libraryFilterFavOnly) list = list.filter(ex => ex.favorite);
 
   const groups = {};
