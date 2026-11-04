@@ -2992,7 +2992,7 @@ function closeExerciseVideo(){
   if(player) player.innerHTML='';
   if(modal) modal.style.display='none';
 }
-function openExerciseVideo(url,title){
+function openExerciseVideo(url,title,loop){
   const modal=document.getElementById('exercise-video-modal');
   const player=document.getElementById('exercise-video-player');
   const safeTitle=title||'Vídeo do exercício';
@@ -3012,12 +3012,12 @@ function openExerciseVideo(url,title){
     }else if(host==='vimeo.com' || host==='player.vimeo.com'){
       const vimeoId=parsed.pathname.match(/^\/(?:video\/)?(\d+)(?:\/|$)/)?.[1]||'';
       if(vimeoId){
-        player.innerHTML='<iframe class="exercise-video-frame" src="https://player.vimeo.com/video/'+vimeoId+'" title="Demonstração: '+escapeHtml(safeTitle)+'" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>';
+        player.innerHTML='<iframe class="exercise-video-frame" src="https://player.vimeo.com/video/'+vimeoId+(loop?'?loop=1&autoplay=1':'')+'" title="Demonstração: '+escapeHtml(safeTitle)+'" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>';
       }else{
         player.innerHTML='<div class="exercise-video-empty">Link do Vimeo inválido.</div>';
       }
     }else if(/\.(mp4|m4v|mov|webm)(\?|$)/i.test(parsed.pathname+parsed.search) || host.includes('supabase')){
-      player.innerHTML='<video class="exercise-inline-video" controls playsinline preload="metadata" src="'+escapeHtml(parsed.href)+'"></video>';
+      player.innerHTML='<video class="exercise-inline-video" controls playsinline preload="metadata" '+(loop?'loop autoplay':'')+' src="'+escapeHtml(parsed.href)+'"></video>';
     }else{
       player.innerHTML='<div class="exercise-video-empty">Este link não é um arquivo de vídeo reproduzível diretamente. Envie um vídeo MP4/MOV pela biblioteca para assistir dentro do app.</div>';
     }
@@ -3347,7 +3347,7 @@ function renderLibraryList(filter){
   const filtered=exerciseLibrary.filter(ex=>(!q||(ex.name||'').toLowerCase().includes(q))&&(!group||ex.group===group)&&(!category||exerciseCategory(ex)===category)&&(libraryPickerTab!=='favorites'||ex.favorite));
   const container=document.getElementById('library-list');
   const header='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><button class="btn btn-outline btn-sm" onclick="toggleLibraryMultiSelect()">'+(libraryMultiSelect?'Cancelar seleção':'Selecionar vários')+'</button>'+(libraryMultiSelect?'<span id="library-multi-count">'+selectedLibraryIds.length+' selecionados</span><button class="btn btn-primary btn-sm" onclick="addSelectedLibraryIds()">Adicionar selecionados</button>':'')+'</div>';
-  container.innerHTML=header+(filtered.length?filtered.map(ex=>libraryMultiSelect?'<div class="library-exercise-card"><label style="display:flex;align-items:center;gap:10px;width:100%"><input type="checkbox" '+(selectedLibraryIds.includes(ex.id)?'checked':'')+' onchange="toggleLibraryId(\''+ex.id+'\',this.checked)"><span><b>'+escapeHtml(ex.name)+'</b><small style="display:block">'+escapeHtml(ex.group||'Sem grupo')+'</small></span></label></div>':'<div class="library-exercise-card" onclick="addFromLibrary(\''+ex.id+'\')"><div><div class="library-exercise-name">'+(ex.favorite?'⭐ ':'')+escapeHtml(ex.name)+'</div><div class="library-exercise-meta">'+escapeHtml(ex.group||'Sem grupo')+' · '+escapeHtml(exerciseCategory(ex))+(ex.video?' · Vídeo':(ex.description?' · Descrição':''))+'</div>'+(ex.description?'<div class="library-exercise-meta" style="margin-top:6px;line-height:1.4">'+escapeHtml(ex.description)+'</div>':'')+'</div><span class="library-exercise-add">+</span></div>').join(''):'<div class="empty-state" style="padding:24px 0">Nenhum exercício encontrado com esses filtros.</div>');
+  container.innerHTML=header+(filtered.length?filtered.map(ex=>libraryMultiSelect?'<div class="library-exercise-card"><label style="display:flex;align-items:center;gap:10px;width:100%"><input type="checkbox" '+(selectedLibraryIds.includes(ex.id)?'checked':'')+' onchange="toggleLibraryId(\\''+ex.id+'\\',this.checked)"><span><b>'+escapeHtml(ex.name)+'</b><small style="display:block">'+escapeHtml(ex.group||'Sem grupo')+'</small></span></label></div>':'<div class="library-exercise-card" onclick="addFromLibrary(\\''+ex.id+'\\')"><div style="flex:1;min-width:0"><div class="library-exercise-name">'+(ex.favorite?'⭐ ':'')+escapeHtml(ex.name)+'</div><div class="library-exercise-meta">'+escapeHtml(ex.group||'Sem grupo')+' · '+escapeHtml(exerciseCategory(ex))+(ex.video?' · Vídeo':(ex.description?' · Descrição':''))+'</div>'+(ex.description?'<div class="library-exercise-meta" style="margin-top:6px;line-height:1.4">'+escapeHtml(ex.description)+'</div>':'')+'</div>'+(ex.video?'<button type="button" class="btn btn-outline btn-sm" style="flex-shrink:0" onclick="event.stopPropagation();openExerciseVideo(\\''+escapeHtml(ex.video)+'\\',\\''+escapeHtml(ex.name)+'\\',true)">▶ Loop</button>':'')+'<span class="library-exercise-add">+</span></div>').join(''):'<div class="empty-state" style="padding:24px 0">Nenhum exercício encontrado com esses filtros.</div>');
 }
 function addFromLibrary(libExId){
   const libEx = exerciseLibrary.find(x => x.id === libExId);
