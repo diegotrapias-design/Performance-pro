@@ -3770,10 +3770,29 @@ function renderPresetList(){
   list.innerHTML = seriesPresets.map(p => `
     <div class="lib-item preset-item">
       <span onclick="applySeriesPreset('${p.id}')"><b>${escapeHtml(p.label)}</b><small style="display:block;color:var(--gray)">${escapeHtml(p.series||'—')} séries · ${escapeHtml(p.reps||'—')} reps · descanso ${escapeHtml(p.descanso||'60s')}</small></span>
+      <button type="button" class="btn btn-outline btn-sm" onclick="editSeriesPreset('${p.id}')">Editar</button>
       <button type="button" class="btn btn-outline btn-sm" onclick="duplicateSeriesPreset('${p.id}')">Duplicar</button>
       <span class="preset-del" onclick="deleteSeriesPreset('${p.id}')">×</span>
     </div>
-  `).join('') + `<div class="lib-item add-preset-item" onclick="saveCurrentAsPreset()">+ Salvar valores atuais como novo preset</div>`;
+  `).join('') + `<div class="lib-item add-preset-item" onclick="saveCurrentAsPreset()">+ Criar novo preset</div>`;
+}
+async function editSeriesPreset(presetId){
+  const preset=seriesPresets.find(x=>String(x.id)===String(presetId));
+  if(!preset) return;
+  const label=prompt('Nome do preset:',preset.label||'');
+  if(label===null || !label.trim()) return;
+  const series=prompt('Quantidade de séries:',String(preset.series??''));
+  if(series===null || !series.trim()) return;
+  const reps=prompt('Quantidade de repetições:',String(preset.reps??''));
+  if(reps===null || !reps.trim()) return;
+  const descanso=prompt('Tempo de descanso (ex.: 60s ou 1min):',String(preset.descanso??'60s'));
+  if(descanso===null || !descanso.trim()) return;
+  const before={...preset};
+  Object.assign(preset,{label:label.trim(),series:series.trim(),reps:reps.trim(),descanso:descanso.trim()});
+  const saved=await persist(false);
+  if(!saved){Object.assign(preset,before);showToast('Não foi possível salvar a edição do preset.','err');return;}
+  renderPresetList();
+  showToast('Preset atualizado.','ok');
 }
 async function applySeriesPreset(presetId){
   const preset=seriesPresets.find(x=>String(x.id)===String(presetId));
@@ -3808,18 +3827,22 @@ async function duplicateSeriesPreset(presetId){
   showToast('Preset duplicado e salvo.','ok');
 }
 async function saveCurrentAsPreset(){
-  if(!presetTarget) return;
-  const d=draft.trainingPlan.days.find(x=>x.id===presetTarget.dayId);
+  const d=presetTarget && draft.trainingPlan.days.find(x=>x.id===presetTarget.dayId);
   const ex=d && d.exercises.find(e=>e.id===(presetTarget.exIds||[])[0]);
-  if(!ex) return;
-  const label=prompt('Nome do preset:', `${ex.series||''}x${ex.reps||''}`);
-  if(!label||!label.trim()) return;
-  const preset={id:uid(),label:label.trim(),series:ex.series||'',reps:ex.reps||'',carga:ex.carga||'',descanso:ex.descanso||'60s',obs:ex.obs||''};
+  const label=prompt('Nome do preset:',ex?`${ex.series||''}x${ex.reps||''}`:'Novo preset');
+  if(label===null || !label.trim()) return;
+  const series=prompt('Quantidade de séries:',String(ex?.series??'3'));
+  if(series===null || !series.trim()) return;
+  const reps=prompt('Quantidade de repetições:',String(ex?.reps??'12'));
+  if(reps===null || !reps.trim()) return;
+  const descanso=prompt('Tempo de descanso (ex.: 60s ou 1min):',String(ex?.descanso??'60s'));
+  if(descanso===null || !descanso.trim()) return;
+  const preset={id:uid(),label:label.trim(),series:series.trim(),reps:reps.trim(),carga:ex?.carga||'',descanso:descanso.trim(),obs:ex?.obs||''};
   seriesPresets.push(preset);
   const saved=await persist(false);
   if(!saved){seriesPresets=seriesPresets.filter(x=>x.id!==preset.id);showToast('Não foi possível salvar o preset na nuvem.','err');return;}
   renderPresetList();
-  showToast('Preset salvo. Selecione-o para aplicar ao(s) exercício(s).','ok');
+  showToast('Preset salvo com séries, repetições e descanso.','ok');
 }
 async function deleteSeriesPreset(presetId){
   seriesPresets = seriesPresets.filter(p => p.id !== presetId);
