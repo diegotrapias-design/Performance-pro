@@ -1544,10 +1544,53 @@ async function setupCoachPushNotifications(){
       button=document.createElement('button');button.id='pp-enable-push';
       button.type='button';button.textContent='ATIVAR AVISOS DE TREINOS';
       button.className='btn btn-outline';
-      button.style.cssText='position:fixed;right:14px;bottom:18px;z-index:9999;max-width:220px;background:#17171b;color:#fff;border:1px solid #c92532';
+      button.style.cssText='position:fixed;right:14px;bottom:18px;z-index:9999;max-width:220px;background:#17171b;color:#fff;border:1px solid #c92532;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none';
       document.body.appendChild(button);
     }
+    if(!button.dataset.movable){
+      button.dataset.movable='1';
+      try{
+        const saved=JSON.parse(localStorage.getItem('pp-push-button-position')||'null');
+        if(saved && Number.isFinite(saved.left) && Number.isFinite(saved.top)){
+          button.style.left=Math.max(0,Math.min(saved.left,window.innerWidth-button.offsetWidth))+'px';
+          button.style.top=Math.max(0,Math.min(saved.top,window.innerHeight-button.offsetHeight))+'px';
+          button.style.right='auto';button.style.bottom='auto';
+        }
+      }catch(e){}
+      let drag=null, dragged=false, suppressClick=false;
+      button.addEventListener('pointerdown',e=>{
+        if(e.button!==undefined && e.button!==0)return;
+        const rect=button.getBoundingClientRect();
+        drag={id:e.pointerId,startX:e.clientX,startY:e.clientY,left:rect.left,top:rect.top};
+        dragged=false;button.style.cursor='grabbing';
+        try{button.setPointerCapture(e.pointerId);}catch(err){}
+      });
+      button.addEventListener('pointermove',e=>{
+        if(!drag || drag.id!==e.pointerId)return;
+        const dx=e.clientX-drag.startX,dy=e.clientY-drag.startY;
+        if(!dragged && Math.hypot(dx,dy)<6)return;
+        dragged=true;e.preventDefault();
+        const left=Math.max(0,Math.min(drag.left+dx,window.innerWidth-button.offsetWidth));
+        const top=Math.max(0,Math.min(drag.top+dy,window.innerHeight-button.offsetHeight));
+        button.style.left=left+'px';button.style.top=top+'px';
+        button.style.right='auto';button.style.bottom='auto';
+      });
+      const finishDrag=e=>{
+        if(!drag || drag.id!==e.pointerId)return;
+        if(dragged){
+          const rect=button.getBoundingClientRect();
+          try{localStorage.setItem('pp-push-button-position',JSON.stringify({left:rect.left,top:rect.top}));}catch(err){}
+          suppressClick=true;
+          setTimeout(()=>{suppressClick=false;},350);
+        }
+        drag=null;button.style.cursor='grab';
+      };
+      button.addEventListener('pointerup',finishDrag);
+      button.addEventListener('pointercancel',finishDrag);
+      button.addEventListener('click',e=>{if(suppressClick){e.preventDefault();e.stopImmediatePropagation();}},true);
+    }
     button.onclick=async()=>{
+      if(suppressClick)return;
       button.disabled=true;button.textContent='ATIVANDO…';
       try{
         const permission=await Notification.requestPermission();
