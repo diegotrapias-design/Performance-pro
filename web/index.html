@@ -1239,7 +1239,7 @@ window.handleLogin = async function(event){
       <input type="file" id="ex-form-video" accept="video/*" onchange="previewExerciseVideoSelection(event)">
       <small style="color:var(--gray);">Escolha um vídeo, assista à prévia e confirme antes de salvar.</small>
       <div id="ex-form-video-preview" style="display:none;margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:10px;">
-        <video id="ex-form-video-player" controls playsinline preload="metadata" style="width:100%;max-height:260px;background:#000;border-radius:8px;"></video>
+        <video id="ex-form-video-player" controls playsinline muted preload="metadata" style="width:100%;max-height:260px;background:#000;border-radius:8px;"></video>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
           <button type="button" class="btn btn-primary btn-sm" onclick="confirmExerciseVideoSelection()">Usar este vídeo</button>
           <button type="button" class="btn btn-outline btn-sm" onclick="chooseAnotherExerciseVideo()">Escolher outro</button>
@@ -2061,14 +2061,14 @@ function renderAthleteExerciseVideo(url,title){
   else if(host==='youtube.com'||host.endsWith('.youtube.com')) videoId=parsed.searchParams.get('v')||parsed.pathname.split('/').filter(Boolean).pop()||'';
   const safeTitle=escapeHtml(title||'Demonstração do exercício');
   if(videoId&&/^[A-Za-z0-9_-]{11}$/.test(videoId)){
-    return '<div class="athlete-exercise-video"><iframe class="exercise-video-frame" src="https://www.youtube-nocookie.com/embed/'+videoId+'?playsinline=1&rel=0" title="'+safeTitle+'" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>';
+    return '<div class="athlete-exercise-video"><iframe class="exercise-video-frame" src="https://www.youtube-nocookie.com/embed/'+videoId+'?playsinline=1&rel=0&mute=1" title="'+safeTitle+'" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>';
   }
   if(host==='vimeo.com'||host==='player.vimeo.com'){
     const id=parsed.pathname.match(/^\/(?:video\/)?(\d+)(?:\/|$)/)?.[1]||'';
-    if(id) return '<div class="athlete-exercise-video"><iframe class="exercise-video-frame" src="https://player.vimeo.com/video/'+id+'" title="'+safeTitle+'" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div>';
+    if(id) return '<div class="athlete-exercise-video"><iframe class="exercise-video-frame" src="https://player.vimeo.com/video/'+id+'?muted=1" title="'+safeTitle+'" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div>';
   }
   if(/\.(mp4|m4v|mov|webm)(\?|$)/i.test(parsed.pathname+parsed.search)||host.includes('supabase')){
-    return '<div class="athlete-exercise-video"><video controls playsinline preload="metadata"><source src="'+escapeHtml(parsed.href)+'" type="video/mp4">Seu navegador não conseguiu carregar este vídeo.</video></div>';
+    return '<div class="athlete-exercise-video"><video controls playsinline muted preload="metadata"><source src="'+escapeHtml(parsed.href)+'" type="video/mp4">Seu navegador não conseguiu carregar este vídeo.</video></div>';
   }
   return '<div class="athlete-exercise-notes">Formato de vídeo não reconhecido.</div>';
 }
@@ -3113,12 +3113,12 @@ function openExerciseVideo(url,title,loop){
     }else if(host==='vimeo.com' || host==='player.vimeo.com'){
       const vimeoId=parsed.pathname.match(/^\/(?:video\/)?(\d+)(?:\/|$)/)?.[1]||'';
       if(vimeoId){
-        player.innerHTML='<iframe class="exercise-video-frame" src="https://player.vimeo.com/video/'+vimeoId+(loop?'?loop=1&autoplay=1':'')+'" title="Demonstração: '+escapeHtml(safeTitle)+'" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>';
+        player.innerHTML='<iframe class="exercise-video-frame" src="https://player.vimeo.com/video/'+vimeoId+(loop?'?loop=1&autoplay=1&muted=1':'?muted=1')+'" title="Demonstração: '+escapeHtml(safeTitle)+'" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>';
       }else{
         player.innerHTML='<div class="exercise-video-empty">Link do Vimeo inválido.</div>';
       }
     }else if(/\.(mp4|m4v|mov|webm)(\?|$)/i.test(parsed.pathname+parsed.search) || host.includes('supabase')){
-      player.innerHTML='<video class="exercise-inline-video" controls playsinline preload="metadata" '+(loop?'loop autoplay':'')+' src="'+escapeHtml(parsed.href)+'"></video>';
+      player.innerHTML='<video class="exercise-inline-video" controls playsinline muted preload="metadata" '+(loop?'loop autoplay':'')+' src="'+escapeHtml(parsed.href)+'"></video>';
     }else{
       player.innerHTML='<div class="exercise-video-empty">Este link não é um arquivo de vídeo reproduzível diretamente. Envie um vídeo MP4/MOV pela biblioteca para assistir dentro do app.</div>';
     }
@@ -3650,6 +3650,7 @@ function previewExerciseVideoSelection(event){
   if(!file){ wrap.style.display='none'; player.removeAttribute('src'); player.load(); return; }
   if(!file.type.startsWith('video/')){ input.value=''; wrap.style.display='none'; showToast('Selecione um arquivo de vídeo válido.','err'); return; }
   exerciseVideoPreviewUrl=URL.createObjectURL(file);
+  player.muted=true;
   player.src=exerciseVideoPreviewUrl;
   player.load();
   wrap.style.display='block';
