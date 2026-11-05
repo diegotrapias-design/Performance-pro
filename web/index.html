@@ -3317,6 +3317,23 @@ function combineExerciseWithNext(dayId, exerciseId){
  const idx=day.exercises.findIndex(e=>e.id===exerciseId);if(idx<0||idx>=day.exercises.length-1){showToast('Adicione o próximo exercício antes de combinar.','err');return;}
  const first=day.exercises[idx],next=day.exercises[idx+1],id=first.comboId||uid();first.comboId=id;next.comboId=id;first.comboType=next.comboType='Bi-set';renderTreinoEditPanel();showToast('Bi-set criado com os dois exercícios.','ok');
 }
+function copyTrainingFromAthlete(){
+  const selector=document.getElementById('copy-training-athlete');
+  const source=athletes.find(a=>a.id===selector?.value);
+  const sourceDays=source?.trainingPlan?.days||[];
+  if(!source || !sourceDays.length){showToast('Selecione um atleta com treino cadastrado.','err');return;}
+  if((draft.trainingPlan?.days||[]).length && !confirm('Copiar a rotina de '+source.name+'? Isso substituirá todos os dias e exercícios deste treino.')) return;
+  const comboMap=new Map();
+  const copiedDays=sourceDays.map(day=>({...JSON.parse(JSON.stringify(day)),id:uid(),exercises:(day.exercises||[]).map(ex=>({...JSON.parse(JSON.stringify(ex)),id:uid()}))}));
+  copiedDays.forEach(day=>(day.exercises||[]).forEach(ex=>{
+    if(ex.comboId){if(!comboMap.has(ex.comboId))comboMap.set(ex.comboId,uid());ex.comboId=comboMap.get(ex.comboId);}
+  }));
+  draft.trainingPlan={...JSON.parse(JSON.stringify(source.trainingPlan||{})),days:copiedDays};
+  delete draft.trainingPlan.shareId;
+  renderTreinoEditPanel();
+  showToast('Rotina completa copiada de '+source.name+'.','ok');
+}
+
 function renderTreinoEditPanel(){
   const p = document.getElementById('panel-athlete');
   if(!p) return;
@@ -3374,6 +3391,17 @@ function renderTreinoEditPanel(){
   `).join('');
 
   p.innerHTML = `
+    <div class="panel" style="margin-bottom:14px;padding:14px">
+      <div style="font-weight:700;margin-bottom:8px">📋 Copiar treino de outro atleta</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <select id="copy-training-athlete" style="flex:1;min-width:190px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text)">
+          <option value="">Selecione um atleta...</option>
+          ${athletes.filter(a=>a.id!==draft.id&&(a.trainingPlan?.days||[]).length).sort((a,b)=>(a.name||'').localeCompare(b.name||'')).map(a=>`<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`).join('')}
+        </select>
+        <button type="button" class="btn btn-outline btn-sm" onclick="copyTrainingFromAthlete()">Copiar rotina completa</button>
+      </div>
+      <small style="display:block;margin-top:7px;color:var(--muted)">Copia todos os dias, exercícios, séries, repetições, cargas, descansos, observações e vídeos.</small>
+    </div>
     <div class="cycle-field-row">
       <div class="field">
         <label>Início do ciclo</label>
