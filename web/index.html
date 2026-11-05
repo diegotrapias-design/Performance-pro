@@ -1818,6 +1818,19 @@ async function persist(showMsg){
   }catch(e){ console.error(e); showToast('Erro ao salvar na nuvem. Verifique sua conexão.', 'err'); return false; }
 }
 
+async function persistExerciseLibrary(){
+  try{
+    if(!currentUser) throw new Error('Sessão não autenticada.');
+    const payload={athletes,library:exerciseLibrary,seriesPresets,updatedAt:new Date().toISOString()};
+    const {error}=await supabaseClient.from(DATA_COLLECTION).upsert({user_id:currentUser.id,payload,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+    if(error) throw error;
+    return true;
+  }catch(e){
+    console.error('Erro ao salvar a biblioteca de exercícios:',e);
+    return false;
+  }
+}
+
 
 
 const ATHLETE_WORKOUT_SESSION_PREFIX='performance_pro_workout_session_v1';
@@ -3819,8 +3832,8 @@ async function submitExerciseForm(){
       exerciseLibrary.push({ id: uid(), name, group, video:videoUrl, favorite });
     }
 
-    const ok = await persist(false);
-    if(!ok) throw new Error('Não foi possível salvar o exercício. Tente novamente.');
+    const ok = await persistExerciseLibrary();
+    if(!ok) throw new Error('Não foi possível salvar o exercício na galeria. Verifique a conexão e tente novamente.');
     showToast('Exercício salvo' + (videoUrl ? ' com vídeo.' : '.'), 'ok');
     closeExerciseForm();
     if(currentScreen === 'library') renderLibraryScreen(document.getElementById('lib-screen-search') ? document.getElementById('lib-screen-search').value : '');
@@ -3862,7 +3875,8 @@ async function handleLibraryVideoUpload(event, exId){
     const url = await uploadToSupabaseStorage(file);
     const ex = exerciseLibrary.find(x => x.id === exId);
     if(ex) ex.video = url;
-    await persist(false);
+    const saved = await persistExerciseLibrary();
+    if(!saved) throw new Error('Não foi possível salvar o vídeo na galeria.'); 
     showToast('Vídeo salvo no exercício da biblioteca.', 'ok');
     renderLibraryScreen('');
   }catch(e){
