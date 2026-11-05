@@ -411,6 +411,10 @@ window.handleLogin = async function(event){
   .view-ex-video.search{background:#e5e5e7;color:var(--black);font-size:14px;}
   .exercise-inline-video{width:100%;max-height:62vh;background:#000;border-radius:12px;display:block;}
   video::-webkit-media-controls-mute-button,video::-webkit-media-controls-volume-slider,video::-webkit-media-controls-volume-control-container,video::-webkit-media-controls-volume-control{display:none!important;}
+  .pp-video-wrap{position:relative;width:100%;background:#000;border-radius:12px;overflow:hidden;}
+  .pp-video-wrap video{display:block;width:100%;max-height:62vh;background:#000;}
+  .pp-video-play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:58px;height:58px;border:0;border-radius:50%;background:rgba(0,0,0,.68);color:#fff;font-size:26px;display:grid;place-items:center;}
+  .pp-video-full{position:absolute;right:10px;top:10px;width:38px;height:38px;border:0;border-radius:8px;background:rgba(0,0,0,.68);color:#fff;font-size:20px;}
   .exercise-video-frame{width:100%;aspect-ratio:16/9;border:0;border-radius:12px;background:#000;}
   .exercise-video-empty{padding:18px;background:#f3f3f4;border-radius:10px;color:var(--black);font-size:13px;line-height:1.5;}
   .exercise-video-open{border:0;cursor:pointer;}
@@ -3140,16 +3144,16 @@ function openExerciseVideo(url,title,loop){
     if(host==='youtu.be') videoId=parsed.pathname.split('/').filter(Boolean)[0]||'';
     else if(host.endsWith('youtube.com')) videoId=parsed.searchParams.get('v')||parsed.pathname.split('/').filter(Boolean).pop()||'';
     if(videoId && /^[A-Za-z0-9_-]{11}$/.test(videoId)){
-      player.innerHTML='<iframe class="exercise-video-frame" src="https://www.youtube-nocookie.com/embed/'+videoId+'?playsinline=1&rel=0&mute=1&controls=1'+(loop?'&loop=1&playlist='+videoId:'')+'" title="Demonstração: '+escapeHtml(safeTitle)+'" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>';
+      player.innerHTML='<iframe class="exercise-video-frame" src="https://www.youtube-nocookie.com/embed/'+videoId+'?playsinline=1&rel=0&mute=1&controls=0'+(loop?'&loop=1&playlist='+videoId:'')+'" title="Demonstração: '+escapeHtml(safeTitle)+'" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>';
     }else if(host==='vimeo.com' || host==='player.vimeo.com'){
       const vimeoId=parsed.pathname.match(/^\/(?:video\/)?(\d+)(?:\/|$)/)?.[1]||'';
       if(vimeoId){
-        player.innerHTML='<iframe class="exercise-video-frame" src="https://player.vimeo.com/video/'+vimeoId+(loop?'?loop=1&autoplay=1&muted=1&controls=0':'?muted=1&controls=1')+'" title="Demonstração: '+escapeHtml(safeTitle)+'" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>';
+        player.innerHTML='<iframe class="exercise-video-frame" src="https://player.vimeo.com/video/'+vimeoId+(loop?'?loop=1&autoplay=1&muted=1&controls=0':'?muted=1&controls=0')+'" title="Demonstração: '+escapeHtml(safeTitle)+'" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>';
       }else{
         player.innerHTML='<div class="exercise-video-empty">Link do Vimeo inválido.</div>';
       }
     }else if(/\.(mp4|m4v|mov|webm)(\?|$)/i.test(parsed.pathname+parsed.search) || host.includes('supabase')){
-      player.innerHTML='<video class="exercise-inline-video" controls playsinline muted volume="0" preload="metadata" '+(loop?'loop autoplay':'')+' src="'+escapeHtml(parsed.href)+'"></video>';
+      player.innerHTML=`<div class="pp-video-wrap"><video class="exercise-inline-video" playsinline muted defaultMuted preload="metadata" onvolumechange="this.muted=true;this.volume=0" onplay="this.muted=true;this.volume=0" ${loop?'loop autoplay':''} src="${escapeHtml(parsed.href)}"></video><button type="button" class="pp-video-play" onclick="const v=this.parentElement.querySelector('video');if(v.paused){v.muted=true;v.volume=0;v.play();this.style.display='none'}else{v.pause();this.style.display='grid'}" aria-label="Reproduzir vídeo">▶</button><button type="button" class="pp-video-full" onclick="const v=this.parentElement.querySelector('video');v.muted=true;v.volume=0;if(v.requestFullscreen)v.requestFullscreen();else if(v.webkitEnterFullscreen)v.webkitEnterFullscreen()" aria-label="Tela cheia">⛶</button></div>`;
     }else{
       player.innerHTML='<div class="exercise-video-empty">Este link não é um arquivo de vídeo reproduzível diretamente. Envie um vídeo MP4/MOV pela biblioteca para assistir dentro do app.</div>';
     }
@@ -3682,6 +3686,8 @@ function previewExerciseVideoSelection(event){
   if(!file.type.startsWith('video/')){ input.value=''; wrap.style.display='none'; showToast('Selecione um arquivo de vídeo válido.','err'); return; }
   exerciseVideoPreviewUrl=URL.createObjectURL(file);
   player.muted=true;
+  player.defaultMuted=true;
+  player.volume=0;
   player.src=exerciseVideoPreviewUrl;
   player.load();
   wrap.style.display='block';
