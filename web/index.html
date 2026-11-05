@@ -410,7 +410,7 @@ window.handleLogin = async function(event){
   }
   .view-ex-video.search{background:#e5e5e7;color:var(--black);font-size:14px;}
   .exercise-inline-video{width:100%;max-height:62vh;background:#000;border-radius:12px;display:block;}
-  video::-webkit-media-controls-mute-button,video::-webkit-media-controls-volume-slider,video::-webkit-media-controls-volume-control-container{display:none!important;}
+  video::-webkit-media-controls-mute-button,video::-webkit-media-controls-volume-slider,video::-webkit-media-controls-volume-control-container,video::-webkit-media-controls-volume-control{display:none!important;}
   .exercise-video-frame{width:100%;aspect-ratio:16/9;border:0;border-radius:12px;background:#000;}
   .exercise-video-empty{padding:18px;background:#f3f3f4;border-radius:10px;color:var(--black);font-size:13px;line-height:1.5;}
   .exercise-video-open{border:0;cursor:pointer;}
@@ -2051,6 +2051,36 @@ async function loadAthletePortal(){
   }
 }
 
+// Mantém todos os vídeos HTML permanentemente sem áudio, inclusive os adicionados dinamicamente à biblioteca.
+(function enforceMutedVideos(){
+  function silence(video){
+    if(!(video instanceof HTMLVideoElement)) return;
+    video.muted=true;
+    video.defaultMuted=true;
+    video.volume=0;
+    if(!video.dataset.muteLocked){
+      video.dataset.muteLocked='1';
+      video.addEventListener('volumechange',function(){
+        if(!video.muted || video.volume!==0){video.muted=true;video.volume=0;}
+      });
+      video.addEventListener('play',function(){video.muted=true;video.volume=0;});
+    }
+  }
+  document.querySelectorAll('video').forEach(silence);
+  new MutationObserver(function(records){
+    records.forEach(function(record){
+      record.addedNodes.forEach(function(node){
+        if(node.nodeType!==1)return;
+        if(node.matches&&node.matches('video'))silence(node);
+        if(node.querySelectorAll)node.querySelectorAll('video').forEach(silence);
+      });
+    });
+  }).observe(document.documentElement,{childList:true,subtree:true});
+  document.addEventListener('play',function(event){
+    if(event.target instanceof HTMLVideoElement)silence(event.target);
+  },true);
+})();
+
 function renderAthleteExerciseVideo(url,title){
   if(!url) return '';
   let parsed;
@@ -2062,14 +2092,14 @@ function renderAthleteExerciseVideo(url,title){
   else if(host==='youtube.com'||host.endsWith('.youtube.com')) videoId=parsed.searchParams.get('v')||parsed.pathname.split('/').filter(Boolean).pop()||'';
   const safeTitle=escapeHtml(title||'Demonstração do exercício');
   if(videoId&&/^[A-Za-z0-9_-]{11}$/.test(videoId)){
-    return '<div class="athlete-exercise-video"><iframe class="exercise-video-frame" src="https://www.youtube-nocookie.com/embed/'+videoId+'?playsinline=1&rel=0&mute=1&controls=1" title="'+safeTitle+'" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>';
+    return '<div class="athlete-exercise-video"><iframe class="exercise-video-frame" src="https://www.youtube-nocookie.com/embed/'+videoId+'?playsinline=1&rel=0&mute=1&controls=0" title="'+safeTitle+'" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>';
   }
   if(host==='vimeo.com'||host==='player.vimeo.com'){
     const id=parsed.pathname.match(/^\/(?:video\/)?(\d+)(?:\/|$)/)?.[1]||'';
-    if(id) return '<div class="athlete-exercise-video"><iframe class="exercise-video-frame" src="https://player.vimeo.com/video/'+id+'?muted=1" title="'+safeTitle+'" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div>';
+    if(id) return '<div class="athlete-exercise-video"><iframe class="exercise-video-frame" src="https://player.vimeo.com/video/'+id+'?muted=1&controls=0" title="'+safeTitle+'" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div>';
   }
   if(/\.(mp4|m4v|mov|webm)(\?|$)/i.test(parsed.pathname+parsed.search)||host.includes('supabase')){
-    return '<div class="athlete-exercise-video"><video controls playsinline muted preload="metadata"><source src="'+escapeHtml(parsed.href)+'" type="video/mp4">Seu navegador não conseguiu carregar este vídeo.</video></div>';
+    return '<div class="athlete-exercise-video"><video controls playsinline muted volume="0" preload="metadata"><source src="'+escapeHtml(parsed.href)+'" type="video/mp4">Seu navegador não conseguiu carregar este vídeo.</video></div>';
   }
   return '<div class="athlete-exercise-notes">Formato de vídeo não reconhecido.</div>';
 }
@@ -3114,12 +3144,12 @@ function openExerciseVideo(url,title,loop){
     }else if(host==='vimeo.com' || host==='player.vimeo.com'){
       const vimeoId=parsed.pathname.match(/^\/(?:video\/)?(\d+)(?:\/|$)/)?.[1]||'';
       if(vimeoId){
-        player.innerHTML='<iframe class="exercise-video-frame" src="https://player.vimeo.com/video/'+vimeoId+(loop?'?loop=1&autoplay=1&muted=1&controls=1':'?muted=1&controls=1')+'" title="Demonstração: '+escapeHtml(safeTitle)+'" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>';
+        player.innerHTML='<iframe class="exercise-video-frame" src="https://player.vimeo.com/video/'+vimeoId+(loop?'?loop=1&autoplay=1&muted=1&controls=0':'?muted=1&controls=1')+'" title="Demonstração: '+escapeHtml(safeTitle)+'" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>';
       }else{
         player.innerHTML='<div class="exercise-video-empty">Link do Vimeo inválido.</div>';
       }
     }else if(/\.(mp4|m4v|mov|webm)(\?|$)/i.test(parsed.pathname+parsed.search) || host.includes('supabase')){
-      player.innerHTML='<video class="exercise-inline-video" controls playsinline muted preload="metadata" '+(loop?'loop autoplay':'')+' src="'+escapeHtml(parsed.href)+'"></video>';
+      player.innerHTML='<video class="exercise-inline-video" controls playsinline muted volume="0" preload="metadata" '+(loop?'loop autoplay':'')+' src="'+escapeHtml(parsed.href)+'"></video>';
     }else{
       player.innerHTML='<div class="exercise-video-empty">Este link não é um arquivo de vídeo reproduzível diretamente. Envie um vídeo MP4/MOV pela biblioteca para assistir dentro do app.</div>';
     }
