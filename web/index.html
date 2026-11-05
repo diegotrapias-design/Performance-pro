@@ -1731,6 +1731,8 @@ async function loadAthletes(){
   }
   let needsSave=false;
   if(!exerciseLibrary){ exerciseLibrary=seedDefaultLibrary(); needsSave=true; }
+  const libraryWithVideos = exerciseLibrary.filter(ex => typeof ex.video === 'string' && ex.video.trim().length > 0);
+  if(libraryWithVideos.length !== exerciseLibrary.length){ exerciseLibrary = libraryWithVideos; needsSave = true; }
   if(!seriesPresets){ seriesPresets=seedDefaultPresets(); needsSave=true; }
   if(needsSave) await persist(false);
   renderHome();
