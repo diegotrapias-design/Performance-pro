@@ -1624,61 +1624,53 @@ async function setupCoachPushNotifications(){
     button.type='button';
     button.textContent='ATIVAR AVISOS DE TREINOS';
     button.className='btn btn-outline';
-    button.style.cssText='position:fixed;right:14px;bottom:18px;z-index:9999;max-width:calc(100vw - 28px);background:#17171b;color:#fff;border:1px solid #c92532;touch-action:manipulation;cursor:pointer;user-select:none;-webkit-user-select:none';
-    document.body.appendChild(button);
-  }
-  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){
-    button.disabled=true;
-    button.textContent='AVISOS INDISPONÍVEIS NESTE NAVEGADOR';
-    return;
+    button.style.cssText='position:relative;display:block;margin:12px auto;z-index:20;width:min(100% - 28px,560px);max-width:calc(100vw - 28px);background:#17171b;color:#fff;border:1px solid #c92532;touch-action:manipulation;cursor:pointer;user-select:none;-webkit-user-select:none;pointer-events:auto';
+    const header=document.querySelector('header')||document.querySelector('.app-header')||document.body;
+    header.insertAdjacentElement('afterend',button);
   }
   if(isIOS&&!isStandalone){
-    button.onclick=()=>showToast('No iPhone, adicione o Performance Pro à Tela de Início e abra pelo ícone para ativar notificações.','error');
+    button.onclick=()=>window.alert('No iPhone, adicione o Performance Pro à Tela de Início e abra pelo ícone para ativar notificações.');
     return;
   }
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){
+    button.onclick=()=>window.alert('Este navegador não oferece suporte a notificações push.');
+    return;
+  }
+  button.disabled=false;
+  button.onclick=async()=>{
+    button.disabled=true;
+    button.textContent='ATIVANDO…';
+    try{
+      if(Notification.permission==='denied')throw new Error('As notificações estão bloqueadas nas configurações do iPhone. Permita notificações para o Performance Pro.');
+      // A solicitação de permissão ocorre imediatamente dentro do toque do usuário.
+      const permission=Notification.permission==='granted'?'granted':await Notification.requestPermission();
+      if(permission!=='granted')throw new Error('A permissão para notificações não foi concedida.');
+      const reg=await navigator.serviceWorker.register('/sw.js',{scope:'/'});
+      await navigator.serviceWorker.ready;
+      let subscription=await reg.pushManager.getSubscription();
+      if(!subscription)subscription=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:ppUrlBase64ToUint8Array(PP_PUSH_PUBLIC_KEY)});
+      const {data,error}=await supabaseClient.functions.invoke('push-notifications',{body:{action:'subscribe',subscription:subscription.toJSON()}});
+      if(error)throw error;
+      if(!data?.ok)throw new Error(data?.error||'O servidor não confirmou a ativação.');
+      button.textContent='AVISOS ATIVADOS';
+      button.style.background='#1d5134';
+      window.alert('Notificações de treinos ativadas com sucesso.');
+    }catch(e){
+      console.error('Falha ao ativar notificações:',e);
+      button.disabled=false;
+      button.textContent='ATIVAR AVISOS DE TREINOS';
+      window.alert(e?.message||'Não foi possível ativar as notificações.');
+    }
+  };
+  // Confere assinatura já existente sem bloquear a instalação do evento de toque.
   try{
-    const reg=await navigator.serviceWorker.register('/sw.js');
-    await navigator.serviceWorker.ready;
+    const reg=await navigator.serviceWorker.register('/sw.js',{scope:'/'});
     const existing=await reg.pushManager.getSubscription();
     if(existing){
       const {data,error}=await supabaseClient.functions.invoke('push-notifications',{body:{action:'subscribe',subscription:existing.toJSON()}});
-      if(error)throw error;
-      if(!data?.ok)throw new Error(data?.error||'Não foi possível confirmar a assinatura.');
-      button.textContent='AVISOS ATIVADOS';
-      button.style.background='#1d5134';
+      if(!error&&data?.ok){button.textContent='AVISOS ATIVADOS';button.style.background='#1d5134';}
     }
-    button.onclick=async()=>{
-      button.disabled=true;
-      button.textContent='ATIVANDO…';
-      try{
-        if(Notification.permission==='denied')throw new Error('As notificações estão bloqueadas. Ative-as nas configurações do iPhone para o Performance Pro.');
-        const permission=Notification.permission==='granted'?'granted':await Notification.requestPermission();
-        if(permission!=='granted')throw new Error('A permissão para notificações não foi concedida.');
-        const subscription=await reg.pushManager.getSubscription()||await reg.pushManager.subscribe({
-          userVisibleOnly:true,
-          applicationServerKey:ppUrlBase64ToUint8Array(PP_PUSH_PUBLIC_KEY)
-        });
-        const {data,error}=await supabaseClient.functions.invoke('push-notifications',{
-          body:{action:'subscribe',subscription:subscription.toJSON()}
-        });
-        if(error)throw error;
-        if(!data?.ok)throw new Error(data?.error||'O servidor não confirmou a ativação dos avisos.');
-        button.textContent='AVISOS ATIVADOS';
-        button.style.background='#1d5134';
-        showToast('Notificações de treinos ativadas.');
-      }catch(e){
-        console.error('Falha ao ativar notificações:',e);
-        button.disabled=false;
-        button.textContent='ATIVAR AVISOS DE TREINOS';
-        showToast(e.message||'Não foi possível ativar os avisos.','error');
-      }
-    };
-  }catch(e){
-    console.error('Falha ao preparar notificações push:',e);
-    button.disabled=false;
-    button.textContent='ATIVAR AVISOS DE TREINOS';
-    button.onclick=()=>showToast(e.message||'Não foi possível preparar as notificações.','error');
-  }
+  }catch(e){console.warn('Não foi possível verificar a assinatura push:',e);}
 }
 
 // Expor explicitamente o fluxo de autenticação para o bootstrap inicial.
