@@ -354,6 +354,32 @@ window.handleLogin = async function(event){
   .athlete-manifesto-line strong{font-size:clamp(23px,5vw,30px);line-height:1.2;font-weight:800;letter-spacing:-.5px;}
   .athlete-manifesto-brand{font-size:clamp(11px,2.7vw,15px);line-height:1.8;letter-spacing:4px;color:#999ba1;font-weight:500;}
 
+  /* Ajustes de enquadramento e controles da área do atleta em telas estreitas */
+  html,body{max-width:100%;overflow-x:hidden;}
+  .athlete-workout-screen,#athlete-workout-detail-content,#athlete-monitor-form,#athlete-progress,
+  #athlete-progress .panel,.athlete-workout-top,.athlete-exercise-list{width:100%;max-width:100%;min-width:0;}
+  .athlete-workout-screen *{min-width:0;}
+  #athlete-session-timer-panel button[hidden],
+  #athlete-session-timer-panel [hidden]{display:none!important;}
+  .table-wrap{display:block;width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;}
+  .table-wrap table{min-width:720px;width:100%;border-collapse:collapse;}
+  .table-wrap th,.table-wrap td{white-space:nowrap;padding:9px 10px;}
+  #athlete-progress .profile-card{width:100%;max-width:100%;overflow:hidden;}
+  #athlete-progress svg{display:block;width:100%;max-width:100%;height:auto;}
+  @media(max-width:600px){
+    main{padding-left:10px;padding-right:10px;}
+    .athlete-workout-screen{margin:8px 0 18px;border-radius:12px;}
+    .athlete-workout-top{padding:14px 12px;}
+    .athlete-workout-top h2{font-size:18px;overflow-wrap:anywhere;}
+    #athlete-session-timer-panel{padding:12px!important;}
+    #athlete-session-clock{font-size:clamp(28px,9vw,34px)!important;}
+    #athlete-session-timer-panel>div:last-child{line-height:1.45;}
+    .athlete-exercise-list{padding:8px;}
+    .athlete-exercise-card{min-width:0;}
+    .athlete-exercise-main{min-width:0;overflow-wrap:anywhere;}
+    .athlete-workout-screen .btn{white-space:normal;justify-content:center;}
+  }
+
   /* ---- Tela do treino do atleta: referência visual MFit ---- */
   .athlete-workout-screen{margin:10px 0 24px;background:#f4f6f9;border-radius:14px;overflow:hidden;}
   .athlete-workout-top{background:linear-gradient(145deg,#242428,#090909);color:#fff;padding:17px 16px 14px;border-bottom:3px solid #c92532;}
@@ -2052,7 +2078,6 @@ async function loadAthletePortal(){
           <div class="field-grid" style="grid-template-columns:1fr 1fr;gap:10px"><button class="btn btn-primary" type="button" onclick="goSaltoForAthlete('${athlete.id}','pre','${safe(athlete.full_name)}')">🎥 Avaliar salto pré-treino</button><button class="btn btn-outline" type="button" onclick="goSaltoForAthlete('${athlete.id}','post','${safe(athlete.full_name)}')">🎥 Avaliar salto pós-treino</button></div>
           <div class="muted" style="margin-top:10px">Os resultados serão registrados no gráfico de evolução do salto.</div><p class="muted" style="margin-top:10px">A carga da sessão é calculada automaticamente: PSE × duração.</p>
           <button class="btn btn-primary" id="athlete-monitor-submit" type="button" onclick="saveAthleteProgress('${athlete.id}')">Salvar progresso</button>
-          <button class="btn btn-outline" id="athlete-workout-complete" type="button" style="margin:10px 0 0;width:100%" onclick="toggleAthleteWorkoutCompletion('${athlete.id}')">Marcar treino como concluído</button>
           <p id="athlete-monitor-message" class="muted" role="status" style="margin-top:10px">TQR e salto pré-sessão podem ser salvos antes de terminar. Depois, registre PSE e salto pós-sessão.</p>
         </section>
       </section>
