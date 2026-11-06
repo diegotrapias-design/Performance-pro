@@ -1939,6 +1939,8 @@ async function finishAthleteWorkoutSession(){
 }
 
 async function loadAthletePortal(){
+  const brandImage=document.querySelector('#app-shell > header > img');
+  if(brandImage){brandImage.style.cursor='pointer';brandImage.onclick=()=>showAthleteSection('home');}
   const app=document.getElementById('app');
   app.innerHTML='<div class="loading">Carregando sua área do atleta…</div>';
   try{
