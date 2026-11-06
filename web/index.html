@@ -2282,6 +2282,7 @@ async function saveAthleteProgress(athleteId,options={}){
       : await supabaseClient.from('monitoring_sessions').insert({athlete_id:athleteId,session_date:date,...values});
     if(result.error) throw result.error;
     if(msg)msg.textContent=options.quiet?'Progresso salvo automaticamente.':'Progresso salvo. Você pode continuar o treino depois; os dados já estão disponíveis para o treinador.';
+    if(typeof refreshAthleteProgressChart==='function' && document.querySelector('#athlete-progress:not([hidden])')) await refreshAthleteProgressChart();
     return true;
   }catch(e){
     console.error('Erro ao salvar progresso do atleta:',e);
