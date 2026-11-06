@@ -2271,7 +2271,6 @@ async function saveAthleteProgress(athleteId,options={}){
     if(!Number.isInteger(duration)||duration<1||duration>600){if(msg)msg.textContent='A duração deve ser de 1 a 600 minutos.';return;}
     values.duration_min=duration;
   }
-  if(values.pse!=null && values.duration_min!=null) values.load_ua=values.pse*values.duration_min;
   if(pre!=='') values.jump_pre_cm=Number(pre);
   if(post!=='') values.jump_post_cm=Number(post);
   // Permite criar o registro mesmo quando o atleta marca o treino como concluído sem outros campos.
@@ -4736,17 +4735,25 @@ boot();
   }
 
   function renderHistory() {
-    var filter = athleteFilterEl.value;
-    var filtered = filter ? jumpLog.filter(function (j) { return j.athlete === filter; }) : jumpLog;
+    var athleteMode = !!(saltoReturnToAthletePortal && saltoReturnAthleteId);
+    var filter = athleteMode ? '' : athleteFilterEl.value;
+    var scopedLog = athleteMode
+      ? jumpLog.filter(function (j) { return String(j.athleteId || '') === String(saltoReturnAthleteId); })
+      : jumpLog;
+    var filtered = filter ? scopedLog.filter(function (j) { return j.athlete === filter; }) : scopedLog;
     var sorted = filtered.slice().sort(function (a, b) {
       return b.date.localeCompare(a.date) || b.createdAt - a.createdAt;
     });
+    var filterWrap = athleteFilterEl.closest('.history-header');
+    if (filterWrap) athleteFilterEl.hidden = athleteMode;
+    var actions = document.querySelector('#salto-root .history-actions');
+    if (actions) actions.hidden = athleteMode;
 
     if (sorted.length === 0) {
       historyEmpty.hidden = false;
       historyTable.hidden = true;
       sparklineWrap.hidden = true;
-      updateAthleteFilterOptions();
+      if (!athleteMode) updateAthleteFilterOptions();
       return;
     }
 
@@ -4761,25 +4768,29 @@ boot();
         '<td>' + formatDateBR(j.date) + '</td>' +
         '<td>' + escapeHtml(j.athlete) + '</td>' +
         '<td>' + escapeHtml(j.type) + '</td>' +
-        '<td class="history-height">' + j.heightCm.toFixed(1) + ' cm</td>' +
-        '<td><button class="row-delete" data-id="' + escapeHtml(j.id) + '" type="button" aria-label="Excluir este salto">Excluir</button></td>';
+        '<td class="history-height">' + Number(j.heightCm).toFixed(1) + ' cm</td>' +
+        (athleteMode ? '' : '<td><button class="row-delete" data-id="' + escapeHtml(j.id) + '" type="button" aria-label="Excluir este salto">Excluir</button></td>');
       historyBody.appendChild(tr);
     }
 
-    var deleteButtons = historyBody.querySelectorAll('.row-delete');
-    deleteButtons.forEach(function (btn) {
-      btn.addEventListener('click', function () { deleteEntry(btn.dataset.id); });
-    });
+    if (!athleteMode) {
+      var deleteButtons = historyBody.querySelectorAll('.row-delete');
+      deleteButtons.forEach(function (btn) {
+        btn.addEventListener('click', function () { deleteEntry(btn.dataset.id); });
+      });
+    }
 
-    if (filter && filtered.length >= 2) {
+    if (filtered.length >= 2) {
       renderSparkline(filtered);
       sparklineWrap.hidden = false;
     } else {
       sparklineWrap.hidden = true;
     }
 
-    updateAthleteFilterOptions();
-    athleteFilterEl.value = filter;
+    if (!athleteMode) {
+      updateAthleteFilterOptions();
+      athleteFilterEl.value = filter;
+    }
   }
 
   function exportCsv() {
