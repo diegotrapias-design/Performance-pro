@@ -1510,26 +1510,31 @@ async function uploadToSupabaseStorage(file){
   return data.signedUrl;
 }
 
+let passwordFlowActive = false;
+function showPasswordSetupPanel(messageText){
+  passwordFlowActive=true;
+  document.getElementById('login-screen').style.display='';
+  document.getElementById('app-shell').style.display='none';
+  document.getElementById('lp-login-panel').hidden=true;
+  document.getElementById('password-recovery-panel').hidden=false;
+  const message=document.getElementById('password-recovery-message');
+  if(message)message.textContent=messageText||'Crie sua senha para acessar o Performance Pro.';
+  setTimeout(()=>document.getElementById('new-password').focus(),100);
+}
 function initSupabase(){
-  auth = supabaseClient.auth;
-  auth.onAuthStateChange((event, session) => {
-    if(event === 'PASSWORD_RECOVERY'){
-      document.getElementById('login-screen').style.display = '';
-      document.getElementById('app-shell').style.display = 'none';
-      document.getElementById('lp-login-panel').hidden = true;
-      document.getElementById('password-recovery-panel').hidden = false;
-      document.getElementById('new-password').focus();
-      return;
+  auth=supabaseClient.auth;
+  auth.onAuthStateChange((event,session)=>{
+    if(event==='PASSWORD_RECOVERY'){showPasswordSetupPanel('Crie uma nova senha para acessar o Performance Pro.');return;}
+    if(event==='SIGNED_IN'&&session?.user?.user_metadata?.invitation_pending){showPasswordSetupPanel('Bem-vindo! Crie sua senha para concluir seu primeiro acesso.');return;}
+    if(event==='SIGNED_OUT'){passwordFlowActive=false;setTimeout(()=>onAuthChange(null),0);}
+  });
+  auth.getSession().then(({data,error})=>{
+    if(error){showLoginError('Não foi possível verificar a sessão: '+error.message);return;}
+    if(data.session?.user){
+      if(data.session.user.user_metadata?.invitation_pending){showPasswordSetupPanel('Bem-vindo! Crie sua senha para concluir seu primeiro acesso.');return;}
+      if(!passwordFlowActive)setTimeout(()=>onAuthChange(data.session.user),0);
     }
-    if(event === 'SIGNED_OUT') setTimeout(() => onAuthChange(null), 0);
-  });
-  auth.getSession().then(({data, error}) => {
-    if(error){ showLoginError('Não foi possível verificar a sessão: ' + error.message); return; }
-    if(data.session?.user) setTimeout(() => onAuthChange(data.session.user), 0);
-  }).catch(error => {
-    console.error('Falha ao recuperar sessão:', error);
-    showLoginError('Falha temporária de conexão ao recuperar sua sessão. Toque em ENTRAR novamente.');
-  });
+  }).catch(error=>{console.error('Falha ao recuperar sessão:',error);showLoginError('Falha temporária de conexão ao recuperar sua sessão. Toque em ENTRAR novamente.');});
 }
 
 function landingEnter(){
@@ -1547,6 +1552,8 @@ function enterLocalMode(){ showToast('Entre com seu e-mail e senha para acessar 
 function showLoginError(msg){ const el=document.getElementById('login-error'); if(el) el.textContent=msg; }
 
 async function onAuthChange(user){
+  if(passwordFlowActive)return;
+  if(user?.user_metadata?.invitation_pending){showPasswordSetupPanel('Bem-vindo! Crie sua senha para concluir seu primeiro acesso.');return;}
   const transition = ++authTransition;
   const loginScreen=document.getElementById('login-screen');
   const appShell=document.getElementById('app-shell');
@@ -1707,10 +1714,12 @@ window.handleLogin = handleLogin;
 async function sendPasswordRecovery(){
   const email=document.getElementById('login-email').value.trim().toLowerCase();
   showLoginError('');
-  if(!email){ showLoginError('Informe o e-mail cadastrado.'); return; }
-  const {error}=await supabaseClient.auth.resetPasswordForEmail(email,{redirectTo:location.origin + location.pathname});
-  if(error) showLoginError('Não foi possível enviar a recuperação: '+error.message);
-  else showLoginError('Enviamos as instruções de recuperação para seu e-mail.');
+  if(!email){showLoginError('Informe o e-mail cadastrado.');return;}
+  try{
+    const {error}=await supabaseClient.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+    if(error)throw error;
+    showLoginError('Enviamos as instruções de recuperação para seu e-mail. Abra o link neste mesmo navegador para criar uma nova senha.');
+  }catch(e){console.error('Falha ao solicitar redefinição de senha:',e);showLoginError('Não foi possível enviar a recuperação: '+(e.message||'Tente novamente.'));}
 }
 
 async function handlePasswordRecovery(event){
@@ -1719,15 +1728,18 @@ async function handlePasswordRecovery(event){
   const confirmation=document.getElementById('confirm-password').value;
   const message=document.getElementById('password-recovery-message');
   message.textContent='';
-  if(password.length < 8){ message.textContent='Use uma senha com pelo menos 8 caracteres.'; return; }
-  if(password !== confirmation){ message.textContent='As senhas não coincidem.'; return; }
-  const {error}=await supabaseClient.auth.updateUser({password});
-  if(error){ message.textContent='Não foi possível atualizar a senha: ' + error.message; return; }
-  await supabaseClient.auth.signOut();
-  document.getElementById('password-recovery-panel').hidden=true;
-  document.getElementById('lp-login-panel').hidden=false;
-  message.textContent='Senha atualizada. Agora entre com seu e-mail e a nova senha.';
-  document.getElementById('login-password').value='';
+  if(password.length<8){message.textContent='Use uma senha com pelo menos 8 caracteres.';return;}
+  if(password!==confirmation){message.textContent='As senhas não coincidem.';return;}
+  try{
+    const {error}=await supabaseClient.auth.updateUser({password,data:{invitation_pending:false}});
+    if(error)throw error;
+    passwordFlowActive=false;
+    await supabaseClient.auth.signOut();
+    document.getElementById('password-recovery-panel').hidden=true;
+    document.getElementById('lp-login-panel').hidden=false;
+    message.textContent='Senha criada/atualizada com sucesso. Agora entre com seu e-mail e sua senha.';
+    document.getElementById('login-password').value='';
+  }catch(e){console.error('Falha ao salvar senha:',e);message.textContent='Não foi possível atualizar a senha: '+(e.message||'Tente novamente.');}
 }
 
 function handleLogout(){ currentProfile=null; supabaseClient.auth.signOut(); }
