@@ -3661,7 +3661,7 @@ function renderLibraryScreen(filter){
 
   const resultsHtml = groupNames.length === 0 ? '<div class="empty-state"><div class="icon">📚</div><div>Nenhum exercício encontrado.</div></div>' :
     groupNames.sort().map(g => `
-      <div class="profile-section-title">${escapeHtml(g)}</div>
+      <div class="profile-section-title">${escapeHtml(g)} <span style="font-weight:600;color:var(--gray);font-size:.85em">(${exerciseLibrary.filter(ex => ex.group === g).length} ${exerciseLibrary.filter(ex => ex.group === g).length === 1 ? 'exercício' : 'exercícios'})</span></div>
       <div class="lib-manage-list">
         ${groups[g].map(ex => `
           <div class="lib-manage-row">
