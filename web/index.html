@@ -2081,7 +2081,7 @@ async function loadAthletePortal(){
           <p id="athlete-monitor-message" class="muted" role="status" style="margin-top:10px">TQR e salto pré-sessão podem ser salvos antes de terminar. Depois, registre PSE e salto pós-sessão.</p>
         </section>
       </section>
-      <section id="athlete-progress" hidden>${backButton}<section class="panel" style="padding:18px;margin-top:8px">${buildMonitoringCharts((monitoring||[]).slice().reverse())}</section></section>
+      <section id="athlete-progress" hidden>${backButton}<section class="panel" style="padding:18px;margin-top:8px">${buildMonitoringCharts((monitoring||[]).slice().reverse(),true)}</section></section>
       <section id="athlete-invoices" hidden>${backButton}<h2>Faturas</h2><div class="empty-state">Não há faturas disponíveis no seu acesso.</div></section>
 `;
     window.__athleteWorkouts=allWorkouts;
@@ -2159,7 +2159,7 @@ async function refreshAthleteProgressChart(){
       .eq('athlete_id',window.__athleteMonitoringId)
       .order('session_date',{ascending:true}).limit(100);
     if(error)throw error;
-    host.innerHTML=buildMonitoringCharts(data||[]);
+    host.innerHTML=buildMonitoringCharts(data||[],true);
   }catch(e){console.error('Não foi possível atualizar a evolução do atleta:',e);}
 }
 
@@ -2366,33 +2366,34 @@ async function toggleAthleteWorkoutCompletion(athleteId){
   }catch(e){console.error('Erro ao atualizar conclusão:',e);if(msg)msg.textContent='Não foi possível atualizar a conclusão: '+(e.message||'erro');}
 }
 
-function buildMonitoringCharts(rows){
-  const valid=(rows||[]).filter(r=>r.jump_pre_cm!=null||r.jump_post_cm!=null);
-  if(!valid.length)return '<div class="empty-state">Os gráficos CMJ aparecerão quando houver avaliações pré e/ou pós-sessão.</div>';
-  const values=valid.flatMap(r=>[r.jump_pre_cm,r.jump_post_cm]).filter(v=>v!=null).map(Number);
+function buildMonitoringCharts(rows,athleteView=false){
+  const valid=(rows||[]).filter(r=>athleteView?r.jump_pre_cm!=null:(r.jump_pre_cm!=null||r.jump_post_cm!=null));
+  if(!valid.length)return '<div class="empty-state">Os gráficos CMJ aparecerão quando houver avaliações de salto pré-sessão.</div>';
+  const fields=athleteView?['jump_pre_cm']:['jump_pre_cm','jump_post_cm'];
+  const values=valid.flatMap(r=>fields.map(field=>r[field])).filter(v=>v!=null).map(Number);
   const min=Math.floor(Math.min(...values)-2),max=Math.ceil(Math.max(...values)+2),range=Math.max(1,max-min);
-  const x=i=>58+(i*(540/Math.max(1,valid.length-1)));
-  const y=v=>28+(178-(Number(v)-min)/range*158);
+  const x=i=>65+(i*(610/Math.max(1,valid.length-1)));
+  const y=v=>32+(215-(Number(v)-min)/range*185);
   const series=field=>valid.map((r,i)=>r[field]==null?null:`${x(i)},${y(r[field])}`).filter(Boolean);
   const path=pts=>pts.length>1?'M '+pts.join(' L '):'';
-  const pre=series('jump_pre_cm'),post=series('jump_post_cm');
+  const pre=series('jump_pre_cm'),post=athleteView?[]:series('jump_post_cm');
   const points=(field,color,side)=>valid.map((r,i)=>{
     if(r[field]==null)return '';
     const px=x(i),py=y(r[field]),value=Number(r[field]).toFixed(1);
-    const tx=px+(side==='pre'?-8:8),anchor=side==='pre'?'end':'start';
-    return `<circle cx="${px}" cy="${py}" r="5" fill="${color}"><title>${escapeHtml(r.session_date)}: ${value} cm</title></circle><text x="${tx}" y="${py-9}" text-anchor="${anchor}" fill="currentColor" font-size="10" font-weight="700">${value}</text>`;
+    const tx=px+(side==='pre'?-10:10),anchor=side==='pre'?'end':'start';
+    return `<circle cx="${px}" cy="${py}" r="6" fill="${color}"><title>${escapeHtml(r.session_date)}: ${value} cm</title></circle><text x="${tx}" y="${py-12}" text-anchor="${anchor}" fill="currentColor" font-size="13" font-weight="700">${value}</text>`;
   }).join('');
   const dates=valid.map((r,i)=>{
     const d=String(r.session_date||'').slice(0,10).split('-');
     const label=d.length===3?`${d[2]}/${d[1]}`:String(r.session_date||'');
-    return `<text x="${x(i)}" y="232" transform="rotate(-35 ${x(i)} 232)" text-anchor="end" fill="currentColor" opacity=".75" font-size="10">${escapeHtml(label)}</text>`;
+    return `<text x="${x(i)}" y="278" transform="rotate(-35 ${x(i)} 278)" text-anchor="end" fill="currentColor" opacity=".8" font-size="12">${escapeHtml(label)}</text>`;
   }).join('');
-  return `<div class="profile-card"><h3>📈 Evolução do CMJ (cm)</h3><svg viewBox="0 0 640 290" role="img" aria-label="Gráfico de evolução dos saltos CMJ com valores e datas" style="width:100%;height:auto">
-    ${[0,1,2,3,4].map(i=>{const yy=28+i*39.5;return `<line x1="50" y1="${yy}" x2="610" y2="${yy}" stroke="currentColor" opacity=".12"/><text x="42" y="${yy+4}" text-anchor="end" fill="currentColor" opacity=".65" font-size="10">${(max-i*range/4).toFixed(0)}</text>`;}).join('')}
-    <path d="${path(pre)}" fill="none" stroke="#2583e8" stroke-width="3"/><path d="${path(post)}" fill="none" stroke="#e53945" stroke-width="3"/>
-    ${points('jump_pre_cm','#2583e8','pre')}${points('jump_post_cm','#e53945','post')}
+  return `<div class="profile-card"><h3>📈 Evolução do CMJ (cm)</h3><svg viewBox="0 0 720 340" role="img" aria-label="${athleteView?'Gráfico de evolução do salto CMJ pré-sessão':'Gráfico de evolução dos saltos CMJ com valores e datas'}" style="width:100%;height:auto;min-height:260px">
+    ${[0,1,2,3,4].map(i=>{const yy=32+i*46.25;return `<line x1="56" y1="${yy}" x2="690" y2="${yy}" stroke="currentColor" opacity=".12"/><text x="47" y="${yy+5}" text-anchor="end" fill="currentColor" opacity=".7" font-size="12">${(max-i*range/4).toFixed(0)}</text>`;}).join('')}
+    <path d="${path(pre)}" fill="none" stroke="#2583e8" stroke-width="4"/>${athleteView?'':`<path d="${path(post)}" fill="none" stroke="#e53945" stroke-width="4"/>`}
+    ${points('jump_pre_cm','#2583e8','pre')}${athleteView?'':points('jump_post_cm','#e53945','post')}
     ${dates}
-    <text x="48" y="280" fill="#2583e8" font-size="12">● Pré-sessão</text><text x="160" y="280" fill="#e53945" font-size="12">● Pós-sessão</text>
+    ${athleteView?'': '<text x="48" y="330" fill="#2583e8" font-size="13">● Pré-sessão</text><text x="180" y="330" fill="#e53945" font-size="13">● Pós-sessão</text>'}
   </svg></div>`;
 }
 async function loadCoachMonitoringPanel(athleteId){
