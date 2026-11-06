@@ -364,8 +364,8 @@ window.handleLogin = async function(event){
   .table-wrap{display:block;width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;}
   .table-wrap table{min-width:720px;width:100%;border-collapse:collapse;}
   .table-wrap th,.table-wrap td{white-space:nowrap;padding:9px 10px;}
-  #athlete-progress .profile-card{width:100%;max-width:100%;overflow:hidden;}
-  #athlete-progress svg{display:block;width:100%;max-width:100%;height:auto;}
+  #athlete-progress,#athlete-progress .panel,#athlete-progress .profile-card{width:100%;max-width:100%;min-width:0;box-sizing:border-box;overflow:hidden;}
+  #athlete-progress svg{display:block;width:100%;max-width:100%;height:auto;min-width:0;}
   @media(max-width:600px){
     main{padding-left:10px;padding-right:10px;}
     .athlete-workout-screen{margin:8px 0 18px;border-radius:12px;}
@@ -2381,15 +2381,15 @@ function buildMonitoringCharts(rows,athleteView=false){
     if(r[field]==null)return '';
     const px=x(i),py=y(r[field]),value=Number(r[field]).toFixed(1);
     const tx=px+(side==='pre'?-10:10),anchor=side==='pre'?'end':'start';
-    return `<circle cx="${px}" cy="${py}" r="6" fill="${color}"><title>${escapeHtml(r.session_date)}: ${value} cm</title></circle><text x="${tx}" y="${py-12}" text-anchor="${anchor}" fill="currentColor" font-size="13" font-weight="700">${value}</text>`;
+    return `<circle cx="${px}" cy="${py}" r="6" fill="${color}"><title>${escapeHtml(r.session_date)}: ${value} cm</title></circle><text x="${tx}" y="${py-12}" text-anchor="${anchor}" fill="currentColor" font-size="17" font-weight="700">${value}</text>`;
   }).join('');
   const dates=valid.map((r,i)=>{
     const d=String(r.session_date||'').slice(0,10).split('-');
     const label=d.length===3?`${d[2]}/${d[1]}`:String(r.session_date||'');
-    return `<text x="${x(i)}" y="278" transform="rotate(-35 ${x(i)} 278)" text-anchor="end" fill="currentColor" opacity=".8" font-size="12">${escapeHtml(label)}</text>`;
+    return `<text x="${x(i)}" y="278" transform="rotate(-35 ${x(i)} 278)" text-anchor="end" fill="currentColor" opacity=".9" font-size="15" font-weight="600">${escapeHtml(label)}</text>`;
   }).join('');
-  return `<div class="profile-card"><h3>📈 Evolução do CMJ (cm)</h3><svg viewBox="0 0 720 340" role="img" aria-label="${athleteView?'Gráfico de evolução do salto CMJ pré-sessão':'Gráfico de evolução dos saltos CMJ com valores e datas'}" style="width:100%;height:auto;min-height:260px">
-    ${[0,1,2,3,4].map(i=>{const yy=32+i*46.25;return `<line x1="56" y1="${yy}" x2="690" y2="${yy}" stroke="currentColor" opacity=".12"/><text x="47" y="${yy+5}" text-anchor="end" fill="currentColor" opacity=".7" font-size="12">${(max-i*range/4).toFixed(0)}</text>`;}).join('')}
+  return `<div class="profile-card" style="${athleteView?'width:100%;max-width:100%;min-width:0;box-sizing:border-box;overflow:hidden;':''}"><h3>📈 Evolução do CMJ (cm)</h3><svg viewBox="0 0 720 340" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${athleteView?'Gráfico de evolução do salto CMJ pré-sessão':'Gráfico de evolução dos saltos CMJ com valores e datas'}" style="display:block;width:100%;max-width:100%;height:auto;min-height:${athleteView?'300px':'260px'};box-sizing:border-box">
+    ${[0,1,2,3,4].map(i=>{const yy=32+i*46.25;return `<line x1="56" y1="${yy}" x2="690" y2="${yy}" stroke="currentColor" opacity=".12"/><text x="47" y="${yy+5}" text-anchor="end" fill="currentColor" opacity=".8" font-size="16" font-weight="600">${(max-i*range/4).toFixed(0)}</text>`;}).join('')}
     <path d="${path(pre)}" fill="none" stroke="#2583e8" stroke-width="4"/>${athleteView?'':`<path d="${path(post)}" fill="none" stroke="#e53945" stroke-width="4"/>`}
     ${points('jump_pre_cm','#2583e8','pre')}${athleteView?'':points('jump_post_cm','#e53945','post')}
     ${dates}
