@@ -1964,6 +1964,11 @@ async function finishAthleteWorkoutSession(){
     const msg=document.getElementById('athlete-monitor-message');
     if(msg)msg.textContent='Treino finalizado. Duração registrada: '+minutes+' min. Progresso enviado ao treinador.';
     try {
+      // Renova a sessão antes do push para evitar enviar um access token expirado.
+      const {data:refreshData,error:refreshError}=await supabaseClient.auth.refreshSession();
+      if(refreshError||!refreshData?.session?.access_token){
+        throw refreshError||new Error('Não foi possível renovar a sessão para enviar a notificação.');
+      }
       const {data:pushResult,error:pushError}=await supabaseClient.functions.invoke('push-notifications',{
         body:{action:'workout_finished',workoutId:window.__activeAthleteWorkoutId}
       });
