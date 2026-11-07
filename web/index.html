@@ -3524,7 +3524,7 @@ function renderTreinoEditPanel(){
           ? `<select aria-label="Dia da semana" onchange="updateDayField('${d.id}','label',this.value)">${['Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado','Domingo'].map(day=>`<option value="${day}" ${d.label===day?'selected':''}>${day}</option>`).join('')}</select>`
           : `<input type="text" aria-label="Nome do dia de treino" value="${escapeHtml(d.label)}" oninput="updateDayField('${d.id}','label',this.value)" placeholder="Dia 1">`}
         <select onchange="updateDayField('${d.id}','type',this.value)">
-          ${['Funcional','Musculação','Personalizado'].map(t => `<option ${d.type===t?'selected':''}>${t}</option>`).join('')}
+          ${['Funcional','Musculação','Fortalecimento','Preventivo','Personalizado'].map(t => `<option ${d.type===t?'selected':''}>${t}</option>`).join('')}
         </select>
         <button class="btn btn-danger btn-sm" onclick="removeDay('${d.id}')">Remover dia</button>
       </div>
