@@ -1594,6 +1594,25 @@ async function onAuthChange(user){
       if(!profile.team_id) throw new Error('A conta do treinador está sem equipe vinculada.');
       await loadAthletes();
       setupCoachPushNotifications();
+      const pushParams=new URLSearchParams(location.search);
+      const pushAthleteId=pushParams.get('pushAthlete');
+      const pushWorkoutId=pushParams.get('pushWorkout');
+      if(pushAthleteId){
+        const target=athletes.find(a=>a.id===pushAthleteId);
+        if(target){
+          openAthlete(pushAthleteId);
+          setTimeout(()=>{
+            const panel=document.getElementById('coach-monitoring-panel');
+            if(panel){panel.style.display='block';const b=document.getElementById('coach-monitoring-toggle');if(b)b.textContent='✖ Fechar monitoramento';loadCoachMonitoringPanel(pushAthleteId);}
+            const note=document.createElement('div');
+            note.className='panel';
+            note.style.cssText='padding:14px;margin:12px 0;border-left:4px solid #c92532';
+            note.textContent='Treino finalizado'+(pushWorkoutId?' · Registro do atleta aberto.':'');
+            document.getElementById('panel-athlete')?.prepend(note);
+          },100);
+        }
+        history.replaceState({},'',location.pathname);
+      }
     }else if(profile.role === 'athlete'){
       await loadAthletePortal();
     }else{
