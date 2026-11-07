@@ -1645,7 +1645,7 @@ async function setupCoachPushNotifications(){
   }
   // Mantém o botão diretamente no body para que as renderizações da tela não o removam.
   if(button.parentElement!==document.body)document.body.appendChild(button);
-  button.style.cssText='position:fixed!important;right:14px!important;bottom:calc(env(safe-area-inset-bottom, 0px) + 18px)!important;left:auto!important;top:auto!important;transform:none!important;display:block!important;visibility:visible!important;opacity:1!important;z-index:2147483000!important;width:auto!important;max-width:calc(100vw - 28px)!important;background:#17171b!important;color:#fff!important;border:1px solid #c92532!important;padding:14px 18px!important;border-radius:12px!important;touch-action:manipulation!important;cursor:pointer!important;pointer-events:auto!important';
+  button.style.cssText='position:fixed!important;right:14px!important;top:calc(env(safe-area-inset-top, 0px) + 12px)!important;bottom:auto!important;left:auto!important;transform:none!important;display:block!important;visibility:visible!important;opacity:1!important;z-index:2147483000!important;width:auto!important;max-width:calc(100vw - 28px)!important;background:#17171b!important;color:#fff!important;border:1px solid #c92532!important;padding:12px 16px!important;border-radius:12px!important;touch-action:manipulation!important;cursor:pointer!important;pointer-events:auto!important';
   const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
   const isStandalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
   if(isIOS&&!isStandalone){
