@@ -2901,17 +2901,42 @@ function renderAthleteScreen(){
 }
 
 function toggleCoachMonitoring(athleteId){
-  const host=document.getElementById('coach-monitoring-panel');
-  const button=document.getElementById('coach-monitoring-toggle');
-  if(!host||!button) return;
-  const isOpen=host.style.display!=='none';
-  if(isOpen){
-    host.style.display='none';
-    button.textContent='📊 Ver monitoramento';
-    return;
-  }
-  host.style.display='block';
-  button.textContent='✖ Fechar monitoramento';
+  const existing=document.getElementById('pp-monitoring-page');
+  if(existing){existing.remove();return;}
+  const athlete=(athletes||[]).find(a=>a.id===athleteId)||draft||{};
+  const page=document.createElement('section');
+  page.id='pp-monitoring-page';
+  page.setAttribute('aria-label','Página de monitoramento do atleta');
+  page.innerHTML=`
+    <style>
+      #pp-monitoring-page{position:fixed;inset:0;z-index:10050;background:#101014;color:#f5f5f7;overflow-y:auto;overflow-x:hidden;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);box-sizing:border-box;-webkit-overflow-scrolling:touch}
+      #pp-monitoring-page *{box-sizing:border-box}
+      #pp-monitoring-page .pp-monitoring-head{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:12px;padding:12px 16px;background:#17171d;border-bottom:2px solid #c92532}
+      #pp-monitoring-page .pp-monitoring-back{border:1px solid #555;color:#fff;background:#24242b;border-radius:10px;padding:10px 12px;font-weight:800;white-space:nowrap}
+      #pp-monitoring-page .pp-monitoring-title{min-width:0;flex:1}
+      #pp-monitoring-page .pp-monitoring-title strong{display:block;font-size:15px;letter-spacing:.7px}
+      #pp-monitoring-page .pp-monitoring-title span{display:block;color:#b9bac2;font-size:12px;margin-top:3px;overflow-wrap:anywhere}
+      #pp-monitoring-page .pp-monitoring-body{width:100%;max-width:900px;margin:0 auto;padding:14px 12px 28px}
+      #pp-monitoring-page .profile-section-title{color:#fff;font-size:18px;font-weight:900;margin:4px 0 14px}
+      #pp-monitoring-page .stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:0 0 14px}
+      #pp-monitoring-page .stat-card{min-width:0;background:#1b1b22;border:1px solid #34343d;border-top:2px solid #c92532;border-radius:12px;padding:13px 10px}
+      #pp-monitoring-page .stat-num{font-size:clamp(22px,7vw,30px);line-height:1.1;color:#f5f5f7}
+      #pp-monitoring-page .stat-label{font-size:11px;line-height:1.35;color:#c5c5cc}
+      #pp-monitoring-page .profile-card{width:100%;min-width:0;overflow:hidden;background:#1b1b22;color:#f5f5f7;border:1px solid #34343d;border-radius:14px;padding:13px;margin:12px 0}
+      #pp-monitoring-page .profile-card h3{font-size:15px;margin:0 0 12px}
+      #pp-monitoring-page .profile-card svg{width:100%;height:auto;max-width:100%;display:block}
+      #pp-monitoring-page .table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+      #pp-monitoring-page table{min-width:720px;color:#eee;font-size:12px}
+      #pp-monitoring-page th{color:#d7d7de}
+      #pp-monitoring-page .empty-state,#pp-monitoring-page .loading{color:#d6d6dc;background:#1b1b22;border-radius:12px;padding:16px}
+      @media(min-width:700px){#pp-monitoring-page .stat-grid{grid-template-columns:repeat(3,minmax(0,1fr))}#pp-monitoring-page .pp-monitoring-body{padding:20px}}
+    </style>
+    <header class="pp-monitoring-head">
+      <button type="button" class="pp-monitoring-back" onclick="document.getElementById('pp-monitoring-page')?.remove()">← Voltar</button>
+      <div class="pp-monitoring-title"><strong>MONITORAMENTO</strong><span>${escapeHtml(athlete.full_name||athlete.name||'Atleta')}</span></div>
+    </header>
+    <div class="pp-monitoring-body"><div id="coach-monitoring-panel"><div class="loading">Carregando monitoramento…</div></div></div>`;
+  document.body.appendChild(page);
   loadCoachMonitoringPanel(athleteId);
 }
 
