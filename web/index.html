@@ -1964,8 +1964,20 @@ async function finishAthleteWorkoutSession(){
     const msg=document.getElementById('athlete-monitor-message');
     if(msg)msg.textContent='Treino finalizado. Duração registrada: '+minutes+' min. Progresso enviado ao treinador.';
     try {
-      await supabaseClient.functions.invoke('push-notifications',{body:{action:'workout_finished',workoutId:window.__activeAthleteWorkoutId}});
-    } catch(pushError) { console.warn('Aviso ao treinador não enviado:',pushError); }
+      const {data:pushResult,error:pushError}=await supabaseClient.functions.invoke('push-notifications',{
+        body:{action:'workout_finished',workoutId:window.__activeAthleteWorkoutId}
+      });
+      if(pushError) throw pushError;
+      if(!pushResult?.ok||Number(pushResult.delivered||0)<1){
+        console.warn('Notificação não entregue ao treinador:',pushResult);
+        if(msg)msg.textContent='Treino finalizado. Os dados foram salvos, mas não foi possível enviar a notificação ao treinador.';
+      }else if(msg){
+        msg.textContent='Treino finalizado. Duração registrada: '+minutes+' min. Notificação enviada ao treinador.';
+      }
+    } catch(pushError) {
+      console.error('Aviso ao treinador não enviado:',pushError);
+      if(msg)msg.textContent='Treino finalizado. Os dados foram salvos, mas houve uma falha no envio da notificação.';
+    }
   }catch(e){
     console.error('Falha ao finalizar treino:',e);
     if(finish){finish.disabled=false;finish.textContent='Finalizar treino';}
