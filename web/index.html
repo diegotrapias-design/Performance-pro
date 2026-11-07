@@ -1614,22 +1614,21 @@ function ppUrlBase64ToUint8Array(value){
   return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
 }
 async function setupCoachPushNotifications(){
-  if(!currentUser)return;
-  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
-  const isStandalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+  const {data:{user}}=await supabaseClient.auth.getUser();
+  if(!user)return;
   let button=document.getElementById('pp-enable-push');
   if(!button){
     button=document.createElement('button');
     button.id='pp-enable-push';
     button.type='button';
-    button.textContent='ATIVAR AVISOS DE TREINOS';
     button.className='btn btn-outline';
-    const header=document.querySelector('header')||document.querySelector('.app-header')||document.body;
-    header.insertAdjacentElement('afterend',button);
+    button.textContent='ATIVAR AVISOS DE TREINOS';
   }
-  // Mantém o botão fixo e não arrastável: evita que o gesto de toque seja interpretado como movimento.
-  try{localStorage.removeItem('pp-push-button-position');}catch(e){}
-  button.style.cssText='position:fixed;right:14px;bottom:calc(env(safe-area-inset-bottom, 0px) + 18px);left:auto;top:auto;transform:none;display:block;z-index:99999;width:auto;max-width:calc(100vw - 28px);background:#17171b;color:#fff;border:1px solid #c92532;touch-action:manipulation;cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;pointer-events:auto';
+  // Mantém o botão diretamente no body para que as renderizações da tela não o removam.
+  if(button.parentElement!==document.body)document.body.appendChild(button);
+  button.style.cssText='position:fixed!important;right:14px!important;bottom:calc(env(safe-area-inset-bottom, 0px) + 18px)!important;left:auto!important;top:auto!important;transform:none!important;display:block!important;visibility:visible!important;opacity:1!important;z-index:2147483000!important;width:auto!important;max-width:calc(100vw - 28px)!important;background:#17171b!important;color:#fff!important;border:1px solid #c92532!important;padding:14px 18px!important;border-radius:12px!important;touch-action:manipulation!important;cursor:pointer!important;pointer-events:auto!important';
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
   if(isIOS&&!isStandalone){
     button.onclick=()=>window.alert('No iPhone, adicione o Performance Pro à Tela de Início e abra pelo ícone para ativar notificações.');
     return;
@@ -1640,11 +1639,9 @@ async function setupCoachPushNotifications(){
   }
   button.disabled=false;
   button.onclick=async()=>{
-    button.disabled=true;
-    button.textContent='ATIVANDO…';
+    button.disabled=true;button.textContent='ATIVANDO…';
     try{
       if(Notification.permission==='denied')throw new Error('As notificações estão bloqueadas nas configurações do iPhone. Permita notificações para o Performance Pro.');
-      // A solicitação de permissão ocorre imediatamente dentro do toque do usuário.
       const permission=Notification.permission==='granted'?'granted':await Notification.requestPermission();
       if(permission!=='granted')throw new Error('A permissão para notificações não foi concedida.');
       const reg=await navigator.serviceWorker.register('/sw.js',{scope:'/'});
@@ -1654,17 +1651,14 @@ async function setupCoachPushNotifications(){
       const {data,error}=await supabaseClient.functions.invoke('push-notifications',{body:{action:'subscribe',subscription:subscription.toJSON()}});
       if(error)throw error;
       if(!data?.ok)throw new Error(data?.error||'O servidor não confirmou a ativação.');
-      button.textContent='AVISOS ATIVADOS';
-      button.style.background='#1d5134';
+      button.textContent='AVISOS ATIVADOS';button.style.background='#1d5134';
       window.alert('Notificações de treinos ativadas com sucesso.');
     }catch(e){
       console.error('Falha ao ativar notificações:',e);
-      button.disabled=false;
-      button.textContent='ATIVAR AVISOS DE TREINOS';
+      button.disabled=false;button.textContent='ATIVAR AVISOS DE TREINOS';
       window.alert(e?.message||'Não foi possível ativar as notificações.');
     }
   };
-  // Confere assinatura já existente sem bloquear a instalação do evento de toque.
   try{
     const reg=await navigator.serviceWorker.register('/sw.js',{scope:'/'});
     const existing=await reg.pushManager.getSubscription();
