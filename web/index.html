@@ -2468,9 +2468,28 @@ function buildMonitoringCharts(rows,athleteView=false){
     ${athleteView?'': '<text x="48" y="330" fill="#2583e8" font-size="13">● Pré-sessão</text><text x="180" y="330" fill="#e53945" font-size="13">● Pós-sessão</text>'}
   </svg></div>`;
 }
+let ppMonitoringDeleteTarget=null;
+async function deleteAthleteProgressFromCurrentPanel(){
+  const target=ppMonitoringDeleteTarget;if(!target)return;
+  const athlete=athletes.find(a=>a.id===target.athleteId);
+  const name=athlete?.name||athlete?.full_name||'este atleta';
+  if(currentProfile?.role!=='coach'||!currentUser){showToast('Apenas o treinador pode excluir o progresso.','err');return;}
+  if(!confirm('Excluir TODO o histórico de monitoramento de '+name+'? Serão apagados TQR, PSE, duração, carga, saltos e vídeos associados. Treinos e dados pessoais serão mantidos. Não é possível desfazer.'))return;
+  const host=document.getElementById(target.hostId);if(host)host.innerHTML='<div class="loading">Excluindo progresso…</div>';
+  try{
+    const {data:mediaRows,error:mediaError}=await supabaseClient.from('monitoring_sessions').select('jump_video_pre_path,jump_video_post_path').eq('athlete_id',target.athleteId);
+    if(mediaError)throw mediaError;
+    const paths=[...new Set((mediaRows||[]).flatMap(r=>[r.jump_video_pre_path,r.jump_video_post_path]).filter(Boolean))];
+    if(paths.length){const {error:storageError}=await supabaseClient.storage.from('athlete-media').remove(paths);if(storageError)throw storageError;}
+    const {error}=await supabaseClient.from('monitoring_sessions').delete().eq('athlete_id',target.athleteId);if(error)throw error;
+    showToast('Histórico de progresso excluído.','ok');await loadCoachMonitoringPanel(target.athleteId,target.hostId);
+  }catch(e){console.error('Falha ao excluir progresso do atleta:',e);showToast(e.message||'Não foi possível excluir o progresso.','err');if(host)await loadCoachMonitoringPanel(target.athleteId,target.hostId);}
+}
+
 async function loadCoachMonitoringPanel(athleteId, hostId='coach-monitoring-panel'){
   const host=document.getElementById(hostId);
   if(!host||!currentUser) return;
+  ppMonitoringDeleteTarget={athleteId,hostId};
   host.innerHTML='<div class="loading">Carregando monitoramento…</div>';
   try{
     const {data:rows,error}=await supabaseClient.from('monitoring_sessions')
@@ -2489,7 +2508,7 @@ async function loadCoachMonitoringPanel(athleteId, hostId='coach-monitoring-pane
         }
       }
     }
-    host.innerHTML=`<div class="profile-section-title">📊 Monitoramento do atleta</div>
+    host.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div class="profile-section-title">📊 Monitoramento do atleta</div><button type="button" class="btn btn-danger btn-sm" onclick="deleteAthleteProgressFromCurrentPanel()">Excluir progresso</button></div>
       <div class="stat-grid">
         <div class="stat-card"><div class="stat-num">${latest?Number(latest.psr).toFixed(0):'—'}</div><div class="stat-label">TQR atual (6–20)</div></div>
         <div class="stat-card"><div class="stat-num">${latest?Number(latest.pse).toFixed(1):'—'}</div><div class="stat-label">PSE atual (0–10)</div></div>
