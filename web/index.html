@@ -3208,6 +3208,9 @@ function newExercise(){
   return { id: uid(), name:'', series:'', reps:'', carga:'', descanso:'', obs:'', video:'' };
 }
 
+window.__ppTrainingDayReorder=false;
+function toggleTrainingDayReorder(){window.__ppTrainingDayReorder=!window.__ppTrainingDayReorder;renderTreinoEditPanel();}
+function moveTrainingDay(dayId,direction){const days=draft?.trainingPlan?.days;if(!days)return;const index=days.findIndex(d=>String(d.id)===String(dayId));const target=index+direction;if(index<0||target<0||target>=days.length)return;const [item]=days.splice(index,1);days.splice(target,0,item);renderTreinoEditPanel();}
 function addDay(){
   draft.trainingPlan.days.push(newDay('Dia ' + (draft.trainingPlan.days.length+1), 'Funcional'));
   renderTreinoEditPanel();
@@ -3509,9 +3512,10 @@ function renderTreinoEditPanel(){
   if(!p) return;
   const days = draft.trainingPlan.days || [];
 
-  const daysHtml = days.map(d => `
+  const daysHtml = days.map((d,dayIndex) => `
     <div class="day-block">
       <div class="day-head">
+        ${window.__ppTrainingDayReorder?`<div style="display:flex;align-items:center;gap:8px;flex-basis:100%;padding:5px 0;color:var(--muted);font-size:12px"><b>☰ Reordenar dia</b><span style="margin-left:auto;display:flex;gap:5px"><button type="button" class="btn btn-outline btn-sm" onclick="moveTrainingDay('${d.id}',-1)" ${dayIndex===0?'disabled':''}>↑</button><button type="button" class="btn btn-outline btn-sm" onclick="moveTrainingDay('${d.id}',1)" ${dayIndex===days.length-1?'disabled':''}>↓</button></span></div>`:''}
         <select aria-label="Formato de identificação do treino" onchange="setDayLabelMode('${d.id}',this.value)">
           <option value="number" ${d.labelMode!=='weekday'?'selected':''}>Numeral (Dia 1, Dia 2...)</option>
           <option value="weekday" ${d.labelMode==='weekday'?'selected':''}>Dia da semana</option>
@@ -3611,6 +3615,7 @@ function renderTreinoEditPanel(){
       <button class="btn btn-outline btn-sm" onclick="applyPreset('3f2m')">Aplicar padrão: 3 Funcional + 2 Musculação</button>
       <button class="btn btn-outline btn-sm" onclick="applyPreset('blank')">Começar do zero</button>
       <button class="btn btn-outline btn-sm" onclick="addDay()">+ Adicionar dia</button>
+      ${days.length>1?`<button class="btn btn-outline btn-sm" onclick="toggleTrainingDayReorder()">${window.__ppTrainingDayReorder?'✓ Finalizar ordem':'☰ Reordenar dias'}</button>`:''}
     </div>
     ${days.length === 0 ? '<div class="empty-state"><div class="icon">📋</div><div>Nenhum dia de treino montado. Use um dos botões acima para começar.</div></div>' : daysHtml}
     <div class="actions-row">
