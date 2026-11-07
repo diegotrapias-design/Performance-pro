@@ -2431,8 +2431,8 @@ function buildMonitoringCharts(rows,athleteView=false){
     ${athleteView?'': '<text x="48" y="330" fill="#2583e8" font-size="13">● Pré-sessão</text><text x="180" y="330" fill="#e53945" font-size="13">● Pós-sessão</text>'}
   </svg></div>`;
 }
-async function loadCoachMonitoringPanel(athleteId){
-  const host=document.getElementById('coach-monitoring-panel');
+async function loadCoachMonitoringPanel(athleteId, hostId='coach-monitoring-panel'){
+  const host=document.getElementById(hostId);
   if(!host||!currentUser) return;
   host.innerHTML='<div class="loading">Carregando monitoramento…</div>';
   try{
@@ -2935,9 +2935,9 @@ function toggleCoachMonitoring(athleteId){
       <button type="button" class="pp-monitoring-back" onclick="document.getElementById('pp-monitoring-page')?.remove()">← Voltar</button>
       <div class="pp-monitoring-title"><strong>MONITORAMENTO</strong><span>${escapeHtml(athlete.full_name||athlete.name||'Atleta')}</span></div>
     </header>
-    <div class="pp-monitoring-body"><div id="coach-monitoring-panel"><div class="loading">Carregando monitoramento…</div></div></div>`;
+    <div class="pp-monitoring-body"><div id="pp-monitoring-content"><div class="loading">Carregando monitoramento…</div></div></div>`;
   document.body.appendChild(page);
-  loadCoachMonitoringPanel(athleteId);
+  loadCoachMonitoringPanel(athleteId,'pp-monitoring-content');
 }
 
 function openAthletePreview(){
