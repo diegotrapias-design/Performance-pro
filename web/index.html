@@ -2401,6 +2401,43 @@ async function toggleAthleteWorkoutCompletion(athleteId){
   }catch(e){console.error('Erro ao atualizar conclusão:',e);if(msg)msg.textContent='Não foi possível atualizar a conclusão: '+(e.message||'erro');}
 }
 
+function buildCoachMonitoringExtras(rows){
+  const data=(rows||[]).slice().sort((a,b)=>String(a.session_date).localeCompare(String(b.session_date)));
+  const colors={cyan:'#58b8d2',orange:'#efa63b',red:'#c92532',muted:'#8991a4',grid:'rgba(190,200,220,.13)'};
+  const card=(title,svg)=>`<div class="profile-card"><h3>${title}</h3><div style="width:100%;overflow:hidden">${svg}</div></div>`;
+  const chartW=620, left=42, right=42, top=24, bottom=58, plotW=chartW-left-right, plotH=220;
+  const xAt=i=>left+(data.length<=1?plotW/2:i*plotW/(data.length-1));
+  const yT=v=>top+plotH-(Math.max(6,Math.min(20,Number(v)||6))-6)/14*plotH;
+  const yP=v=>top+plotH-(Math.max(0,Math.min(10,Number(v)||0))/10)*plotH;
+  const line=(key,color,yFn)=>{const pts=data.map((r,i)=>r[key]==null?null:[xAt(i),yFn(r[key])]).filter(Boolean);return pts.length>1?`<polyline points="${pts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`:''};
+  const circles=(key,color,yFn)=>data.map((r,i)=>r[key]==null?'':`<circle cx="${xAt(i)}" cy="${yFn(r[key])}" r="6" fill="${color}"><title>${escapeHtml(String(r.session_date))}: ${escapeHtml(String(r[key]))}</title></circle>`).join('');
+  const ticks=[0,1,2,3,4].map(i=>{const y=top+i*plotH/4;return `<line x1="${left}" y1="${y}" x2="${chartW-right}" y2="${y}" stroke="${colors.grid}"/><text x="${left-9}" y="${y+5}" fill="${colors.cyan}" text-anchor="end" font-size="13">${20-i*3.5}</text><text x="${chartW-right+9}" y="${y+5}" fill="${colors.orange}" font-size="13">${10-i*2.5}</text>`}).join('');
+  const labels=data.map((r,i)=>`<text x="${xAt(i)}" y="${top+plotH+25}" fill="${colors.muted}" text-anchor="middle" font-size="12">S${i+1}</text>`).join('');
+  const tqrSvg=`<svg viewBox="0 0 ${chartW} 330" style="width:100%;height:auto;display:block" role="img" aria-label="Evolução de TQR e PSE por sessão">
+    <rect x="32" y="4" width="88" height="5" fill="${colors.cyan}"/><text x="128" y="13" fill="${colors.muted}" font-size="14">TQR</text><rect x="205" y="4" width="88" height="5" fill="${colors.orange}"/><text x="300" y="13" fill="${colors.muted}" font-size="14">PSE</text>
+    ${ticks}${line('psr',colors.cyan,yT)}${line('pse',colors.orange,yP)}${circles('psr',colors.cyan,yT)}${circles('pse',colors.orange,yP)}${labels}
+    <text x="10" y="145" fill="${colors.cyan}" font-size="13" transform="rotate(-90 10 145)" text-anchor="middle">TQR (6–20)</text><text x="612" y="145" fill="${colors.orange}" font-size="13" transform="rotate(90 612 145)" text-anchor="middle">PSE (0–10)</text></svg>`;
+  const maxLoad=Math.max(1,...data.map(r=>Number(r.load_ua)||0));
+  const barW=Math.min(38,plotW/Math.max(1,data.length)*.58);
+  const loadBars=data.map((r,i)=>{const v=Number(r.load_ua)||0,h=v/maxLoad*plotH,x=data.length<=1?left+plotW/2-barW/2:left+i*plotW/data.length+(plotW/data.length-barW)/2;return `<rect x="${x}" y="${top+plotH-h}" width="${barW}" height="${h}" fill="#e9823b" fill-opacity=".72" stroke="#f08a45" stroke-width="2"><title>${escapeHtml(String(r.session_date))}: ${v.toFixed(0)} UA</title></rect><text x="${x+barW/2}" y="${top+plotH+25}" fill="${colors.muted}" font-size="12" text-anchor="middle">S${i+1}</text>`}).join('');
+  const loadSvg=`<svg viewBox="0 0 ${chartW} 310" style="width:100%;height:auto;display:block" role="img" aria-label="Carga de cada sessão em unidades arbitrárias">${[0,1,2,3,4].map(i=>{const y=top+i*plotH/4;return `<line x1="${left}" y1="${y}" x2="${chartW-right}" y2="${y}" stroke="${colors.grid}"/><text x="${left-8}" y="${y+5}" fill="${colors.muted}" font-size="12" text-anchor="end">${Math.round(maxLoad*(4-i)/4)}</text>`}).join('')}${loadBars}<text x="12" y="140" fill="#e9823b" font-size="14" transform="rotate(-90 12 140)" text-anchor="middle">UA</text></svg>`;
+  const weeks=[];
+  data.forEach(r=>{const date=new Date(String(r.session_date).slice(0,10)+'T12:00:00');if(isNaN(date))return;const day=(date.getDay()+6)%7;date.setDate(date.getDate()-day);const key=date.toISOString().slice(0,10);let w=weeks.find(x=>x.key===key);if(!w){w={key,days:Array(7).fill(0),sumPse:0};weeks.push(w);}const load=Number(r.load_ua)||0;w.days[day]+=load;w.sumPse+=Number(r.pse)||0;});
+  const weekly=weeks.slice(-6);
+  const weeklyMon=w=>{const mean=w.days.reduce((a,b)=>a+b,0)/7;const sd=Math.sqrt(w.days.reduce((a,b)=>a+(b-mean)**2,0)/7);return sd?mean/sd:null;};
+  const maxSum=Math.max(1,...weekly.map(w=>w.sumPse));
+  const weekSvg=`<svg viewBox="0 0 620 300" style="width:100%;height:auto;display:block" role="img" aria-label="Carga total de PSE e monotonia por semana"><rect x="70" y="8" width="80" height="5" fill="${colors.red}"/><text x="158" y="17" fill="${colors.muted}" font-size="14">Carga (Σ PSE)</text><rect x="310" y="8" width="80" height="5" fill="none" stroke="${colors.orange}" stroke-width="4"/><text x="398" y="17" fill="${colors.muted}" font-size="14">Monotonia</text>${weekly.length?weekly.map((w,i)=>{const x=90+i*85,h=w.sumPse/maxSum*180,m=weeklyMon(w),mh=m==null?0:Math.min(4,m)/4*180;return `<rect x="${x}" y="${220-h}" width="48" height="${h}" fill="${colors.red}" fill-opacity=".65" stroke="#d84b4b" stroke-width="2"><title>${w.key}: Σ PSE ${w.sumPse.toFixed(0)}</title></rect><rect x="${x+14}" y="${220-mh}" width="20" height="${mh}" fill="none" stroke="${colors.orange}" stroke-width="3"><title>Monotonia: ${m==null?'—':m.toFixed(2)}</title></rect><text x="${x+24}" y="247" fill="${colors.muted}" text-anchor="middle" font-size="11">${w.key.slice(5)}</text>`}).join(''):'<text x="310" y="130" fill="currentColor" text-anchor="middle">Sem dados semanais</text>'}<line x1="65" y1="220" x2="585" y2="220" stroke="${colors.grid}"/></svg>`;
+  const interpretation=`<div class="profile-card"><h3>ℹ️ Como interpretar</h3><div style="display:grid;gap:10px;color:#c5c5cc;line-height:1.55">
+    <div><b style="color:#65c27b">🟢 TQR ≥ 15</b> — Muito bem recuperado, adequado para treino intenso.</div>
+    <div><b style="color:#e8bd45">🟡 TQR 11–14</b> — Recuperação parcial, considere ajustar a intensidade.</div>
+    <div><b style="color:#e45b55">🔴 TQR ≤ 10</b> — Mal recuperado; avalie reduzir a carga e monitorar sinais de fadiga.</div>
+    <div><b style="color:#e9823b">🟠 UA</b> — Unidade arbitrária de carga interna: PSE × duração da sessão (min).</div>
+    <div><b style="color:#9670e8">🟣 Monotonia ≤ 1,5</b> — Menor repetição diária da carga na semana.</div>
+    <div><b style="color:#e45b55">🔴 Monotonia > 2,0</b> — Cargas diárias muito semelhantes; atenção à variação do estímulo.</div>
+  </div></div>`;
+  return card('📈 TQR E PSE POR SESSÃO',tqrSvg)+card('⚡ CARGA DA SESSÃO (UA = PSE × DURAÇÃO EM MIN)',loadSvg)+card('📊 CARGA POR PERÍODO (Σ PSE) & MONOTONIA',weekSvg)+interpretation;
+}
+
 function buildMonitoringCharts(rows,athleteView=false){
   const valid=(rows||[]).filter(r=>athleteView?r.jump_pre_cm!=null:(r.jump_pre_cm!=null||r.jump_post_cm!=null));
   if(!valid.length)return '<div class="empty-state">Os gráficos CMJ aparecerão quando houver avaliações de salto pré-sessão.</div>';
@@ -2460,7 +2497,8 @@ async function loadCoachMonitoringPanel(athleteId, hostId='coach-monitoring-pane
         <div class="stat-card"><div class="stat-num">${metrics.monotony===null?'—':metrics.monotony.toFixed(2)}</div><div class="stat-label">Monotonia</div></div>
         <div class="stat-card"><div class="stat-num">${metrics.strain===null?'—':metrics.strain.toFixed(0)}</div><div class="stat-label">Strain (UA)</div></div>
       </div>
-${buildMonitoringCharts(rows)}
+${buildCoachMonitoringExtras(rows)}
+      ${buildMonitoringCharts(rows)}
       <div class="profile-card"><h3>Evolução por sessão</h3>
         <div class="table-wrap"><table><thead><tr><th>Data</th><th>TQR</th><th>PSE</th><th>Min</th><th>UA</th><th>CMJ pré</th><th>CMJ pós</th><th>Δ CMJ</th></tr></thead>
         <tbody>${(rows||[]).slice().reverse().map(r=>`<tr><td>${safe(r.session_date)}</td><td>${safe(r.psr)}</td><td>${safe(r.pse)}</td><td>${safe(r.duration_min)}</td><td>${safe(r.load_ua)}</td><td>${safe(r.jump_pre_cm)}</td><td>${safe(r.jump_post_cm)}</td><td>${r.jump_pre_cm!=null&&r.jump_post_cm!=null?(Number(r.jump_post_cm)-Number(r.jump_pre_cm)).toFixed(1):'—'}</td><td>${videoLinks[r.id+'_jump_video_pre_path']?'<a target="_blank" rel="noopener" href="'+videoLinks[r.id+'_jump_video_pre_path']+'">Vídeo pré</a>':''} ${videoLinks[r.id+'_jump_video_post_path']?'<a target="_blank" rel="noopener" href="'+videoLinks[r.id+'_jump_video_post_path']+'">Vídeo pós</a>':''}</td></tr>`).join('')}</tbody></table></div>
