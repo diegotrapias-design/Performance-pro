@@ -1624,10 +1624,12 @@ async function setupCoachPushNotifications(){
     button.type='button';
     button.textContent='ATIVAR AVISOS DE TREINOS';
     button.className='btn btn-outline';
-    button.style.cssText='position:relative;display:block;margin:12px auto;z-index:20;width:min(100% - 28px,560px);max-width:calc(100vw - 28px);background:#17171b;color:#fff;border:1px solid #c92532;touch-action:manipulation;cursor:pointer;user-select:none;-webkit-user-select:none;pointer-events:auto';
     const header=document.querySelector('header')||document.querySelector('.app-header')||document.body;
     header.insertAdjacentElement('afterend',button);
   }
+  // Mantém o botão fixo e não arrastável: evita que o gesto de toque seja interpretado como movimento.
+  try{localStorage.removeItem('pp-push-button-position');}catch(e){}
+  button.style.cssText='position:fixed;right:14px;bottom:calc(env(safe-area-inset-bottom, 0px) + 18px);left:auto;top:auto;transform:none;display:block;z-index:99999;width:auto;max-width:calc(100vw - 28px);background:#17171b;color:#fff;border:1px solid #c92532;touch-action:manipulation;cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;pointer-events:auto';
   if(isIOS&&!isStandalone){
     button.onclick=()=>window.alert('No iPhone, adicione o Performance Pro à Tela de Início e abra pelo ícone para ativar notificações.');
     return;
