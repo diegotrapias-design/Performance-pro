@@ -1966,8 +1966,14 @@ async function finishAthleteWorkoutSession(){
     try {
       // Renova a sessão antes do push para evitar enviar um access token expirado.
       const {data:refreshData,error:refreshError}=await supabaseClient.auth.refreshSession();
-      if(refreshError||!refreshData?.session?.access_token){
-        throw refreshError||new Error('Não foi possível renovar a sessão para enviar a notificação.');
+      let pushSession=refreshData?.session||null;
+      if(refreshError||!pushSession?.access_token){
+        // Um refresh token antigo pode ter sido invalidado; use o access token atual se ainda estiver válido.
+        const {data:sessionData}=await supabaseClient.auth.getSession();
+        pushSession=sessionData?.session||null;
+        if(!pushSession?.access_token||!pushSession.expires_at||pushSession.expires_at*1000<=Date.now()){
+          throw refreshError||new Error('Sessão expirada. Entre novamente no aplicativo para enviar a notificação.');
+        }
       }
       const {data:pushResult,error:pushError}=await supabaseClient.functions.invoke('push-notifications',{
         body:{action:'workout_finished',workoutId:window.__activeAthleteWorkoutId}
