@@ -3150,7 +3150,21 @@ function applyPreset(kind){
 }
 
 function newDay(label, type){
-  return { id: uid(), label, type, exercises: [ newExercise() ] };
+  return { id: uid(), label, labelMode:'number', type, exercises: [ newExercise() ] };
+}
+function setDayLabelMode(dayId, mode){
+  const d=draft?.trainingPlan?.days?.find(x=>x.id===dayId);
+  if(!d)return;
+  d.labelMode=mode;
+  if(mode==='weekday'){
+    const weekdays=['Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado','Domingo'];
+    const index=Math.max(0,draft.trainingPlan.days.indexOf(d))%7;
+    d.label=weekdays[index];
+  }else{
+    const index=draft.trainingPlan.days.indexOf(d)+1;
+    d.label='Dia '+index;
+  }
+  renderTreinoEditPanel();
 }
 function newExercise(){
   return { id: uid(), name:'', series:'', reps:'', carga:'', descanso:'', obs:'', video:'' };
@@ -3460,7 +3474,13 @@ function renderTreinoEditPanel(){
   const daysHtml = days.map(d => `
     <div class="day-block">
       <div class="day-head">
-        <input type="text" value="${escapeHtml(d.label)}" oninput="updateDayField('${d.id}','label',this.value)">
+        <select aria-label="Formato de identificação do treino" onchange="setDayLabelMode('${d.id}',this.value)">
+          <option value="number" ${d.labelMode!=='weekday'?'selected':''}>Numeral (Dia 1, Dia 2...)</option>
+          <option value="weekday" ${d.labelMode==='weekday'?'selected':''}>Dia da semana</option>
+        </select>
+        ${d.labelMode==='weekday'
+          ? `<select aria-label="Dia da semana" onchange="updateDayField('${d.id}','label',this.value)">${['Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado','Domingo'].map(day=>`<option value="${day}" ${d.label===day?'selected':''}>${day}</option>`).join('')}</select>`
+          : `<input type="text" aria-label="Nome do dia de treino" value="${escapeHtml(d.label)}" oninput="updateDayField('${d.id}','label',this.value)" placeholder="Dia 1">`}
         <select onchange="updateDayField('${d.id}','type',this.value)">
           ${['Funcional','Musculação','Personalizado'].map(t => `<option ${d.type===t?'selected':''}>${t}</option>`).join('')}
         </select>
