@@ -3507,6 +3507,9 @@ function copyTrainingFromAthlete(){
   showToast('Rotina completa copiada de '+source.name+'.','ok');
 }
 
+window.__ppCollapsedTrainingDays=window.__ppCollapsedTrainingDays||{};
+function toggleTrainingDayCollapsed(dayId){window.__ppCollapsedTrainingDays[dayId]=!window.__ppCollapsedTrainingDays[dayId];renderTreinoEditPanel();}
+function setAllTrainingDaysCollapsed(collapsed){(draft?.trainingPlan?.days||[]).forEach(day=>{window.__ppCollapsedTrainingDays[day.id]=!!collapsed;});renderTreinoEditPanel();}
 function renderTreinoEditPanel(){
   const p = document.getElementById('panel-athlete');
   if(!p) return;
@@ -3515,6 +3518,7 @@ function renderTreinoEditPanel(){
   const daysHtml = days.map((d,dayIndex) => `
     <div class="day-block">
       <div class="day-head">
+        <button type="button" class="btn btn-outline btn-sm" onclick="toggleTrainingDayCollapsed('${d.id}')" aria-expanded="${!window.__ppCollapsedTrainingDays[d.id]}">${window.__ppCollapsedTrainingDays[d.id]?"＋ Mostrar treino":"− Recolher treino"}</button>
         ${window.__ppTrainingDayReorder?`<div style="display:flex;align-items:center;gap:8px;flex-basis:100%;padding:5px 0;color:var(--muted);font-size:12px"><b>☰ Reordenar dia</b><span style="margin-left:auto;display:flex;gap:5px"><button type="button" class="btn btn-outline btn-sm" onclick="moveTrainingDay('${d.id}',-1)" ${dayIndex===0?'disabled':''}>↑</button><button type="button" class="btn btn-outline btn-sm" onclick="moveTrainingDay('${d.id}',1)" ${dayIndex===days.length-1?'disabled':''}>↓</button></span></div>`:''}
         <select aria-label="Formato de identificação do treino" onchange="setDayLabelMode('${d.id}',this.value)">
           <option value="number" ${d.labelMode!=='weekday'?'selected':''}>Numeral (Dia 1, Dia 2...)</option>
@@ -3528,7 +3532,7 @@ function renderTreinoEditPanel(){
         </select>
         <button class="btn btn-danger btn-sm" onclick="removeDay('${d.id}')">Remover dia</button>
       </div>
-      <div class="day-body">
+      <div class="day-body" style="${window.__ppCollapsedTrainingDays[d.id]?"display:none":""}">
         <div class="day-foot" style="position:sticky;top:8px;z-index:5;background:var(--panel);padding:10px;border:1px solid var(--line);border-radius:12px;box-shadow:0 3px 12px rgba(0,0,0,.12);margin:0 0 12px">
           <button class="btn btn-primary btn-sm" onclick="combineSelectedExercises('${d.id}')">🔗 Combinar selecionados</button>
           <button class="btn btn-outline btn-sm" onclick="openPresetPickerForSelected('${d.id}')">⚡ Preset nos selecionados</button>
@@ -3538,7 +3542,7 @@ function renderTreinoEditPanel(){
         </div>
         ${d.exercises.map(ex => `
           <div class="ex-card ${ex.comboId?'is-combined':''}">
-            ${ex.comboId ? '<div class="combo-group-heading">🔗 BLOCO COMBINADO · '+escapeHtml(ex.comboType||'Bi-set')+'</div>' : ''}
+            ${ex.comboId ? '<div class="combo-group-heading" style="display:flex;align-items:center;justify-content:space-between;gap:8px">🔗 BLOCO COMBINADO · '+escapeHtml(ex.comboType||'Bi-set')+(d.exercises.findIndex(item=>item.comboId===ex.comboId)===d.exercises.indexOf(ex)?' <button type="button" class="btn btn-outline btn-sm" onclick="uncombineExercise(\''+d.id+'\',\''+ex.comboId+'\')">Descombinar</button>':'')+'</div>' : ''}
             <div class="ex-card-top">
               <label class="combine-select" title="Selecionar para combinar"><input type="checkbox" data-combine-day="${d.id}" value="${ex.id}"> Combinar</label>
               <label class="combine-select" title="Selecionar para aplicar preset"><input type="checkbox" data-preset-select-day="${d.id}" value="${ex.id}"> Preset</label>
@@ -3614,6 +3618,8 @@ function renderTreinoEditPanel(){
       </details>
     </div>
     <div class="preset-row">
+      <button type="button" class="btn btn-outline btn-sm" onclick="setAllTrainingDaysCollapsed(true)">− Recolher todos os treinos</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="setAllTrainingDaysCollapsed(false)">＋ Expandir todos os treinos</button>
       <button class="btn btn-outline btn-sm" onclick="applyPreset('3f2m')">Aplicar padrão: 3 Funcional + 2 Musculação</button>
       <button class="btn btn-outline btn-sm" onclick="applyPreset('blank')">Começar do zero</button>
       <button class="btn btn-outline btn-sm" onclick="addDay()">+ Adicionar dia</button>
