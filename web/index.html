@@ -3560,11 +3560,12 @@ function renderTreinoEditPanel(){
             </div>
           </div>
         `).join('')}
-        <div class="day-foot">
+        <div class="day-foot" style="position:sticky;top:8px;z-index:5;background:var(--panel);padding:10px;border:1px solid var(--line);border-radius:12px;box-shadow:0 3px 12px rgba(0,0,0,.12);margin:0 0 12px">
           <button class="btn btn-primary btn-sm" onclick="combineSelectedExercises('${d.id}')">🔗 Combinar selecionados</button>
-          <button class="btn btn-outline btn-sm" onclick="openPresetPickerForSelected('${d.id}')">⚡ Aplicar preset aos selecionados</button>
+          <button class="btn btn-outline btn-sm" onclick="openPresetPickerForSelected('${d.id}')">⚡ Preset nos selecionados</button>
+          <button class="btn btn-outline btn-sm" onclick="openPresetPickerForAll('${d.id}')">⚡ Preset em todos</button>
           <button class="btn btn-outline btn-sm" onclick="addExercise('${d.id}')">+ Exercício</button>
-          <button class="btn btn-outline btn-sm" onclick="openExerciseLibrary('${d.id}')">📚 Biblioteca de exercícios</button>
+          <button class="btn btn-outline btn-sm" onclick="openExerciseLibrary('${d.id}')">📚 Biblioteca</button>
         </div>
       </div>
     </div>
@@ -4057,6 +4058,13 @@ function openPresetPicker(dayId, exId){
   presetTarget = { dayId, exIds:[exId] };
   renderPresetList();
   document.getElementById('preset-modal').style.display = 'flex';
+}
+function openPresetPickerForAll(dayId){
+  const day=draft?.trainingPlan?.days?.find(d=>String(d.id)===String(dayId));
+  if(!day||!day.exercises?.length){showToast('Adicione exercícios antes de aplicar o preset.','err');return;}
+  presetTarget={dayId,exIds:day.exercises.map(ex=>ex.id)};
+  renderPresetList();
+  document.getElementById('preset-modal').style.display='flex';
 }
 function openPresetPickerForSelected(dayId){
   const selected=[...document.querySelectorAll('[data-preset-select-day="'+dayId+'"]:checked')].map(el=>el.value);
