@@ -1770,6 +1770,20 @@ async function loadAthletes(){
   let needsSave=false;
   if(!exerciseLibrary){ exerciseLibrary=seedDefaultLibrary(); needsSave=true; }
   if(!seriesPresets){ seriesPresets=seedDefaultPresets(); needsSave=true; }
+  // Recupera para a biblioteca exercícios que continuam nos treinos, mas não constam no catálogo.
+  const libraryNames=new Set(exerciseLibrary.map(ex=>(ex.name||'').trim().toLocaleLowerCase('pt-BR')).filter(Boolean));
+  athletes.forEach(athlete=>{
+    (athlete.trainingPlan?.days||[]).forEach(day=>{
+      (day.exercises||[]).forEach(ex=>{
+        const name=(ex.name||'').trim();
+        const key=name.toLocaleLowerCase('pt-BR');
+        if(!name||libraryNames.has(key))return;
+        exerciseLibrary.push({id:uid(),name,group:'Personalizados',video:ex.video||'',description:ex.obs||'',favorite:false});
+        libraryNames.add(key);
+        needsSave=true;
+      });
+    });
+  });
   if(needsSave) await persist(false);
   renderHome();
 }
