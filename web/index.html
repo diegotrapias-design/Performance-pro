@@ -4292,7 +4292,10 @@ async function createAthleteAccount(){
     if(error) throw error;
     if(data && data.error) throw new Error(data.error);
     await persist(false);
-    if(data && data.passwordSetupLink){
+    if(data && data.temporaryPassword){
+      showCredentialsModal({email, password:data.temporaryPassword});
+      showToast('Acesso provisório gerado. Envie pelo WhatsApp.', 'ok');
+    }else if(data && data.passwordSetupLink){
       const message='Olá! Para criar ou redefinir sua senha do Performance Pro, acesse este link seguro: '+data.passwordSetupLink;
       document.getElementById('share-modal-body').innerHTML=`<p class="modal-desc">A conta deste atleta já existe. Envie este link seguro para ele criar ou redefinir a senha.</p>
         <input class="share-link-input" readonly value="${escapeHtml(data.passwordSetupLink)}" onclick="this.select()">
@@ -4301,7 +4304,7 @@ async function createAthleteAccount(){
       document.getElementById('share-modal').style.display='flex';
       showToast('Link seguro gerado. Envie ao atleta.', 'ok');
     }else{
-      showToast('Convite enviado para ' + email + '. O atleta deve abrir o e-mail para criar a senha.', 'ok');
+      throw new Error('O servidor não retornou a senha provisória. Tente novamente.');
     }
   }catch(e){
     console.error('Erro ao convidar atleta:', e);
@@ -4315,10 +4318,10 @@ let __lastCredMessage = '';
 
 function showCredentialsModal(account){
   const appUrl = `${location.origin}${location.pathname}`;
-  const msg = `Olá! Aqui está seu acesso ao app de treino:\n\nApp: ${appUrl}\nLogin: ${account.email}\nSenha: ${account.password}\n\nAbra o link, entre com esse login e senha para ver seu treino completo, com vídeos.`;
+  const msg = `Olá! Aqui está seu acesso ao Performance Pro:\n\nApp: ${appUrl}\nLogin: ${account.email}\nSenha provisória: ${account.password}\n\nEntre com esses dados. No primeiro acesso, o aplicativo vai pedir que você cadastre sua nova senha pessoal antes de abrir seu treino.`;
   __lastCredMessage = msg;
   document.getElementById('share-modal-body').innerHTML = `
-    <p class="modal-desc">Envie esses dados para o atleta. Com eles, ele entra no mesmo app e vê só o treino dele.</p>
+    <p class="modal-desc">Envie esses dados ao atleta pelo WhatsApp. No primeiro acesso, ele deverá cadastrar uma nova senha pessoal antes de entrar no aplicativo.</p>
     <div class="cred-row"><span>Link do app</span><b>${escapeHtml(appUrl)}</b></div>
     <div class="cred-row"><span>Login</span><b>${escapeHtml(account.email)}</b></div>
     <div class="cred-row"><span>Senha</span><b>${escapeHtml(account.password)}</b></div>
