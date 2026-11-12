@@ -1806,12 +1806,13 @@ async function syncCoachDataToRelational(){
   const workoutRows=[], itemRows=[];
   for(const a of athletes){
     const days=a.trainingPlan?.days||[];
-    for(const day of days){
+    for(const [dayIndex,day] of days.entries()){
       const exs=(day.exercises||[]).filter(e=>(e.name||'').trim());
       if(!exs.length) continue;
       workoutRows.push({
         id:day.id,team_id:teamId,athlete_id:a.id,
         title:(day.label||'Treino')+' — '+(day.type||'Geral'),
+        sort_order:dayIndex,
         created_by:currentUser.id
       });
       exs.forEach((e,index)=>{
@@ -2037,8 +2038,8 @@ async function loadAthletePortal(){
     if(athleteError) throw athleteError;
     if(!athlete) throw new Error('Seu usuário ainda não está vinculado a um cadastro de atleta. Peça ao treinador para reenviar o convite.');
     const {data:workouts,error:workoutError}=await supabaseClient.from('workouts')
-      .select('id,title,scheduled_for,notes,created_at').eq('athlete_id',athlete.id)
-      .order('scheduled_for',{ascending:false,nullsFirst:false});
+      .select('id,title,scheduled_for,notes,created_at,sort_order').eq('athlete_id',athlete.id)
+      .order('sort_order',{ascending:true}).order('scheduled_for',{ascending:false,nullsFirst:false}).order('created_at',{ascending:true});
     if(workoutError) throw workoutError;
     const ids=(workouts||[]).map(w=>w.id);
     let items=[];
