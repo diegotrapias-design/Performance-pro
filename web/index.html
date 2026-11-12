@@ -1833,6 +1833,20 @@ async function syncCoachDataToRelational(){
     const {error}=await supabaseClient.from('workout_items').upsert(itemRows,{onConflict:'id'});
     if(error) throw error;
   }
+  // Remove exercícios que foram excluídos do planejamento, mantendo somente
+  // os itens atualmente presentes em cada treino ativo.
+  const activeWorkoutIds=workoutRows.map(w=>w.id);
+  if(activeWorkoutIds.length){
+    const {data:existingItems,error:existingItemsError}=await supabaseClient
+      .from('workout_items').select('id').in('workout_id',activeWorkoutIds);
+    if(existingItemsError) throw existingItemsError;
+    const activeItemIds=new Set(itemRows.map(item=>item.id));
+    const staleItemIds=(existingItems||[]).map(item=>item.id).filter(id=>!activeItemIds.has(id));
+    if(staleItemIds.length){
+      const {error:itemCleanupError}=await supabaseClient.from('workout_items').delete().in('id',staleItemIds);
+      if(itemCleanupError) throw itemCleanupError;
+    }
+  }
   // Remove da base relacional os treinos que já não existem no planejamento atual.
   const athleteIds=athleteRows.map(a=>a.id);
   if(athleteIds.length){
