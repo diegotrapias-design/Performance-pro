@@ -2951,7 +2951,6 @@ function renderList(filter){
       const age = calcAge(a.birthDate);
       const days = (a.trainingPlan && a.trainingPlan.days) ? a.trainingPlan.days : [];
       const exerciseCount = days.reduce((n,d)=>n+(d.exercises||[]).filter(ex=>ex.name&&ex.name.trim()).length,0);
-      const daySummary = days.length ? days.map(d => `<span class="training-day-chip"><b>${escapeHtml(d.label||'Dia')}</b><small>${escapeHtml(d.type||'Treino')} · ${(d.exercises||[]).filter(ex=>ex.name&&ex.name.trim()).length} exercícios</small></span>`).join('') : '<span class="training-empty-label">Nenhum treino montado</span>';
       const secondaryBtn = isTreinoMode
         ? `<button class="btn btn-outline btn-sm" onclick="downloadTrainingPdf('${a.id}')">Treino (PDF)</button>`
         : `<button class="btn btn-outline btn-sm" onclick="downloadAthletePdf('${a.id}')">Dados (PDF)</button>`;
@@ -2960,10 +2959,9 @@ function renderList(filter){
           <div class="tag">${escapeHtml(a.sport || 'Atleta')}${a.category ? ' · ' + escapeHtml(a.category) : ''}</div>
           <div class="name">${escapeHtml(a.name)}</div>
           <div class="meta">${age !== null ? `<span>${age} anos${a.sex ? ' · ' + (a.sex==='M'?'Masculino':'Feminino') : ''}</span>` : ''}<span>${days.length} dia(s) · ${exerciseCount} exercício(s)</span></div>
-          ${isTreinoMode ? `<div class="training-day-list">${daySummary}</div>` : ''}
           ${a.is_blocked?'<div style="margin:9px 0;padding:7px 9px;border-radius:7px;background:#fff0f1;color:#b42332;font-size:12px;font-weight:700">🔒 ACESSO BLOQUEADO · '+escapeHtml(a.block_reason||'Motivo não informado').toUpperCase()+'</div>':''}
           <div class="actions">
-            <button class="btn btn-dark btn-sm" onclick="openAthlete('${a.id}')">${isTreinoMode?'Abrir treino':'Ver perfil'}</button>
+            <button class="btn btn-dark btn-sm" onclick="openAthlete('${a.id}')">${isTreinoMode?'Abrir rotina':'Ver perfil'}</button>
             ${secondaryBtn}
             <button class="btn ${a.is_blocked?'btn-primary':'btn-outline'} btn-sm" onclick="toggleAthleteAccess('${a.id}')">${a.is_blocked?'Desbloquear acesso':'Bloquear acesso'}</button>
             <button class="btn btn-danger btn-sm" onclick="deleteAthlete('${a.id}')">Excluir</button>
