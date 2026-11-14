@@ -2359,7 +2359,7 @@ function selectAthleteScale(type,value){
   if(!window.__athleteScale) window.__athleteScale={tqr:null,pse:null};
   window.__athleteScale[type]=value;
   const attr=type==='tqr'?'data-tqr':'data-pse';
-  document.querySelectorAll('#athlete-'+(type==='tqr'?'tqr':'pse')+'-options button').forEach(b=>{
+  document.querySelectorAll(type==='tqr'?'#athlete-tqr-options button':'#athlete-pse-options button, #athlete-finish-pse-options button').forEach(b=>{
     const active=Number(b.getAttribute(attr))===value;
     b.classList.toggle('btn-primary',active);
     b.classList.toggle('btn-outline',!active);
