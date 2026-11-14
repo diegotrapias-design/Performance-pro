@@ -1784,6 +1784,18 @@ async function loadAthletes(){
       });
     });
   });
+  // Acrescenta a nova seleção sem duplicar itens nem sobrescrever vídeos já cadastrados pelo treinador.
+  EXTRA_GYM_EXERCISES.forEach(item=>{
+    const key=item.name.trim().toLocaleLowerCase('pt-BR');
+    const existing=exerciseLibrary.find(ex=>(ex.name||'').trim().toLocaleLowerCase('pt-BR')===key);
+    if(existing){
+      if(!existing.video){existing.video=item.video;needsSave=true;}
+      return;
+    }
+    exerciseLibrary.push({id:uid(),name:item.name,group:item.group,video:item.video,favorite:false,videoLoop:true});
+    libraryNames.add(key);
+    needsSave=true;
+  });
   if(needsSave) await persist(false);
   renderHome();
 }
@@ -3408,7 +3420,7 @@ function openExerciseVideo(url,title,loop){
         player.innerHTML='<div class="exercise-video-empty">Link do Vimeo inválido.</div>';
       }
     }else if(/\.(mp4|m4v|mov|webm)(\?|$)/i.test(parsed.pathname+parsed.search) || host.includes('supabase')){
-      player.innerHTML=`<div class="pp-video-wrap"><video class="exercise-inline-video" playsinline muted defaultMuted preload="metadata" onvolumechange="this.muted=true;this.volume=0" onplay="this.muted=true;this.volume=0" ${loop?'loop autoplay':''} src="${escapeHtml(parsed.href)}"></video><button type="button" class="pp-video-play" onclick="const v=this.parentElement.querySelector('video');if(v.paused){v.muted=true;v.volume=0;v.play();this.style.display='none'}else{v.pause();this.style.display='grid'}" aria-label="Reproduzir vídeo">▶</button><button type="button" class="pp-video-full" onclick="const v=this.parentElement.querySelector('video');v.muted=true;v.volume=0;if(v.requestFullscreen)v.requestFullscreen();else if(v.webkitEnterFullscreen)v.webkitEnterFullscreen()" aria-label="Tela cheia">⛶</button></div>`;
+      player.innerHTML=`<div class="pp-video-wrap"><video class="exercise-inline-video" playsinline muted defaultMuted preload="metadata" onvolumechange="this.muted=true;this.volume=0" onplay="this.muted=true;this.volume=0" ${loop?'loop autoplay':''} src="${escapeHtml(parsed.href)}" ${host.endsWith('r2.dev')?'loop autoplay':''}></video><button type="button" class="pp-video-play" onclick="const v=this.parentElement.querySelector('video');if(v.paused){v.muted=true;v.volume=0;v.play();this.style.display='none'}else{v.pause();this.style.display='grid'}" aria-label="Reproduzir vídeo">▶</button><button type="button" class="pp-video-full" onclick="const v=this.parentElement.querySelector('video');v.muted=true;v.volume=0;if(v.requestFullscreen)v.requestFullscreen();else if(v.webkitEnterFullscreen)v.webkitEnterFullscreen()" aria-label="Tela cheia">⛶</button></div>`;
     }else{
       player.innerHTML='<div class="exercise-video-empty">Este link não é um arquivo de vídeo reproduzível diretamente. Envie um vídeo MP4/MOV pela biblioteca para assistir dentro do app.</div>';
     }
@@ -3742,6 +3754,41 @@ const EXERCISE_LIBRARY_SEED = {
   'Funcional / Cardio': ['Corrida na esteira','Bike ergométrica','Burpee','Mountain climber','Corda naval (battle rope)','Kettlebell swing','Box jump','Agachamento com salto','Corda (pular corda)'],
   'Funcional — Alta Performance': ['Sprint 20m','Sprint 40m','Salto horizontal (broad jump)','Salto vertical (box jump)','Agachamento com salto (jump squat)','Escada de agilidade','Corrida lateral (shuffle)','Mudança de direção (cone drill)','Arremesso de medicine ball (rotacional)','Arremesso de medicine ball (overhead)','Trenó empurrando (sled push)','Trenó puxando (sled pull)','Salto sobre obstáculo (hurdle jump)','Prancha com puxada (renegade row)','Burpee com salto','Skipping alto (joelho alto)']
 };
+
+// Demonstrações adicionais de musculação. Os MP4 são exibidos em loop e sem áudio.
+const EXTRA_GYM_EXERCISES = [
+  {name:'Supino inclinado barra',group:'Peito',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/barbell-incline-bench-press.mp4'},
+  {name:'Supino declinado barra',group:'Peito',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/barbell-decline-bench-press.mp4'},
+  {name:'Supino inclinado halteres',group:'Peito',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-incline-bench-press.mp4'},
+  {name:'Crucifixo com halteres',group:'Peito',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-fly.mp4'},
+  {name:'Crossover na polia',group:'Peito',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-standing-fly-crossover-fly.mp4'},
+  {name:'Puxada alta pegada fechada',group:'Costas',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-close-grip-front-lat-pulldown.mp4'},
+  {name:'Puxada unilateral na polia',group:'Costas',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-one-arm-lateral-pulldown.mp4'},
+  {name:'Remada alta na polia (V-bar)',group:'Costas',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-seated-high-row-v-bar.mp4'},
+  {name:'Pulldown com braços estendidos',group:'Costas',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-straight-arm-pulldown.mp4'},
+  {name:'Remada curvada pegada supinada',group:'Costas',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/barbell-underhand-bent-over-row.mp4'},
+  {name:'Elevação lateral na polia',group:'Ombro',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-lateral-raise.mp4'},
+  {name:'Crucifixo inverso na polia',group:'Ombro',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-crossover-reverse-fly.mp4'},
+  {name:'Elevação frontal com barra',group:'Ombro',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/barbell-front-raise.mp4'},
+  {name:'Remada alta com barra',group:'Ombro',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/barbell-upright-row-wide-grip.mp4'},
+  {name:'Rosca arraste com barra',group:'Bíceps',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/barbell-drag-curl.mp4'},
+  {name:'Rosca unilateral na polia',group:'Bíceps',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-one-arm-curl.mp4'},
+  {name:'Extensão de tríceps deitado na polia',group:'Tríceps',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-lying-triceps-extension.mp4'},
+  {name:'Tríceps corda acima da cabeça',group:'Tríceps',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-rope-high-pulley-overhead-triceps-extension.mp4'},
+  {name:'Agachamento livre com barra',group:'Pernas — Quadríceps',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/classic-barbell-squat.mp4'},
+  {name:'Agachamento frontal com barra',group:'Pernas — Quadríceps',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/barbell-front-chest-squat.mp4'},
+  {name:'Leg press pés próximos',group:'Pernas — Quadríceps',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/close-feet-leg-press.mp4'},
+  {name:'Cadeira extensora',group:'Pernas — Quadríceps',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/lever-leg-extension.mp4'},
+  {name:'Mesa flexora',group:'Pernas — Posterior/Glúteo',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/lever-lying-leg-curl.mp4'},
+  {name:'Cadeira flexora',group:'Pernas — Posterior/Glúteo',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/lever-seated-leg-curl.mp4'},
+  {name:'Stiff com halteres',group:'Pernas — Posterior/Glúteo',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-deadlift.mp4'},
+  {name:'Coice de glúteo na máquina',group:'Pernas — Posterior/Glúteo',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/lever-standing-rear-kick.mp4'},
+  {name:'Panturrilha sentado na máquina',group:'Panturrilha',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/lever-seated-calf-raise.mp4'},
+  {name:'Panturrilha em pé na máquina',group:'Panturrilha',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/lever-standing-calf-raise.mp4'},
+  {name:'Abdominal na polia ajoelhado',group:'Abdômen / Core',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-kneeling-crunch.mp4'},
+  {name:'Abdominal no banco',group:'Abdômen / Core',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/crunch-on-bench.mp4'},
+  {name:'Abdominal bicicleta',group:'Abdômen / Core',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/45-degree-bycicle-twisting-crunch.mp4'}
+];
 
 function seedDefaultLibrary(){
   const seeded = [];
