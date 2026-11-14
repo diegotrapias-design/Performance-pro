@@ -56,7 +56,13 @@ window.handleLogin = async function(event){
     const {data, error} = await supabaseClient.auth.signInWithPassword({email, password});
     if(error) throw error;
     if(!data?.user) throw new Error('A autenticação não retornou o usuário.');
-    if(typeof window.onAuthChange !== 'function') throw new Error('O painel não foi inicializado. Recarregue a página e tente novamente.');
+    // Aguarda o bootstrap principal do painel terminar antes de encaminhar o usuário autenticado.
+    // Evita perder o primeiro login quando o formulário fica disponível antes do script principal.
+    const initStartedAt = Date.now();
+    while(typeof window.onAuthChange !== 'function' && Date.now() - initStartedAt < 15000){
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    if(typeof window.onAuthChange !== 'function') throw new Error('O painel ainda está carregando. Aguarde alguns segundos e tente novamente; sua autenticação foi preservada.');
     await window.onAuthChange(data.user);
   } catch(e) {
     console.error('Falha no login:', e);
