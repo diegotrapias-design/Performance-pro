@@ -1581,11 +1581,20 @@ function mergeLibraryDuplicatesByMedia(){
 }
 function syncLibraryVideosToAthleteRoutines(){
   const byName=new Map();
-  exerciseLibrary.forEach(lib=>{if(!lib.video)return;[lib.name,...(lib.aliases||[])].forEach(n=>{const k=exerciseNameKey(n);if(k&&!byName.has(k))byName.set(k,lib);});});
+  const addName=(name,lib)=>{const key=exerciseNameKey(name);if(key&&!byName.has(key))byName.set(key,lib);};
+  exerciseLibrary.forEach(lib=>{
+    if(!lib.video)return;
+    [lib.name,...(lib.aliases||[])].forEach(name=>addName(name,lib));
+  });
+  EXERCISE_LIBRARY_CANONICAL_NAMES.forEach(pair=>{
+    const lib=exerciseLibrary.find(item=>item.video&&exerciseNameKey(item.name)===exerciseNameKey(pair[1]))
+      || exerciseLibrary.find(item=>item.video&&exerciseNameKey(item.name)===exerciseNameKey(pair[0]));
+    if(lib){addName(pair[0],lib);addName(pair[1],lib);}
+  });
   let changed=false;
   athletes.forEach(a=>(a.trainingPlan?.days||[]).forEach(d=>(d.exercises||[]).forEach(ex=>{
-    const lib=byName.get(exerciseNameKey(ex.name));if(!lib||!lib.video)return;
-    if(!ex.video){ex.video=lib.video;changed=true;}
+    const lib=byName.get(exerciseNameKey(ex.name));
+    if(lib?.video&&!ex.video){ex.video=lib.video;changed=true;}
   })));
   return changed;
 }
@@ -3537,6 +3546,19 @@ function exerciseVideoPosterUrl(url){
     return u.href;
   }catch(e){return '';}
 }
+function retryExerciseVideo(video){
+  if(!video)return;
+  const original=video.dataset.originalSrc||video.currentSrc||video.src;
+  if(!original)return;
+  video.dataset.fallbackTried='1';
+  const message=video.parentElement?.querySelector('.pp-video-error-msg');
+  if(message)message.style.display='none';
+  const loading=video.parentElement?.querySelector('.pp-video-loading');
+  if(loading)loading.style.display='block';
+  video.src=original+(original.includes('?')?'&':'?')+'pp_retry='+Date.now();
+  video.load();
+  video.play().then(()=>{video.muted=true;video.volume=0;}).catch(()=>{});
+}
 function handleExerciseVideoError(video){
   if(!video)return;
   const fallback=video.dataset.fallbackSrc||'';
@@ -3579,7 +3601,7 @@ function openExerciseVideo(url,title,loop){
     }else if(/\.(mp4|m4v|mov|webm)(\?|$)/i.test(parsed.pathname+parsed.search) || host.includes('supabase')){
       const poster=exerciseVideoPosterUrl(parsed.href);
       const fallbackSrc=host.endsWith('r2.dev') && /\/exercise-videos\/male\//.test(parsed.pathname) ? parsed.href.replace('/male/','/female/') : '';
-      player.innerHTML='<div class="pp-video-wrap"><video class="exercise-inline-video" playsinline webkit-playsinline muted defaultMuted preload="metadata" controls controlsList="nodownload noplaybackrate noremoteplayback" disablePictureInPicture '+(shouldLoop?'loop':'')+(poster?' poster="'+escapeHtml(poster)+'"':'')+(fallbackSrc?' data-fallback-src="'+escapeHtml(fallbackSrc)+'"':'')+' onvolumechange="this.muted=true;this.volume=0" onplay="this.muted=true;this.volume=0" onloadeddata="this.muted=true;this.volume=0;const m=this.parentElement.querySelector(\'.pp-video-loading\');if(m)m.style.display=\'none\'" onerror="handleExerciseVideoError(this)" src="'+escapeHtml(parsed.href)+'"></video><div class="pp-video-loading">Carregando demonstração...</div><div class="pp-video-error-msg" style="display:none">Não foi possível carregar esta demonstração. Tente novamente ou substitua o vídeo na biblioteca.</div><button type="button" class="pp-video-full" onclick="const v=this.parentElement.querySelector(\'video\');v.muted=true;v.volume=0;if(v.requestFullscreen)v.requestFullscreen();else if(v.webkitEnterFullscreen)v.webkitEnterFullscreen()" aria-label="Tela cheia">⛶</button></div>';
+      player.innerHTML='<div class="pp-video-wrap"><video class="exercise-inline-video" playsinline webkit-playsinline muted defaultMuted preload="metadata" controls controlsList="nodownload noplaybackrate noremoteplayback" disablePictureInPicture '+(shouldLoop?'loop':'')+(poster?' poster="'+escapeHtml(poster)+'"':'')+(fallbackSrc?' data-fallback-src="'+escapeHtml(fallbackSrc)+'"':'')+' onvolumechange="this.muted=true;this.volume=0" onplay="this.muted=true;this.volume=0" onloadeddata="this.muted=true;this.volume=0;const m=this.parentElement.querySelector(\'.pp-video-loading\');if(m)m.style.display=\'none\'" onerror="handleExerciseVideoError(this)" src="'+escapeHtml(parsed.href)+'"></video><div class="pp-video-loading">Carregando demonstração...</div><div class="pp-video-error-msg" style="display:none">Não foi possível carregar esta demonstração. <button type="button" class="btn btn-outline btn-sm" onclick="retryExerciseVideo(this.parentElement.parentElement.querySelector(&quot;video&quot;))">Tentar novamente</button></div><button type="button" class="pp-video-full" onclick="const v=this.parentElement.querySelector(\'video\');v.muted=true;v.volume=0;if(v.requestFullscreen)v.requestFullscreen();else if(v.webkitEnterFullscreen)v.webkitEnterFullscreen()" aria-label="Tela cheia">⛶</button></div>';
     }else player.innerHTML='<div class="exercise-video-empty">Formato de demonstração não reconhecido. Use MP4, MOV, WebM ou GIF.</div>';
   }
   modal.style.display='flex';
