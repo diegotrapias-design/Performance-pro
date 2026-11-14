@@ -1290,10 +1290,10 @@ window.handleLogin = async function(event){
     </div>
     <div class="field" style="margin-bottom:14px;">
       <label>Vídeo do exercício (opcional)</label>
-      <input type="file" id="ex-form-video" accept="video/*" onchange="previewExerciseVideoSelection(event)">
+      <input type="file" id="ex-form-video" accept="video/*,image/gif,image/webp,image/png,image/jpeg" onchange="previewExerciseVideoSelection(event)">
       <small style="color:var(--gray);">Escolha um vídeo, assista à prévia e confirme antes de salvar.</small>
       <div id="ex-form-video-preview" style="display:none;margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:10px;">
-        <video id="ex-form-video-player" controls playsinline muted preload="metadata" onclick="this.paused?this.play():this.pause()" style="width:100%;max-height:260px;background:#000;border-radius:8px;"></video>
+        <div id="ex-form-video-player" style="width:100%;max-height:260px;overflow:hidden;background:#000;border-radius:8px;"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
           <button type="button" class="btn btn-primary btn-sm" onclick="confirmExerciseVideoSelection()">Usar este vídeo</button>
           <button type="button" class="btn btn-outline btn-sm" onclick="chooseAnotherExerciseVideo()">Escolher outro</button>
@@ -1528,9 +1528,81 @@ async function uploadToSupabaseStorage(file){
   const path = `${currentUser.id}/${Date.now()}-${uid()}-${safeName}`;
   const {error} = await supabaseClient.storage.from('athlete-media').upload(path, file, {upsert:false, contentType:file.type || 'application/octet-stream'});
   if(error) throw error;
-  const {data, error:signedError} = await supabaseClient.storage.from('athlete-media').createSignedUrl(path, 604800);
+  const {data, error:signedError} = await supabaseClient.storage.from('athlete-media').createSignedUrl(path, 31536000);
   if(signedError) throw signedError;
   return data.signedUrl;
+}
+
+function isSupportedExerciseMediaFile(file){
+  return !!file && (file.type.startsWith('video/') || ['image/gif','image/webp','image/png','image/jpeg'].includes(file.type));
+}
+function getAthleteMediaStoragePath(url){
+  if(!url)return '';
+  try{const p=new URL(url,location.href),marker='/storage/v1/object/sign/athlete-media/',i=p.pathname.indexOf(marker);return i<0?'':decodeURIComponent(p.pathname.slice(i+marker.length));}catch(e){return '';}
+}
+function exerciseNameKey(name){
+  return String(name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR').replace(/[^a-z0-9]+/g,' ').trim();
+}
+const EXERCISE_LIBRARY_CANONICAL_NAMES=[
+  ['Remada alta','Remada alta com barra'],
+  ['Puxada frente (pulley)','Puxada alta pegada fechada'],
+  ['Crucifixo invertido (posterior)','Crucifixo inverso na polia'],
+  ['Elevação lateral cabo','Elevação lateral na polia'],
+  ['Pulldown corda','Pulldown com braços estendidos'],
+  ['Agachamento livre','Agachamento livre com barra'],
+  ['Abdominal supra','Abdominal no banco'],
+  ['Supino reto halteres','Supino reto com halteres'],
+  ['Crucifixo reto','Crucifixo com halteres'],
+  ['Crucifixo TRX (beligol)','Crucifixo Invertido TRX (beligol)']
+];
+function exerciseMediaIdentity(url){
+  const path=getAthleteMediaStoragePath(url);
+  if(path)return 'storage:'+path;
+  try{const u=new URL(url,location.href);return u.origin+u.pathname;}catch(e){return String(url||'').trim();}
+}
+function mergeLibraryDuplicatesByMedia(){
+  const groups=new Map();
+  exerciseLibrary.forEach(ex=>{const k=exerciseMediaIdentity(ex.video);if(k){if(!groups.has(k))groups.set(k,[]);groups.get(k).push(ex);}});
+  const removed=new Set();let changed=false;
+  groups.forEach(items=>{
+    if(items.length<2)return;
+    let keep=items[0];
+    for(const pair of EXERCISE_LIBRARY_CANONICAL_NAMES){const candidate=items.find(x=>exerciseNameKey(x.name)===exerciseNameKey(pair[1]));if(candidate){keep=candidate;break;}}
+    const aliases=new Set(keep.aliases||[]);
+    items.forEach(item=>{if(item===keep)return;if(item.name&&exerciseNameKey(item.name)!==exerciseNameKey(keep.name))aliases.add(item.name);(item.aliases||[]).forEach(a=>aliases.add(a));if(!keep.description&&item.description)keep.description=item.description;keep.favorite=!!(keep.favorite||item.favorite);removed.add(item);});
+    keep.aliases=[...aliases].filter(a=>exerciseNameKey(a)!==exerciseNameKey(keep.name));changed=true;
+  });
+  if(changed)exerciseLibrary=exerciseLibrary.filter(ex=>!removed.has(ex));
+  return changed;
+}
+function syncLibraryVideosToAthleteRoutines(){
+  const byName=new Map();
+  exerciseLibrary.forEach(lib=>{if(!lib.video)return;[lib.name,...(lib.aliases||[])].forEach(n=>{const k=exerciseNameKey(n);if(k&&!byName.has(k))byName.set(k,lib);});});
+  let changed=false;
+  athletes.forEach(a=>(a.trainingPlan?.days||[]).forEach(d=>(d.exercises||[]).forEach(ex=>{
+    const lib=byName.get(exerciseNameKey(ex.name));if(!lib||!lib.video)return;
+    if(!ex.video){ex.video=lib.video;changed=true;}
+  })));
+  return changed;
+}
+async function refreshLibrarySignedMediaUrls(){
+  if(!currentUser||!exerciseLibrary.length||!supabaseClient?.storage)return false;
+  const owners=[],paths=new Set();
+  const add=(owner,field)=>{const p=getAthleteMediaStoragePath(owner[field]);if(p){paths.add(p);owners.push({owner,field,path:p});}};
+  exerciseLibrary.forEach(ex=>add(ex,'video'));
+  athletes.forEach(a=>(a.trainingPlan?.days||[]).forEach(d=>(d.exercises||[]).forEach(ex=>add(ex,'video'))));
+  if(!paths.size)return false;
+  try{
+    const allPaths=[...paths],byPath=new Map();
+    for(let i=0;i<allPaths.length;i+=50){
+      const {data,error}=await supabaseClient.storage.from('athlete-media').createSignedUrls(allPaths.slice(i,i+50),31536000);
+      if(error)throw error;
+      (data||[]).filter(x=>x&&x.path&&x.signedUrl).forEach(x=>byPath.set(decodeURIComponent(x.path),x.signedUrl.startsWith('http')?x.signedUrl:new URL(x.signedUrl,SUPABASE_URL).href));
+    }
+    let changed=false;
+    owners.forEach(o=>{const u=byPath.get(o.path);if(u&&o.owner[o.field]!==u){o.owner[o.field]=u;changed=true;}});
+    return changed;
+  }catch(e){console.warn('Não foi possível renovar alguns vídeos da biblioteca:',e);return false;}
 }
 
 let passwordFlowActive = false;
@@ -1795,6 +1867,9 @@ async function loadAthletes(){
     libraryNames.add(key);
     needsSave=true;
   });
+  if(mergeLibraryDuplicatesByMedia()) needsSave=true;
+  if(await refreshLibrarySignedMediaUrls()) needsSave=true;
+  if(syncLibraryVideosToAthleteRoutines()) needsSave=true;
   if(needsSave) await persist(false);
   renderHome();
 }
@@ -1898,9 +1973,11 @@ async function persist(showMsg){
 async function persistExerciseLibrary(){
   try{
     if(!currentUser) throw new Error('Sessão não autenticada.');
+    syncLibraryVideosToAthleteRoutines();
     const payload={athletes,library:exerciseLibrary,seriesPresets,updatedAt:new Date().toISOString()};
     const {error}=await supabaseClient.from(DATA_COLLECTION).upsert({user_id:currentUser.id,payload,updated_at:new Date().toISOString()},{onConflict:'user_id'});
     if(error) throw error;
+    await syncCoachDataToRelational();
     return true;
   }catch(e){
     console.error('Erro ao salvar a biblioteca de exercícios:',e);
@@ -3419,13 +3496,13 @@ async function handleVideoUpload(event, dayId, exId){
     showToast('Entre no aplicativo para enviar vídeos ao armazenamento seguro.', 'err');
     return;
   }
-  if(!file.type.startsWith('video/')){
-    showToast('Selecione um arquivo de vídeo.', 'err');
+  if(!isSupportedExerciseMediaFile(file)){
+    showToast('Selecione um vídeo ou GIF.', 'err');
     return;
   }
-  const MAX_MB = 150;
+  const MAX_MB = 100;
   if(file.size > MAX_MB * 1024 * 1024){
-    showToast(`Vídeo muito grande (máx. ${MAX_MB}MB).`, 'err');
+    showToast(`Arquivo muito grande (máx. ${MAX_MB}MB).`, 'err');
     return;
   }
 
@@ -3450,14 +3527,14 @@ function closeExerciseVideo(){
 function openExerciseVideo(url,title,loop){
   const modal=document.getElementById('exercise-video-modal');
   const player=document.getElementById('exercise-video-player');
-  const safeTitle=title||'Vídeo do exercício';
+  const safeTitle=title||'Demonstração do exercício';
   document.getElementById('exercise-video-title').textContent=safeTitle;
   if(!url){
-    player.innerHTML='<div class="exercise-video-empty">Este exercício ainda não tem vídeo demonstrativo cadastrado. O treinador pode adicionar um vídeo próprio pela biblioteca de exercícios.</div>';
+    player.innerHTML='<div class="exercise-video-empty">Este exercício ainda não tem demonstração cadastrada. O treinador pode adicionar um vídeo ou GIF pela biblioteca.</div>';
   }else{
     let parsed;
-    try{parsed=new URL(url,location.href);}catch(e){showToast('Link de vídeo inválido.','err');return;}
-    if(!['http:','https:'].includes(parsed.protocol)){showToast('Link de vídeo inválido.','err');return;}
+    try{parsed=new URL(url,location.href);}catch(e){showToast('Link de mídia inválido.','err');return;}
+    if(!['http:','https:'].includes(parsed.protocol)){showToast('Link de mídia inválido.','err');return;}
     const host=parsed.hostname.replace(/^www\./,'').toLowerCase();
     let videoId='';
     if(host==='youtu.be') videoId=parsed.pathname.split('/').filter(Boolean)[0]||'';
@@ -3467,15 +3544,13 @@ function openExerciseVideo(url,title,loop){
     }else if(host==='vimeo.com' || host==='player.vimeo.com'){
       const vimeoId=parsed.pathname.match(/^\/(?:video\/)?(\d+)(?:\/|$)/)?.[1]||'';
       if(vimeoId){
-        player.innerHTML='<iframe class="exercise-video-frame" src="https://player.vimeo.com/video/'+vimeoId+(loop?'?loop=1&autoplay=1&muted=1&controls=0':'?muted=1&controls=0')+'" title="Demonstração: '+escapeHtml(safeTitle)+'" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>';
-      }else{
-        player.innerHTML='<div class="exercise-video-empty">Link do Vimeo inválido.</div>';
-      }
+        player.innerHTML='<iframe class="exercise-video-frame" src="https://player.vimeo.com/video/'+vimeoId+(loop?'?loop=1&muted=1&controls=0':'?muted=1&controls=0')+'" title="Demonstração: '+escapeHtml(safeTitle)+'" allow="fullscreen; picture-in-picture" allowfullscreen></iframe>';
+      }else player.innerHTML='<div class="exercise-video-empty">Link do Vimeo inválido.</div>';
+    }else if(/\.(gif|webp|png|jpe?g)(\?|$)/i.test(parsed.pathname+parsed.search)){
+      player.innerHTML='<div class="pp-exercise-gif-wrap"><img class="pp-exercise-gif" src="'+escapeHtml(parsed.href)+'" alt="Demonstração em GIF: '+escapeHtml(safeTitle)+'" loading="eager"></div>';
     }else if(/\.(mp4|m4v|mov|webm)(\?|$)/i.test(parsed.pathname+parsed.search) || host.includes('supabase')){
-      player.innerHTML=`<div class="pp-video-wrap"><video class="exercise-inline-video" playsinline muted defaultMuted preload="metadata" onvolumechange="this.muted=true;this.volume=0" onplay="this.muted=true;this.volume=0" ${loop?'loop autoplay':''} src="${escapeHtml(parsed.href)}" ${host.endsWith('r2.dev')?'loop autoplay':''}></video><button type="button" class="pp-video-play" style="${host.endsWith('r2.dev')?'display:none;':''}" onclick="const v=this.parentElement.querySelector('video');if(v.paused){v.muted=true;v.volume=0;v.play();this.style.display='none'}else{v.pause();this.style.display='grid'}" aria-label="Reproduzir vídeo">▶</button><button type="button" class="pp-video-full" onclick="const v=this.parentElement.querySelector('video');v.muted=true;v.volume=0;if(v.requestFullscreen)v.requestFullscreen();else if(v.webkitEnterFullscreen)v.webkitEnterFullscreen()" aria-label="Tela cheia">⛶</button></div>`;
-    }else{
-      player.innerHTML='<div class="exercise-video-empty">Este link não é um arquivo de vídeo reproduzível diretamente. Envie um vídeo MP4/MOV pela biblioteca para assistir dentro do app.</div>';
-    }
+      player.innerHTML='<div class="pp-video-wrap"><video class="exercise-inline-video" playsinline muted defaultMuted preload="metadata" '+(loop?'loop':'')+' onvolumechange="this.muted=true;this.volume=0" onplay="this.muted=true;this.volume=0" onerror="this.parentElement.querySelector(\'.pp-video-error-msg\').style.display=\'block\'" src="'+escapeHtml(parsed.href)+'"></video><div class="pp-video-error-msg" style="display:none">Não foi possível carregar esta demonstração. O link pode estar indisponível; confira o vídeo na biblioteca.</div><button type="button" class="pp-video-play" onclick="const v=this.parentElement.querySelector(\'video\');if(v.paused){v.muted=true;v.volume=0;v.play().then(()=>this.style.display=\'none\').catch(()=>this.parentElement.querySelector(\'.pp-video-error-msg\').style.display=\'block\')}else{v.pause();this.style.display=\'grid\'}" aria-label="Reproduzir vídeo">▶</button><button type="button" class="pp-video-full" onclick="const v=this.parentElement.querySelector(\'video\');v.muted=true;v.volume=0;if(v.requestFullscreen)v.requestFullscreen();else if(v.webkitEnterFullscreen)v.webkitEnterFullscreen()" aria-label="Tela cheia">⛶</button></div>';
+    }else player.innerHTML='<div class="exercise-video-empty">Formato de demonstração não reconhecido. Use MP4, MOV, WebM ou GIF.</div>';
   }
   modal.style.display='flex';
 }
@@ -3707,7 +3782,7 @@ function renderTreinoEditPanel(){
               <input type="url" value="${escapeHtml(ex.video)}" oninput="updateExerciseField('${d.id}','${ex.id}','video',this.value)" placeholder="Colar link do vídeo">
               <label class="video-upload-btn" title="Enviar vídeo da galeria">
                 🎥
-                <input type="file" accept="video/*" style="display:none" onchange="handleVideoUpload(event,'${d.id}','${ex.id}')">
+                <input type="file" accept="video/*,image/gif,image/webp,image/png,image/jpeg" style="display:none" onchange="handleVideoUpload(event,'${d.id}','${ex.id}')">
               </label>
               ${ex.video ? `<button type="button" onclick="openExerciseVideo('${escapeHtml(ex.video)}','${escapeHtml(ex.name)}')" class="video-open-btn exercise-video-open" title="Assistir vídeo">▶</button>` : ''}
             </div>
@@ -3935,7 +4010,7 @@ function renderLibraryList(filter){
   const q=(filter||'').toLowerCase();
   const group=document.getElementById('library-group-filter').value;
   const category=document.getElementById('library-category-filter').value;
-  const filtered=exerciseLibrary.filter(ex=>(!q||(ex.name||'').toLowerCase().includes(q))&&(!group||ex.group===group)&&(!category||exerciseCategory(ex)===category)&&(libraryPickerTab!=='favorites'||ex.favorite));
+  const filtered=exerciseLibrary.filter(ex=>(!q||[ex.name,...(ex.aliases||[])].some(n=>(n||'').toLowerCase().includes(q)))&&(!group||ex.group===group)&&(!category||exerciseCategory(ex)===category)&&(libraryPickerTab!=='favorites'||ex.favorite));
   filtered.sort((x,y)=>(x.name||'').localeCompare(y.name||'','pt-BR',{sensitivity:'base'}));
   const container=document.getElementById('library-list');
   const header='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><button class="btn btn-outline btn-sm" onclick="toggleLibraryMultiSelect()">'+(libraryMultiSelect?'Cancelar seleção':'Selecionar vários')+'</button>'+(libraryMultiSelect?'<span id="library-multi-count">'+selectedLibraryIds.length+' selecionados</span><button class="btn btn-primary btn-sm" onclick="addSelectedLibraryIds()">Adicionar selecionados</button>':'')+'</div>';
@@ -4042,7 +4117,7 @@ function renderLibraryScreen(filter){
   currentScreen = 'library';
   const app = document.getElementById('app');
   const q = (filter || '').toLowerCase();
-  let list = exerciseLibrary.filter(ex => !q || ex.name.toLowerCase().includes(q));
+  let list = exerciseLibrary.filter(ex => !q || [ex.name,...(ex.aliases||[])].some(n=>(n||'').toLowerCase().includes(q)));
   list.sort((x,y)=>(x.name||'').localeCompare(y.name||'','pt-BR',{sensitivity:'base'}));
   if(libraryFilterFavOnly) list = list.filter(ex => ex.favorite);
 
@@ -4063,7 +4138,7 @@ function renderLibraryScreen(filter){
             </div>
             <label class="video-upload-btn" title="Enviar vídeo da galeria">
               🎥
-              <input type="file" accept="video/*" style="display:none" onchange="handleLibraryVideoUpload(event,'${ex.id}')">
+              <input type="file" accept="video/*,image/gif,image/webp,image/png,image/jpeg" style="display:none" onchange="handleLibraryVideoUpload(event,'${ex.id}')">
             </label>
             ${ex.video ? `<button type="button" onclick="openExerciseVideo('${escapeHtml(ex.video)}','${escapeHtml(ex.name)}')" class="video-open-btn exercise-video-open" title="Assistir vídeo">▶</button>` : ''}
             <button class="btn btn-outline btn-sm" onclick="editLibraryExercise('${ex.id}')">✏️</button>
@@ -4116,16 +4191,18 @@ function previewExerciseVideoSelection(event){
   const status=document.getElementById('ex-form-video-status');
   exerciseVideoConfirmed=false;
   if(exerciseVideoPreviewUrl){ URL.revokeObjectURL(exerciseVideoPreviewUrl); exerciseVideoPreviewUrl=''; }
-  if(!file){ wrap.style.display='none'; player.removeAttribute('src'); player.load(); return; }
-  if(!file.type.startsWith('video/')){ input.value=''; wrap.style.display='none'; showToast('Selecione um arquivo de vídeo válido.','err'); return; }
+  if(!file){ wrap.style.display='none'; player.innerHTML=''; return; }
+  if(!isSupportedExerciseMediaFile(file)){ input.value=''; wrap.style.display='none'; showToast('Selecione um vídeo ou GIF válido.','err'); return; }
   exerciseVideoPreviewUrl=URL.createObjectURL(file);
-  player.muted=true;
-  player.defaultMuted=true;
-  player.volume=0;
-  player.src=exerciseVideoPreviewUrl;
-  player.load();
+  if(file.type.startsWith('image/')){
+    player.innerHTML='<img src="'+exerciseVideoPreviewUrl+'" alt="Prévia do GIF" style="display:block;max-width:100%;max-height:260px;margin:auto;object-fit:contain;">';
+    status.textContent='Confira a animação GIF e toque em “Usar este vídeo” para confirmar.';
+  }else{
+    player.innerHTML='<video controls playsinline muted preload="metadata" style="width:100%;max-height:260px;background:#000" src="'+exerciseVideoPreviewUrl+'"></video>';
+    const v=player.querySelector('video');v.muted=true;v.defaultMuted=true;v.volume=0;
+    status.textContent='Assista ao vídeo e toque em “Usar este vídeo” para confirmar.';
+  }
   wrap.style.display='block';
-  status.textContent='Assista ao vídeo e toque em “Usar este vídeo” para confirmar.';
 }
 function confirmExerciseVideoSelection(){
   const input=document.getElementById('ex-form-video');
@@ -4139,7 +4216,7 @@ function chooseAnotherExerciseVideo(){
   exerciseVideoConfirmed=false;
   document.getElementById('ex-form-video-preview').style.display='none';
   const player=document.getElementById('ex-form-video-player');
-  player.pause(); player.removeAttribute('src'); player.load();
+  player.innerHTML='';
   if(exerciseVideoPreviewUrl){ URL.revokeObjectURL(exerciseVideoPreviewUrl); exerciseVideoPreviewUrl=''; }
   input.click();
 }
@@ -4175,7 +4252,7 @@ function resetExerciseVideoPreview(){
   const wrap=document.getElementById('ex-form-video-preview');
   const player=document.getElementById('ex-form-video-player');
   if(wrap) wrap.style.display='none';
-  if(player){ player.pause(); player.removeAttribute('src'); player.load(); }
+  if(player) player.innerHTML='';
   if(exerciseVideoPreviewUrl){ URL.revokeObjectURL(exerciseVideoPreviewUrl); exerciseVideoPreviewUrl=''; }
 }
 
@@ -4209,10 +4286,10 @@ async function submitExerciseForm(){
 
     if(videoFile){
       if(!supabaseStorageIsConfigured()) throw new Error('Entre no aplicativo para enviar vídeos ao armazenamento seguro.');
-      if(!videoFile.type.startsWith('video/')) throw new Error('Selecione um arquivo de vídeo válido.');
-      const maxBytes = 150 * 1024 * 1024;
-      if(videoFile.size > maxBytes) throw new Error('Vídeo muito grande (máximo de 150 MB).');
-      showToast('Enviando vídeo...', 'ok');
+      if(!isSupportedExerciseMediaFile(videoFile)) throw new Error('Selecione um vídeo ou GIF válido.');
+      const maxBytes = 100 * 1024 * 1024;
+      if(videoFile.size > maxBytes) throw new Error('Arquivo muito grande (máximo de 100 MB).');
+      showToast('Enviando demonstração...', 'ok');
       videoUrl = await uploadToSupabaseStorage(videoFile);
     }
 
@@ -4257,9 +4334,9 @@ async function handleLibraryVideoUpload(event, exId){
   event.target.value = '';
   if(!file) return;
   if(!supabaseStorageIsConfigured()){ showToast('Entre no aplicativo para enviar vídeos ao armazenamento seguro.', 'err'); return; }
-  if(!file.type.startsWith('video/')){ showToast('Selecione um arquivo de vídeo.', 'err'); return; }
-  const MAX_MB = 150;
-  if(file.size > MAX_MB * 1024 * 1024){ showToast(`Vídeo muito grande (máx. ${MAX_MB}MB).`, 'err'); return; }
+  if(!isSupportedExerciseMediaFile(file)){ showToast('Selecione um vídeo ou GIF.', 'err'); return; }
+  const MAX_MB = 100;
+  if(file.size > MAX_MB * 1024 * 1024){ showToast(`Arquivo muito grande (máx. ${MAX_MB}MB).`, 'err'); return; }
 
   showToast('Enviando vídeo…', 'ok');
   try{
