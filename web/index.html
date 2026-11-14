@@ -2919,11 +2919,21 @@ async function toggleAthleteAccess(athleteId){
   const athlete=athletes.find(a=>a.id===athleteId);
   if(!athlete || currentProfile?.role!=='coach' || !currentProfile.team_id) return;
   const shouldBlock=!athlete.is_blocked;
-  const action=shouldBlock?'bloquear o acesso deste atleta por inadimplência':'desbloquear o acesso deste atleta';
-  if(!confirm('Deseja realmente '+action+'?')) return;
+  let blockReason=null;
+  if(shouldBlock){
+    const choice=prompt('Selecione o motivo do bloqueio:\n1 - Inadimplência\n2 - Abandono\n\nDigite 1 ou 2:');
+    if(choice===null) return;
+    const normalized=choice.trim();
+    if(normalized!=='1' && normalized!=='2'){
+      showToast('Opção inválida. Escolha 1 para inadimplência ou 2 para abandono.','err');
+      return;
+    }
+    blockReason=normalized==='1'?'Inadimplência':'Abandono';
+    if(!confirm('Confirma bloquear o acesso deste atleta por '+blockReason.toLowerCase()+'?')) return;
+  }else if(!confirm('Deseja realmente desbloquear o acesso deste atleta?')) return;
   try{
     const {data,error}=await supabaseClient.from('athletes')
-      .update({is_blocked:shouldBlock,block_reason:shouldBlock?'Inadimplência':null})
+      .update({is_blocked:shouldBlock,block_reason:shouldBlock?blockReason:null})
       .eq('id',athleteId).eq('team_id',currentProfile.team_id)
       .select('id,is_blocked,block_reason').maybeSingle();
     if(error) throw error;
@@ -2931,7 +2941,7 @@ async function toggleAthleteAccess(athleteId){
     athlete.is_blocked=!!data.is_blocked;
     athlete.block_reason=data.block_reason||'';
     renderList(document.querySelector('.toolbar input[type="search"]')?.value||'');
-    showToast(shouldBlock?'Acesso do atleta bloqueado.':'Acesso do atleta liberado novamente.','ok');
+    showToast(shouldBlock?'Acesso do atleta bloqueado por '+blockReason.toLowerCase()+'.':'Acesso do atleta liberado novamente.','ok');
   }catch(e){
     console.error('Falha ao alterar acesso do atleta:',e);
     showToast(e.message||'Não foi possível alterar o acesso.','err');
@@ -2966,7 +2976,7 @@ function renderList(filter){
           <div class="name">${escapeHtml(a.name)}</div>
           <div class="meta">${age !== null ? `<span>${age} anos${a.sex ? ' · ' + (a.sex==='M'?'Masculino':'Feminino') : ''}</span>` : ''}<span>${days.length} dia(s) · ${exerciseCount} exercício(s)</span></div>
           ${isTreinoMode ? `<div class="training-day-list">${daySummary}</div>` : ''}
-          ${a.is_blocked?'<div style="margin:9px 0;padding:7px 9px;border-radius:7px;background:#fff0f1;color:#b42332;font-size:12px;font-weight:700">🔒 ACESSO BLOQUEADO · INADIMPLÊNCIA</div>':''}
+          ${a.is_blocked?'<div style="margin:9px 0;padding:7px 9px;border-radius:7px;background:#fff0f1;color:#b42332;font-size:12px;font-weight:700">🔒 ACESSO BLOQUEADO · '+escapeHtml(a.block_reason||'Motivo não informado').toUpperCase()+'</div>':''}
           <div class="actions">
             <button class="btn btn-dark btn-sm" onclick="openAthlete('${a.id}')">${isTreinoMode?'Abrir treino':'Ver perfil'}</button>
             ${secondaryBtn}
