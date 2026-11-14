@@ -1714,31 +1714,7 @@ async function setupCoachPushNotifications(){
 // Expor explicitamente o fluxo de autenticação para o bootstrap inicial.
 window.onAuthChange = onAuthChange;
 
-async function handleLogin(event){
-  event.preventDefault();
-  const email=document.getElementById('login-email').value.trim().toLowerCase();
-  const password=document.getElementById('login-password').value;
-  showLoginError('');
-  if(!email){ showLoginError('Informe seu e-mail.'); return; }
-  if(!password){ showLoginError('Informe sua senha.'); return; }
-  const button=document.getElementById('login-submit');
-  if(button){ button.disabled=true; button.textContent='ENTRANDO...'; }
-  try{
-    const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
-    if(error) throw error;
-    if(!data?.user) throw new Error('A autenticação não retornou o usuário.');
-    await onAuthChange(data.user);
-  }catch(e){
-    console.error('Falha no login:',e);
-    const detail = e && e.message ? e.message : 'erro desconhecido';
-    showLoginError(detail === 'Load failed'
-      ? 'A conexão com o Supabase foi interrompida pelo navegador. Confira a internet e toque em ENTRAR novamente.'
-      : 'Não foi possível abrir o painel: ' + detail);
-  }finally{
-    if(button){ button.disabled=false; button.textContent='ENTRAR'; }
-  }
-}
-window.handleLogin = handleLogin;
+// O login global é definido no primeiro bloco e aguarda a inicialização do painel.\n
 // O formulário chama handleLogin diretamente pelo evento submit nativo.
 
 async function sendPasswordRecovery(){
