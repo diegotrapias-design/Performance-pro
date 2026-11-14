@@ -1812,6 +1812,7 @@ async function syncCoachDataToRelational(){
       workoutRows.push({
         id:day.id,team_id:teamId,athlete_id:a.id,
         title:(day.label||'Treino')+' — '+(day.type||'Geral'),
+        routine_type:a.trainingPlan?.routineType||inferTrainingRoutineType(a.trainingPlan),
         sort_order:dayIndex,
         created_by:currentUser.id
       });
@@ -2038,7 +2039,7 @@ async function loadAthletePortal(){
     if(athleteError) throw athleteError;
     if(!athlete) throw new Error('Seu usuário ainda não está vinculado a um cadastro de atleta. Peça ao treinador para reenviar o convite.');
     const {data:workouts,error:workoutError}=await supabaseClient.from('workouts')
-      .select('id,title,scheduled_for,notes,created_at,sort_order').eq('athlete_id',athlete.id)
+      .select('id,title,scheduled_for,notes,created_at,sort_order,routine_type').eq('athlete_id',athlete.id)
       .order('sort_order',{ascending:true}).order('scheduled_for',{ascending:false,nullsFirst:false}).order('created_at',{ascending:true});
     if(workoutError) throw workoutError;
     const ids=(workouts||[]).map(w=>w.id);
@@ -2134,9 +2135,11 @@ async function loadAthletePortal(){
           <label class="field-label">TQR — recuperação (6–20)</label><p class="muted">Como foi sua recuperação até esta sessão?</p>
           <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin:10px 0 18px" id="athlete-tqr-options">${Array.from({length:15},(_,i)=>i+6).map(n=>`<button type="button" class="btn btn-outline" data-tqr="${n}" onclick="selectAthleteScale('tqr',${n})" style="padding:10px 2px">${n}</button>`).join('')}</div>
           <label class="field-label" for="athlete-duration">Duração real do treino (minutos)</label><input id="athlete-duration" type="number" min="1" max="600" inputmode="numeric" placeholder="Ex.: 60" onchange="saveAthleteProgress('${athlete.id}',{quiet:true})" style="width:100%;margin:6px 0 18px">
-          <h3>🦘 Avaliação CMJ — salto vertical</h3><p class="muted">Faça a avaliação por vídeo antes e depois do treino. O aplicativo calcula a altura do salto pela marcação dos quadros.</p>
-          <div class="field-grid" style="grid-template-columns:1fr 1fr;gap:10px"><button class="btn btn-primary" type="button" onclick="goSaltoForAthlete('${athlete.id}','pre','${safe(athlete.full_name)}')">🎥 Avaliar salto CMJ</button><button class="btn btn-outline" type="button" onclick="goSaltoForAthlete('${athlete.id}','post','${safe(athlete.full_name)}')">🎥 Avaliar salto pós-treino</button></div>
-          <div class="muted" style="margin-top:10px">Os resultados serão registrados no gráfico de evolução do salto.</div><p class="muted" style="margin-top:10px">A carga da sessão é calculada automaticamente: PSE × duração.</p>
+          <div id="athlete-jump-assessment">
+            <h3>🦘 Avaliação CMJ — salto vertical</h3><p class="muted">Faça a avaliação por vídeo antes e depois do treino. O aplicativo calcula a altura do salto pela marcação dos quadros.</p>
+            <div class="field-grid" style="grid-template-columns:1fr 1fr;gap:10px"><button class="btn btn-primary" type="button" onclick="goSaltoForAthlete('${athlete.id}','pre','${safe(athlete.full_name)}')">🎥 Avaliar salto CMJ</button><button class="btn btn-outline" type="button" onclick="goSaltoForAthlete('${athlete.id}','post','${safe(athlete.full_name)}')">🎥 Avaliar salto pós-treino</button></div>
+            <div class="muted" style="margin-top:10px">Os resultados serão registrados no gráfico de evolução do salto.</div>
+          </div><p class="muted" style="margin-top:10px">A carga da sessão é calculada automaticamente: PSE × duração.</p>
           <button class="btn btn-primary" id="athlete-monitor-submit" type="button" onclick="saveAthleteProgress('${athlete.id}')">Salvar progresso</button>
           <div style="display:block;clear:both;width:100%;margin-top:18px">
             <label class="field-label" style="display:block">PSE — esforço (0–10)</label><p class="muted">Como foi o esforço desta sessão?</p>
@@ -2268,6 +2271,13 @@ function showAthleteWorkout(workoutId){
   const monitor=document.getElementById('athlete-monitor-form');
   const slot=document.getElementById('athlete-monitor-form-slot');
   if(monitor && slot) slot.appendChild(monitor);
+  const selectedWorkout=(window.__athleteWorkouts||[]).find(w=>String(w.id)===String(workoutId));
+  const workoutType=selectedWorkout?.routine_type||(/muscula[cç][aã]o/i.test(selectedWorkout?.title||'')?'musculacao':'');
+  const jumpAssessment=document.getElementById('athlete-jump-assessment');
+  if(jumpAssessment) jumpAssessment.hidden=workoutType==='musculacao';
+  const monitorMessage=document.getElementById('athlete-monitor-message');
+  if(monitorMessage && workoutType==='musculacao') monitorMessage.textContent='Registre sua recuperação e o esforço desta sessão. A carga será calculada automaticamente: PSE × duração.';
+  else if(monitorMessage) monitorMessage.textContent='TQR e salto pré-sessão podem ser salvos antes de terminar. Depois, registre PSE e salto pós-sessão.';
   showAthleteSection('workout-detail');
   loadAthleteProgressForWorkout(window.__athleteMonitoringId,workoutId);
   startAthleteWorkoutClock();
@@ -2906,6 +2916,20 @@ function renderList(filter){
 
 /* ---------------- DETAIL VIEW ---------------- */
 
+function inferTrainingRoutineType(trainingPlan){
+  const days=trainingPlan?.days||[];
+  const hasWeights=days.some(d=>/muscula[cç][aã]o/i.test(d.type||''));
+  const hasFunctional=days.some(d=>/funcional/i.test(d.type||''));
+  if(hasWeights&&hasFunctional)return 'funcional_musculacao';
+  if(hasWeights)return 'musculacao';
+  if(hasFunctional)return 'funcional';
+  return '';
+}
+function setTrainingRoutineType(type){
+  if(!draft?.trainingPlan)return;
+  draft.trainingPlan.routineType=type;
+  renderTreinoEditPanel();
+}
 function newAthlete(){
   isNew = true;
   currentId = null;
@@ -2913,7 +2937,7 @@ function newAthlete(){
   draft = {
     id: uid(), name:'', sport:'', category:'', sex:'', birthDate:'', height:'', weight:'', sittingHeight:'', phone:'', email:'', notes:'',
     createdAt: new Date().toISOString(),
-    trainingPlan: { days: [] }
+    trainingPlan: { days: [], routineType: '' }
   };
   renderDetail();
 }
@@ -2926,6 +2950,7 @@ function openAthlete(id){
   athleteMode = 'profile';
   draft = JSON.parse(JSON.stringify(a)); // working copy
   if(!draft.trainingPlan) draft.trainingPlan = { days: [] };
+  if(!draft.trainingPlan.routineType) draft.trainingPlan.routineType = inferTrainingRoutineType(draft.trainingPlan);
   if(draft.category === undefined) draft.category = '';
   if(draft.sex === undefined) draft.sex = '';
   if(draft.sittingHeight === undefined) draft.sittingHeight = '';
@@ -3225,9 +3250,10 @@ function applyPreset(kind){
   };
   if(kind==='blank'){
     if(draft.trainingPlan.days.length>0&&!confirm('Isso vai substituir os dias de treino atuais. Continuar?'))return;
-    draft.trainingPlan.days=[newDay('Dia 1','Funcional')];
+    draft.trainingPlan.days=[newDay('Dia 1',draft.trainingPlan.routineType==='musculacao'?'Musculação':'Funcional')];
   }else{
     const t=templates[kind];if(!t)return;
+    draft.trainingPlan.routineType=t.functional&&t.weights?'funcional_musculacao':t.weights?'musculacao':'funcional';
     const total=t.functional+t.weights;
     if(draft.trainingPlan.days.length>0&&!confirm('Isso vai substituir os dias de treino atuais por '+total+' dias. Continuar?'))return;
     const days=[];
@@ -3263,7 +3289,8 @@ window.__ppTrainingDayReorder=false;
 function toggleTrainingDayReorder(){window.__ppTrainingDayReorder=!window.__ppTrainingDayReorder;renderTreinoEditPanel();}
 function moveTrainingDay(dayId,direction){const days=draft?.trainingPlan?.days;if(!days)return;const index=days.findIndex(d=>String(d.id)===String(dayId));const target=index+direction;if(index<0||target<0||target>=days.length)return;const [item]=days.splice(index,1);days.splice(target,0,item);renderTreinoEditPanel();}
 function addDay(){
-  draft.trainingPlan.days.push(newDay('Dia ' + (draft.trainingPlan.days.length+1), 'Funcional'));
+  const defaultType=draft.trainingPlan.routineType==='musculacao'?'Musculação':'Funcional';
+  draft.trainingPlan.days.push(newDay('Dia ' + (draft.trainingPlan.days.length+1), defaultType));
   renderTreinoEditPanel();
 }
 function removeDay(dayId){
@@ -3627,7 +3654,18 @@ function renderTreinoEditPanel(){
     </div>
   `).join('');
 
+  const routineType=draft.trainingPlan.routineType||inferTrainingRoutineType(draft.trainingPlan);
+  if(routineType && !draft.trainingPlan.routineType) draft.trainingPlan.routineType=routineType;
   p.innerHTML = `
+    <div class="panel" style="margin-bottom:14px;padding:14px">
+      <div style="font-weight:800;margin-bottom:10px">1. Escolha o tipo de rotina</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px">
+        <button type="button" class="btn ${routineType==='funcional'?'btn-primary':'btn-outline'}" onclick="setTrainingRoutineType('funcional')">Treino funcional</button>
+        <button type="button" class="btn ${routineType==='musculacao'?'btn-primary':'btn-outline'}" onclick="setTrainingRoutineType('musculacao')">Musculação</button>
+        <button type="button" class="btn ${routineType==='funcional_musculacao'?'btn-primary':'btn-outline'}" onclick="setTrainingRoutineType('funcional_musculacao')">Funcional + musculação</button>
+      </div>
+    </div>
+    ${!routineType ? '<div class="empty-state">Escolha o tipo de rotina acima para começar a montar o treino.</div>' : `
     <div class="panel" style="margin-bottom:14px;padding:14px">
       <div style="font-weight:700;margin-bottom:8px">📋 Copiar treino de outro atleta</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
@@ -3681,6 +3719,7 @@ function renderTreinoEditPanel(){
       ${!isNew ? `<button class="btn btn-outline" onclick="downloadTrainingPdf('${draft.id}', true)">Baixar treino (PDF)</button>` : ''}
       <button class="btn btn-primary" onclick="saveAthlete()">Salvar treino</button>
     </div>
+    `}
   `;
 }
 
