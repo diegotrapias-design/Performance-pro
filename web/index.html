@@ -2272,7 +2272,11 @@ function showAthleteWorkout(workoutId){
   const slot=document.getElementById('athlete-monitor-form-slot');
   if(monitor && slot) slot.appendChild(monitor);
   const selectedWorkout=(window.__athleteWorkouts||[]).find(w=>String(w.id)===String(workoutId));
-  const workoutType=selectedWorkout?.routine_type||(/muscula[cç][aã]o/i.test(selectedWorkout?.title||'')?'musculacao':'');
+  const allAthleteWorkouts=window.__athleteWorkouts||[];
+  const legacyHasWeights=allAthleteWorkouts.some(w=>/muscula[cç][aã]o/i.test(w.title||''));
+  const legacyHasFunctional=allAthleteWorkouts.some(w=>/funcional/i.test(w.title||''));
+  const legacyRoutine=legacyHasWeights&&legacyHasFunctional?'funcional_musculacao':legacyHasWeights?'musculacao':'funcional';
+  const workoutType=selectedWorkout?.routine_type||allAthleteWorkouts.find(w=>w.routine_type)?.routine_type||legacyRoutine;
   const jumpAssessment=document.getElementById('athlete-jump-assessment');
   if(jumpAssessment) jumpAssessment.hidden=workoutType==='musculacao';
   const monitorMessage=document.getElementById('athlete-monitor-message');
