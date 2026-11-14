@@ -1556,6 +1556,7 @@ const EXERCISE_LIBRARY_CANONICAL_NAMES=[
   ['Crucifixo TRX (beligol)','Crucifixo Invertido TRX (beligol)']
 ];
 function exerciseMediaIdentity(url){
+  if(!url)return '';
   const path=getAthleteMediaStoragePath(url);
   if(path)return 'storage:'+path;
   try{const u=new URL(url,location.href);return u.origin+u.pathname;}catch(e){return String(url||'').trim();}
@@ -1570,6 +1571,7 @@ function mergeLibraryDuplicatesByMedia(){
     for(const pair of EXERCISE_LIBRARY_CANONICAL_NAMES){const candidate=items.find(x=>exerciseNameKey(x.name)===exerciseNameKey(pair[1]));if(candidate){keep=candidate;break;}}
     const aliases=new Set(keep.aliases||[]);
     items.forEach(item=>{if(item===keep)return;if(item.name&&exerciseNameKey(item.name)!==exerciseNameKey(keep.name))aliases.add(item.name);(item.aliases||[]).forEach(a=>aliases.add(a));if(!keep.description&&item.description)keep.description=item.description;keep.favorite=!!(keep.favorite||item.favorite);removed.add(item);});
+    if(items.some(x=>/crucifixo trx/i.test(x.name||''))) aliases.add('Crucifixo Trx');
     keep.aliases=[...aliases].filter(a=>exerciseNameKey(a)!==exerciseNameKey(keep.name));changed=true;
   });
   if(changed)exerciseLibrary=exerciseLibrary.filter(ex=>!removed.has(ex));
@@ -3547,7 +3549,7 @@ function openExerciseVideo(url,title,loop){
         player.innerHTML='<iframe class="exercise-video-frame" src="https://player.vimeo.com/video/'+vimeoId+(loop?'?loop=1&muted=1&controls=0':'?muted=1&controls=0')+'" title="Demonstração: '+escapeHtml(safeTitle)+'" allow="fullscreen; picture-in-picture" allowfullscreen></iframe>';
       }else player.innerHTML='<div class="exercise-video-empty">Link do Vimeo inválido.</div>';
     }else if(/\.(gif|webp|png|jpe?g)(\?|$)/i.test(parsed.pathname+parsed.search)){
-      player.innerHTML='<div class="pp-exercise-gif-wrap"><img class="pp-exercise-gif" src="'+escapeHtml(parsed.href)+'" alt="Demonstração em GIF: '+escapeHtml(safeTitle)+'" loading="eager"></div>';
+      player.innerHTML='<div class="pp-exercise-gif-wrap"><img class="pp-exercise-gif" src="'+escapeHtml(parsed.href)+'" alt="Demonstração em GIF: '+escapeHtml(safeTitle)+'" loading="eager" style="display:block;max-width:100%;max-height:75vh;margin:auto;object-fit:contain"></div>';
     }else if(/\.(mp4|m4v|mov|webm)(\?|$)/i.test(parsed.pathname+parsed.search) || host.includes('supabase')){
       player.innerHTML='<div class="pp-video-wrap"><video class="exercise-inline-video" playsinline muted defaultMuted preload="metadata" '+(loop?'loop':'')+' onvolumechange="this.muted=true;this.volume=0" onplay="this.muted=true;this.volume=0" onerror="this.parentElement.querySelector(\'.pp-video-error-msg\').style.display=\'block\'" src="'+escapeHtml(parsed.href)+'"></video><div class="pp-video-error-msg" style="display:none">Não foi possível carregar esta demonstração. O link pode estar indisponível; confira o vídeo na biblioteca.</div><button type="button" class="pp-video-play" onclick="const v=this.parentElement.querySelector(\'video\');if(v.paused){v.muted=true;v.volume=0;v.play().then(()=>this.style.display=\'none\').catch(()=>this.parentElement.querySelector(\'.pp-video-error-msg\').style.display=\'block\')}else{v.pause();this.style.display=\'grid\'}" aria-label="Reproduzir vídeo">▶</button><button type="button" class="pp-video-full" onclick="const v=this.parentElement.querySelector(\'video\');v.muted=true;v.volume=0;if(v.requestFullscreen)v.requestFullscreen();else if(v.webkitEnterFullscreen)v.webkitEnterFullscreen()" aria-label="Tela cheia">⛶</button></div>';
     }else player.innerHTML='<div class="exercise-video-empty">Formato de demonstração não reconhecido. Use MP4, MOV, WebM ou GIF.</div>';
