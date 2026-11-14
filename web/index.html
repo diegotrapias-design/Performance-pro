@@ -392,6 +392,18 @@ window.handleLogin = async function(event){
   .athlete-view-hint{text-align:center;font-size:11px;line-height:1.45;color:#c9cbd0;margin-top:9px;}
   .athlete-workout-congrats{margin-top:12px;padding:18px 16px;border:1px solid rgba(201,37,50,.55);border-radius:14px;background:linear-gradient(145deg,#2b171b,#17171b);color:#fff;text-align:center;font-size:16px;font-weight:800;line-height:1.5;box-shadow:0 8px 22px rgba(0,0,0,.18);}
   .athlete-workout-congrats[hidden]{display:none!important;}
+  .athlete-finish-overlay{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:18px;overflow:auto;}
+  .athlete-finish-overlay[hidden]{display:none!important;}
+  .athlete-finish-card{width:min(100%,520px);max-height:92vh;overflow:auto;background:#fff;color:#202126;border-radius:18px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.4);}
+  .athlete-finish-medal{text-align:center;font-size:48px;margin:0 0 6px;}
+  .athlete-finish-card h2{text-align:center;margin:0 0 6px;color:#202126;}
+  .athlete-finish-congrats{text-align:center;font-weight:700;line-height:1.45;margin:0 0 18px;}
+  .athlete-finish-times{background:#f0f1f3;padding:12px 14px;border-radius:10px;display:grid;gap:9px;}
+  .athlete-finish-times>div{display:flex;justify-content:space-between;gap:12px;}
+  .athlete-finish-pse{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;margin:10px 0;}
+  .athlete-finish-pse button{padding:10px 2px;}
+  .athlete-finish-error{color:#c92532;font-size:13px;margin:4px 0;}
+  #athlete-pse-current-location{display:none!important;}
   .athlete-exercise-list{padding:10px;}
   .athlete-exercise-card{display:flex;gap:10px;background:#fff;border:1px solid #e2e7ee;border-radius:11px;padding:13px 11px;margin:0 0 10px;box-shadow:0 1px 3px rgba(15,23,42,.04);}
   .athlete-exercise-index{width:25px;height:25px;flex:0 0 25px;border-radius:50%;display:grid;place-items:center;background:#ececef;color:#333338;font-size:11px;font-weight:800;}
@@ -1951,13 +1963,7 @@ function renderAthleteWorkoutSession(){
   if(pause)pause.hidden=state!=='running';
   if(resume)resume.hidden=state!=='paused';
   if(finish)finish.hidden=!['running','paused'].includes(state);
-  const congrats=document.getElementById('athlete-workout-congrats');
-  if(congrats){
-    congrats.hidden=state!=='finished';
-    if(state==='finished') congrats.textContent=window.__activeAthleteRoutineType==='musculacao'
-      ?'Parabéns Maromba, continue no foco, descanse se hidrate e bora continuar treinando 📈💪🏼'
-      :'Parabéns atleta, mais um treino finalizado, agora é descansar, se hidratar e bora para os próximos 📈🚀';
-  }
+
 }
 function startAthleteWorkoutClock(){
   if(athleteWorkoutClockInterval)clearInterval(athleteWorkoutClockInterval);
@@ -1983,7 +1989,29 @@ function resumeAthleteWorkoutSession(){
   session.status='running';session.resumedAt=Date.now();
   writeAthleteWorkoutSession(session);startAthleteWorkoutClock();
 }
-async function finishAthleteWorkoutSession(){
+function finishAthleteWorkoutSession(){
+  const session=readAthleteWorkoutSession();
+  if(!session||!['running','paused'].includes(session.status))return;
+  const overlay=document.getElementById('athlete-finish-overlay');
+  const msg=document.getElementById('athlete-finish-congrats');
+  if(msg)msg.textContent=window.__activeAthleteRoutineType==='musculacao'
+    ?'Parabéns Maromba, continue no foco, descanse se hidrate e bora continuar treinando 📈💪🏼'
+    :'Parabéns atleta, mais um treino finalizado, agora é descansar, se hidratar e bora para os próximos 📈🚀';
+  const start=document.getElementById('athlete-finish-start-time');
+  const end=document.getElementById('athlete-finish-end-time');
+  const total=document.getElementById('athlete-finish-duration');
+  if(start)start.textContent=session.startedAt?new Date(session.startedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'—';
+  if(end)end.textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  if(total)total.textContent=formatAthleteWorkoutClock(athleteWorkoutElapsedMs(session));
+  if(overlay)overlay.hidden=false;
+}
+function closeAthleteFinishOverlay(){const el=document.getElementById('athlete-finish-overlay');if(el)el.hidden=true;}
+async function confirmAthleteWorkoutFinish(){
+  if(window.__athleteScale?.pse==null){const e=document.getElementById('athlete-finish-pse-error');if(e)e.hidden=false;return;}
+  const el=document.getElementById('athlete-finish-overlay');if(el)el.hidden=true;
+  await completeAthleteWorkoutSession();
+}
+async function completeAthleteWorkoutSession(){
   const session=readAthleteWorkoutSession();
   if(!session||!['running','paused'].includes(session.status))return;
   const elapsed=athleteWorkoutElapsedMs(session);
@@ -2103,6 +2131,24 @@ async function loadAthletePortal(){
             <div class="athlete-view-hint" style="margin-top:10px">O tempo conta somente enquanto o treino estiver em execução. Ao finalizar, a duração será registrada automaticamente.</div>
           </div>
           <div id="athlete-workout-congrats" class="athlete-workout-congrats" role="status" hidden></div>
+          <div id="athlete-finish-overlay" class="athlete-finish-overlay" hidden>
+            <div class="athlete-finish-card" role="dialog" aria-modal="true" aria-labelledby="athlete-finish-title">
+              <div class="athlete-finish-medal">🏅</div><h2 id="athlete-finish-title">Tudo certo!</h2>
+              <p id="athlete-finish-congrats" class="athlete-finish-congrats"></p>
+              <div class="athlete-finish-times">
+                <div><b>Início:</b><span id="athlete-finish-start-time">—</span></div>
+                <div><b>Fim:</b><span id="athlete-finish-end-time">—</span></div>
+                <div><b>Tempo de treino:</b><span id="athlete-finish-duration">00:00:00</span></div>
+              </div>
+              <label class="field-label" style="display:block;margin-top:18px">PSE — esforço (0–10)</label><p class="muted">Como foi o esforço desta sessão?</p>
+              <div class="athlete-finish-pse" id="athlete-finish-pse-options"><button type="button" class="btn btn-outline" data-pse="0" onclick="selectAthleteScale('pse',0);document.getElementById('athlete-finish-pse-error').hidden=true">0</button><button type="button" class="btn btn-outline" data-pse="1" onclick="selectAthleteScale('pse',1);document.getElementById('athlete-finish-pse-error').hidden=true">1</button><button type="button" class="btn btn-outline" data-pse="2" onclick="selectAthleteScale('pse',2);document.getElementById('athlete-finish-pse-error').hidden=true">2</button><button type="button" class="btn btn-outline" data-pse="3" onclick="selectAthleteScale('pse',3);document.getElementById('athlete-finish-pse-error').hidden=true">3</button><button type="button" class="btn btn-outline" data-pse="4" onclick="selectAthleteScale('pse',4);document.getElementById('athlete-finish-pse-error').hidden=true">4</button><button type="button" class="btn btn-outline" data-pse="5" onclick="selectAthleteScale('pse',5);document.getElementById('athlete-finish-pse-error').hidden=true">5</button><button type="button" class="btn btn-outline" data-pse="6" onclick="selectAthleteScale('pse',6);document.getElementById('athlete-finish-pse-error').hidden=true">6</button><button type="button" class="btn btn-outline" data-pse="7" onclick="selectAthleteScale('pse',7);document.getElementById('athlete-finish-pse-error').hidden=true">7</button><button type="button" class="btn btn-outline" data-pse="8" onclick="selectAthleteScale('pse',8);document.getElementById('athlete-finish-pse-error').hidden=true">8</button><button type="button" class="btn btn-outline" data-pse="9" onclick="selectAthleteScale('pse',9);document.getElementById('athlete-finish-pse-error').hidden=true">9</button><button type="button" class="btn btn-outline" data-pse="10" onclick="selectAthleteScale('pse',10);document.getElementById('athlete-finish-pse-error').hidden=true">10</button></div>
+              <p id="athlete-finish-pse-error" class="athlete-finish-error" hidden>Esse campo é obrigatório.</p>
+              <label class="field-label" for="athlete-finish-comment" style="display:block;margin-top:18px">Se quiser, deixe seu comentário aqui</label>
+              <textarea id="athlete-finish-comment" rows="3" placeholder="Seu comentário aqui" style="width:100%;margin-top:6px"></textarea>
+              <button type="button" class="btn btn-primary" style="width:100%;margin-top:18px" onclick="confirmAthleteWorkoutFinish()">Concluir</button>
+              <button type="button" class="btn btn-outline" style="width:100%;margin-top:8px" onclick="closeAthleteFinishOverlay()">Voltar</button>
+            </div>
+          </div>
         </div>
         <div class="athlete-exercise-list">
           ${list.length?list.map((i,index)=>`<article class="athlete-exercise-card">
@@ -2163,7 +2209,7 @@ async function loadAthletePortal(){
             <div class="muted" style="margin-top:10px">Os resultados serão registrados no gráfico de evolução do salto.</div>
           </div><p class="muted" style="margin-top:10px">A carga da sessão é calculada automaticamente: PSE × duração.</p>
           <button class="btn btn-primary" id="athlete-monitor-submit" type="button" onclick="saveAthleteProgress('${athlete.id}')">Salvar progresso</button>
-          <div style="display:block;clear:both;width:100%;margin-top:18px">
+          <div id="athlete-pse-current-location" style="display:block;clear:both;width:100%;margin-top:18px">
             <label class="field-label" style="display:block">PSE — esforço (0–10)</label><p class="muted">Como foi o esforço desta sessão?</p>
             <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;margin:10px 0 18px" id="athlete-pse-options">${Array.from({length:11},(_,i)=>i).map(n=>`<button type="button" class="btn btn-outline" data-pse="${n}" onclick="selectAthleteScale('pse',${n})" style="padding:10px 2px">${n}</button>`).join('')}</div>
           </div>
@@ -2403,6 +2449,8 @@ async function saveAthleteProgress(athleteId,options={}){
   if(btn&&!options.quiet){btn.disabled=true;btn.textContent='SALVANDO…';}
   try{
     const existing=await findAthleteSessionRow(athleteId,date);
+    const finishComment=document.getElementById('athlete-finish-comment')?.value?.trim();
+    if(finishComment) values.notes=[existing?.notes,'Comentário do atleta: '+finishComment].filter(Boolean).join('\n');
     const result=existing
       ? await supabaseClient.from('monitoring_sessions').update(values).eq('id',existing.id)
       : await supabaseClient.from('monitoring_sessions').insert({athlete_id:athleteId,session_date:date,...values});
