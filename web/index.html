@@ -2406,16 +2406,16 @@ async function loadAthletePortal(){
     const lastCompletedDate=Array.from(completedDays.keys()).sort().pop()||null;
     const daysSinceLast=lastCompletedDate?Math.max(0,Math.floor((todayDate-new Date(lastCompletedDate+'T12:00:00'))/86400000)):null;
     const engagementLabel=daysSinceLast===null?'Sem registros':daysSinceLast<=2?'Constante':daysSinceLast<=5?'Oscilando':'Atenção';
-    const frequencyDashboard=`<section class="panel" style="padding:14px;margin:8px 0;border-radius:12px;background:#1c1c21;color:#f8f8f8;border:1px solid #44444b">
-      <h2 style="margin:0 0 14px;font-size:18px;color:#f8f8f8">Frequência de Treinos</h2>
-      <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;text-align:center;margin-bottom:16px">
-        ${frequencyDays.map(day=>`<div><div aria-label="${day.done?'Treino concluído':day.isToday?'Hoje, sem treino concluído':'Sem treino concluído'}" style="width:min(100%,38px);aspect-ratio:1;border:2px solid ${day.done?'#c92532':day.isToday?'#c9cbd0':'#777'};background:${day.done?'#c92532':'transparent'};color:${day.done?'#fff':day.isToday?'#c9cbd0':'#999'};border-radius:50%;display:grid;place-items:center;margin:0 auto;font-size:20px;font-weight:700">${day.done?'✓':day.isToday?'!':'×'}</div><div style="font-size:13px;font-weight:600;margin-top:5px;color:#f8f8f8">${day.label}</div></div>`).join('')}
+    const frequencyDashboard=`<section class="panel" style="padding:16px;margin:10px 0;border-radius:14px;background:#1c1c21;color:#f8f8f8;border:1px solid #44444b">
+      <h2 style="margin:0 0 17px;font-size:19px;color:#f8f8f8">Frequência Semanal</h2>
+      <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center;margin-bottom:18px">
+        ${frequencyDays.map(day=>`<div><div aria-label="${day.done?'Treino concluído':day.isToday?'Hoje, sem treino concluído':'Sem treino concluído'}" style="width:min(100%,44px);aspect-ratio:1;border:3px solid ${day.done?'#c92532':day.isToday?'#c9cbd0':'#777'};background:${day.done?'#c92532':'transparent'};color:${day.done?'#fff':day.isToday?'#c9cbd0':'#999'};border-radius:50%;display:grid;place-items:center;margin:0 auto;font-size:23px;font-weight:700">${day.done?'✓':day.isToday?'!':'×'}</div><div style="font-size:15px;font-weight:600;margin-top:6px;color:#f8f8f8">${day.label}</div></div>`).join('')}
       </div>
-      <div style="border-top:1px solid #44444b;padding-top:13px">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:13px"><h2 style="margin:0;font-size:16px;color:#f8f8f8">Engajamento do aluno</h2><span style="background:#29292f;color:#c9cbd0;border:1px solid #c92532;border-radius:18px;padding:5px 10px;font-size:12px;font-weight:700">${engagementLabel}</span></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div><div style="font-size:12px;color:#b7b7bd;margin-bottom:5px">Último treino há</div><strong style="font-size:17px;color:#f8f8f8">${daysSinceLast===null?'—':daysSinceLast===0?'Hoje':daysSinceLast+' '+(daysSinceLast===1?'dia':'dias')}</strong></div>
-          <div><div style="font-size:12px;color:#b7b7bd;margin-bottom:5px">Frequência média</div><strong style="font-size:17px;color:#f8f8f8">${averageFrequency.toFixed(2).replace('.',',')}x semana</strong></div>
+      <div style="border-top:1px solid #44444b;padding-top:15px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px"><h2 style="margin:0;font-size:17px;color:#f8f8f8">Engajamento do aluno</h2><span style="background:#29292f;color:#c9cbd0;border:1px solid #c92532;border-radius:18px;padding:6px 12px;font-size:13px;font-weight:700">${engagementLabel}</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div><div style="font-size:13px;color:#b7b7bd;margin-bottom:6px">Último treino há</div><strong style="font-size:19px;color:#f8f8f8">${daysSinceLast===null?'—':daysSinceLast===0?'Hoje':daysSinceLast+' '+(daysSinceLast===1?'dia':'dias')}</strong></div>
+          <div><div style="font-size:13px;color:#b7b7bd;margin-bottom:6px">Frequência média</div><strong style="font-size:19px;color:#f8f8f8">${averageFrequency.toFixed(2).replace('.',',')}x semana</strong></div>
         </div>
       </div>
     </section>`;
@@ -2485,9 +2485,9 @@ async function loadAthletePortal(){
     app.innerHTML=`<div class="home-hero"><div class="home-hero-title">Olá, ${safe(athlete.full_name)}</div><div class="home-hero-sub">${safe(athlete.sport)} ${athlete.category?'· '+safe(athlete.category):''} · Sua área individual</div></div>
       <section id="athlete-home" style="padding:8px 0 24px">
         <div class="panel" style="padding:16px;margin:12px 0"><div style="font-weight:700">Bem-vindo à sua área de atleta</div><div class="muted" style="margin-top:4px">Acesse seus treinos e acompanhe sua evolução.</div></div>
+        ${frequencyDashboard}
         <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
           ${tile('🏋️','Treinos','trainings','Suas rotinas')}
-          ${tile('📅','Frequência','frequency','Frequência de treinos')}
           ${tile('📈','Meu Progresso','progress','Gráficos de evolução')}
           ${tile('＄','Faturas','invoices','Informações financeiras')}
         </div>
@@ -2525,7 +2525,6 @@ async function loadAthletePortal(){
           <p id="athlete-monitor-message" class="muted" role="status" style="margin-top:10px">TQR e salto pré-sessão podem ser salvos antes de terminar. Depois, registre PSE e salto pós-sessão.</p>
         </section>
       </section>
-      <section id="athlete-frequency" hidden>${backButton}${frequencyDashboard}</section>
       <section id="athlete-progress" hidden>${backButton}<section class="panel" style="padding:18px;margin-top:8px">${buildMonitoringCharts((monitoring||[]).slice().reverse(),true)}</section></section>
       <section id="athlete-invoices" hidden>${backButton}<h2>Faturas</h2><div class="empty-state">Não há faturas disponíveis no seu acesso.</div></section>
 `;
@@ -2609,7 +2608,7 @@ async function refreshAthleteProgressChart(){
 }
 
 function showAthleteSection(section){
-  const ids=['home','trainings','extras','assessments','frequency','progress','invoices','workout-detail'];
+  const ids=['home','trainings','extras','assessments','progress','invoices','workout-detail'];
   ids.forEach(id=>{const el=document.getElementById('athlete-'+id);if(el)el.hidden=(id!==section);});
   const monitor=document.getElementById('athlete-monitor-form');
   const homeSlot=document.getElementById('athlete-assessment-form-slot');
