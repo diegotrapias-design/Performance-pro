@@ -5,7 +5,7 @@ self.addEventListener('push', event => {
     body: data.body || 'Um atleta finalizou um treino.',
     icon: '/icon.svg', badge: '/icon.svg',
     data: { url: data.url || '/' },
-    tag: 'performance-pro-workout-finished', renotify: true
+    tag: data.id || 'performance-pro-workout-finished', renotify: true
   }));
 });
 self.addEventListener('notificationclick', event => {
