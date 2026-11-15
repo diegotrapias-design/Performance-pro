@@ -1597,16 +1597,12 @@ function mergeLibraryDuplicatesByMedia(){
   return changed;
 }
 function syncLibraryVideosToAthleteRoutines(){
+  // Só sincroniza pelo nome exato: variações diferentes nunca herdam a mídia umas das outras.
   const byName=new Map();
-  const addName=(name,lib)=>{const key=exerciseNameKey(name);if(key&&!byName.has(key))byName.set(key,lib);};
   exerciseLibrary.forEach(lib=>{
     if(!lib.video)return;
-    [lib.name,...(lib.aliases||[])].forEach(name=>addName(name,lib));
-  });
-  EXERCISE_LIBRARY_CANONICAL_NAMES.forEach(pair=>{
-    const lib=exerciseLibrary.find(item=>item.video&&exerciseNameKey(item.name)===exerciseNameKey(pair[1]))
-      || exerciseLibrary.find(item=>item.video&&exerciseNameKey(item.name)===exerciseNameKey(pair[0]));
-    if(lib){addName(pair[0],lib);addName(pair[1],lib);}
+    const key=exerciseNameKey(lib.name);
+    if(key&&!byName.has(key))byName.set(key,lib);
   });
   let changed=false;
   athletes.forEach(a=>(a.trainingPlan?.days||[]).forEach(d=>(d.exercises||[]).forEach(ex=>{
@@ -1898,11 +1894,21 @@ async function loadAthletes(){
       if(!existing.video){existing.video=item.video;needsSave=true;}
       return;
     }
+    // Não cadastra uma variação diferente reutilizando a mídia de outro exercício.
+    const mediaKey=exerciseMediaIdentity(item.video);
+    const mediaAlreadyUsed=!!mediaKey&&exerciseLibrary.some(ex=>
+      ex.video&&exerciseMediaIdentity(ex.video)===mediaKey&&exerciseNameKey(ex.name)!==exerciseNameKey(item.name)
+    );
+    if(mediaAlreadyUsed){
+      console.warn('Exercício ignorado: a demonstração já está vinculada a outro movimento.',item.name);
+      return;
+    }
     exerciseLibrary.push({id:uid(),name:item.name,group:item.group,video:item.video,favorite:false,videoLoop:true});
     libraryNames.add(key);
     needsSave=true;
   });
-  if(mergeLibraryDuplicatesByMedia()) needsSave=true;
+  // Não consolidar exercícios diferentes com base apenas na URL do vídeo:
+  // cada nome/variação permanece como item independente na biblioteca.
   if(await refreshLibrarySignedMediaUrls()) needsSave=true;
   if(syncLibraryVideosToAthleteRoutines()) needsSave=true;
   if(needsSave) await persist(false);
