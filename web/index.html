@@ -438,6 +438,20 @@ window.handleLogin = async function(event){
   .athlete-manifesto-line strong{font-size:clamp(23px,5vw,30px);line-height:1.2;font-weight:800;letter-spacing:-.5px;}
   .athlete-manifesto-brand{font-size:clamp(11px,2.7vw,15px);line-height:1.8;letter-spacing:4px;color:#999ba1;font-weight:500;}
 
+  .athlete-cmj-history{margin-top:22px;padding-top:16px;border-top:1px solid #44444b;color:#f8f8f8;}
+  .athlete-cmj-history h3{font-size:17px;margin:0 0 12px;color:#f8f8f8;}
+  .athlete-cmj-history-wrap{width:100%;overflow:hidden;border:1px solid #44444b;border-radius:10px;}
+  .athlete-cmj-history table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:13px;}
+  .athlete-cmj-history th{background:#29292f;color:#c9cbd0;font-size:11px;letter-spacing:.04em;font-weight:800;padding:10px 4px;text-align:center;}
+  .athlete-cmj-history td{padding:12px 4px;text-align:center;border-top:1px solid #38383f;font-weight:700;color:#f8f8f8;overflow-wrap:anywhere;}
+  .athlete-cmj-history td:first-child{font-weight:500;color:#b7b7bd;font-size:12px;}
+  .athlete-cmj-history td.pre{color:#83d6a3;}
+  .athlete-cmj-history td.post{color:#7bb8ed;}
+  .athlete-cmj-history td.delta{color:#c92532;}
+  .athlete-cmj-history td.delta.positive{color:#83d6a3;}
+  .athlete-cmj-history td.empty{color:#b7b7bd;font-weight:500;}
+  @media(max-width:380px){.athlete-cmj-history table{font-size:12px}.athlete-cmj-history th{font-size:10px}.athlete-cmj-history td{padding:10px 2px}.athlete-cmj-history td:first-child{font-size:11px}}
+
   /* Ajustes de enquadramento e controles da área do atleta em telas estreitas */
   html,body{max-width:100%;overflow-x:hidden;}
   .athlete-workout-screen,#athlete-workout-detail-content,#athlete-monitor-form,#athlete-progress,
@@ -2903,13 +2917,30 @@ function buildMonitoringCharts(rows,athleteView=false){
     const label=d.length===3?`${d[2]}/${d[1]}`:String(r.session_date||'');
     return `<text x="${x(i)}" y="278" transform="rotate(-35 ${x(i)} 278)" text-anchor="end" fill="currentColor" opacity=".9" font-size="15" font-weight="600">${escapeHtml(label)}</text>`;
   }).join('');
+  const historyRows=(rows||[]).filter(r=>r.jump_pre_cm!=null||r.jump_post_cm!=null);
+  const historyTable=athleteView?`<section class="athlete-cmj-history" aria-label="Histórico de saltos CMJ">
+    <h3>Histórico de saltos CMJ</h3>
+    <div class="athlete-cmj-history-wrap">
+      <table>
+        <thead><tr><th>Data</th><th>Pré<br>(cm)</th><th>Pós<br>(cm)</th><th>Δ<br>(cm)</th></tr></thead>
+        <tbody>${historyRows.length?historyRows.map(r=>{
+          const raw=String(r.session_date||'').slice(0,10),parts=raw.split('-');
+          const date=parts.length===3&&parts[0].length===4?`${parts[2]}/${parts[1]}/${parts[0]}`:'Sem data';
+          const preValue=r.jump_pre_cm==null?null:Number(r.jump_pre_cm),postValue=r.jump_post_cm==null?null:Number(r.jump_post_cm);
+          const delta=preValue!=null&&postValue!=null?postValue-preValue:null;
+          const fmt=v=>v==null?'—':v.toFixed(1);
+          return `<tr><td>${escapeHtml(date)}</td><td class="pre">${fmt(preValue)}</td><td class="post">${fmt(postValue)}</td><td class="delta ${delta==null?'':delta>=0?'positive':'negative'}">${delta==null?'—':(delta>0?'+':'')+delta.toFixed(1)}</td></tr>`;
+        }).join(''):'<tr><td colspan="4" class="empty">Nenhum registro de salto disponível.</td></tr>'}</tbody>
+      </table>
+    </div>
+  </section>`:'';
   return `<div class="profile-card" style="${athleteView?'width:100%;max-width:100%;min-width:0;box-sizing:border-box;overflow:hidden;':''}"><h3>📈 Evolução do CMJ (cm)</h3><svg viewBox="0 0 720 340" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${athleteView?'Gráfico de evolução do salto CMJ pré-sessão':'Gráfico de evolução dos saltos CMJ com valores e datas'}" style="display:block;width:100%;max-width:100%;height:auto;min-height:${athleteView?'300px':'260px'};box-sizing:border-box">
     ${[0,1,2,3,4].map(i=>{const yy=32+i*46.25;return `<line x1="56" y1="${yy}" x2="690" y2="${yy}" stroke="currentColor" opacity=".12"/><text x="47" y="${yy+5}" text-anchor="end" fill="currentColor" opacity=".8" font-size="16" font-weight="600">${(max-i*range/4).toFixed(0)}</text>`;}).join('')}
     <path d="${path(pre)}" fill="none" stroke="#2583e8" stroke-width="4"/>${athleteView?'':`<path d="${path(post)}" fill="none" stroke="#e53945" stroke-width="4"/>`}
     ${points('jump_pre_cm','#2583e8','pre')}${athleteView?'':points('jump_post_cm','#e53945','post')}
     ${dates}
     ${athleteView?'': '<text x="48" y="330" fill="#2583e8" font-size="13">● Pré-sessão</text><text x="180" y="330" fill="#e53945" font-size="13">● Pós-sessão</text>'}
-  </svg></div>`;
+  </svg>${historyTable}</div>`;
 }
 let ppMonitoringDeleteTarget=null;
 async function deleteAthleteProgressFromCurrentPanel(){
