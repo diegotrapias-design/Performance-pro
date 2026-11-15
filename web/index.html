@@ -259,7 +259,7 @@ window.handleLogin = async function(event){
   /* ---- Perfil unificado do atleta ---- */
   .profile-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;}
   .profile-section-title{
-    font-family:'Poppins',sans-serif;font-weight:700;font-size:13px;color:var(--gray);
+    font-family:'Poppins',sans-serif;font-weight:700;font-size:13px;color:var(--red);
     text-transform:uppercase;letter-spacing:.5px;margin:22px 0 10px;
   }
   .profile-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;}
@@ -3847,24 +3847,44 @@ async function loadAthleteProfileAssessments(athleteId){
   }
 }
 
+function closeAthleteProfileAssessmentViewer(fromHistory=false){
+  const viewer=document.getElementById('athlete-profile-assessment-viewer');
+  if(viewer)viewer.remove();
+  if(window.__athleteAssessmentPopHandler){
+    window.removeEventListener('popstate',window.__athleteAssessmentPopHandler);
+    window.__athleteAssessmentPopHandler=null;
+  }
+  if(window.__athleteAssessmentKeyHandler){
+    document.removeEventListener('keydown',window.__athleteAssessmentKeyHandler);
+    window.__athleteAssessmentKeyHandler=null;
+  }
+  if(!fromHistory&&location.hash==='#avaliacao-atleta'){
+    history.back();
+  }
+}
+
 async function viewAthleteProfileAssessment(id){
   const doc=(window.__athleteProfileAssessmentRows||[]).find(x=>String(x.id)===String(id));
   if(!doc)return;
   try{
     const {data,error}=await supabaseClient.storage.from('physical-assessments').createSignedUrl(doc.file_path,300);
     if(error)throw error;
-    const old=document.getElementById('athlete-profile-assessment-viewer');
-    if(old)old.remove();
+    closeAthleteProfileAssessmentViewer();
     const viewer=document.createElement('div');
     viewer.id='athlete-profile-assessment-viewer';
-    viewer.style.cssText='position:fixed;inset:0;z-index:11000;background:#000c;display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)';
+    viewer.style.cssText='position:fixed;inset:0;z-index:2147483000;background:#000e;display:flex;flex-direction:column;overflow:hidden;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)';
     viewer.innerHTML=`
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:#17171d;color:#fff;border-bottom:2px solid #c92532">
+      <div style="position:relative;z-index:2;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;min-height:56px;background:#17171d;color:#fff;border-bottom:2px solid #c92532">
         <strong style="overflow-wrap:anywhere">${escapeHtml(doc.file_name||'Avaliação')}</strong>
-        <button class="btn btn-outline btn-sm" onclick="document.getElementById('athlete-profile-assessment-viewer')?.remove()">Fechar ×</button>
+        <button type="button" class="btn btn-outline btn-sm" style="flex:0 0 auto" onclick="closeAthleteProfileAssessmentViewer()">Voltar ×</button>
       </div>
-      <iframe title="Avaliação física" src="${data.signedUrl}" style="flex:1;width:100%;border:0;background:#fff" allow="fullscreen"></iframe>`;
+      <iframe title="Avaliação física" src="${data.signedUrl}" style="display:block;flex:1 1 auto;min-height:0;width:100%;border:0;background:#fff" allow="fullscreen"></iframe>`;
     document.body.appendChild(viewer);
+    history.pushState({athleteAssessmentViewer:true},'','#avaliacao-atleta');
+    window.__athleteAssessmentPopHandler=()=>closeAthleteProfileAssessmentViewer(true);
+    window.addEventListener('popstate',window.__athleteAssessmentPopHandler,{once:true});
+    window.__athleteAssessmentKeyHandler=e=>{if(e.key==='Escape')closeAthleteProfileAssessmentViewer();};
+    document.addEventListener('keydown',window.__athleteAssessmentKeyHandler);
   }catch(e){
     console.error('Falha ao abrir avaliação:',e);
     showToast('Não foi possível visualizar esta avaliação.','err');
