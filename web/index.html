@@ -331,6 +331,11 @@ window.handleLogin = async function(event){
   .training-empty-label{font-size:12px;color:var(--muted);}
   .view-day-card{border-radius:14px;overflow:hidden;margin:14px 0;background:#fff;border:1px solid #e6e9ef;}
   .view-day-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:#f7f9fc;font-weight:700;}
+  .coach-profile-day>summary{list-style:none;cursor:pointer;}
+  .coach-profile-day>summary::-webkit-details-marker{display:none;}
+  .coach-profile-day>summary::after{content:'＋';font-size:18px;font-weight:800;color:var(--red);margin-left:12px;}
+  .coach-profile-day[open]>summary::after{content:'−';}
+  .coach-profile-day>summary .view-day-type{margin-left:auto;}
   .view-day-body{padding:10px 14px;}
   .view-athlete-ex{position:relative;padding:14px 8px 16px 18px;border-bottom:1px solid #edf0f4;}
   .view-athlete-ex:last-child{border-bottom:0;}
@@ -3521,11 +3526,13 @@ function renderProfileView(){
   p.innerHTML = `
     <div class="profile-actions">
       <button class="btn btn-dark btn-sm" onclick="setAthleteMode('edit-dados')">✏️ Editar dados pessoais</button>
-      <button class="btn btn-dark btn-sm" onclick="setAthleteMode('edit-treino')">✏️ Editar treino</button><button class="btn btn-outline btn-sm" onclick="openAthletePreview()">👁 Visualizar como atleta</button>
+      <button class="btn btn-dark btn-sm" onclick="setAthleteMode('edit-treino')">✏️ Editar treino</button>
+      <button class="btn btn-outline btn-sm" onclick="openAthletePreview()">👁 Visualizar como atleta</button>
       ${!isNew ? `
         <button class="btn btn-primary btn-sm" onclick="createAthleteAccount()">📲 Gerar acesso do atleta</button>
         <button class="btn btn-outline btn-sm" id="coach-monitoring-toggle" onclick="toggleCoachMonitoring('${draft.id}')">📊 Ver monitoramento</button>
         <button class="btn btn-outline btn-sm" onclick="goSaltoForAthlete('${draft.id}')">🦘 Registrar salto</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteAthlete('${draft.id}')">Excluir atleta</button>
       ` : ''}
     </div>
 
@@ -3547,22 +3554,22 @@ function renderProfileView(){
       ${a.notes ? `<div class="profile-notes"><span>Observações</span><p>${escapeHtml(a.notes)}</p></div>` : ''}
     </div>
 
-    <div id="maturity-container">${renderMaturityCard(draft)}</div>
-
-    ${!isNew ? renderJumpProgressSection(draft.id) : ''}
-
-    <div class="profile-section-title">Treino</div>
+    <div class="profile-section-title">Treinos</div>
     ${renderCycleBadge(a.trainingPlan)}
     ${hasTraining
-      ? buildDayCardsHtml(days)
+      ? buildDayCardsHtml(days, true)
       : `<div class="empty-state"><div class="icon">📋</div><div>Nenhum treino montado ainda.</div>
           <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="setAthleteMode('edit-treino')">Montar treino</button></div>`}
 
     <div class="actions-row">
       ${!isNew ? `<button class="btn btn-outline" onclick="downloadAthletePdf('${draft.id}', true)">Baixar dados (PDF)</button>` : ''}
       ${hasTraining && !isNew ? `<button class="btn btn-outline" onclick="downloadTrainingPdf('${draft.id}', true)">Baixar treino (PDF)</button>` : ''}
-      ${!isNew ? `<button class="btn btn-danger" onclick="deleteAthlete('${draft.id}')">Excluir atleta</button>` : ''}
     </div>
+
+    <div class="profile-section-title">Maturação</div>
+    <div id="maturity-container">${renderMaturityCard(draft)}</div>
+
+    ${!isNew ? renderJumpProgressSection(draft.id) : ''}
   `;
 }
 
@@ -4030,7 +4037,7 @@ function renderJumpProgressSection(athleteId){
     </div>`;
 }
 
-function buildDayCardsHtml(days){
+function buildDayCardsHtml(days, collapsible=false){
   const letters='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const comboLetters=new Map(); let nextLetter=0;
   (days||[]).forEach(d=>(d.exercises||[]).forEach(ex=>{if(ex.comboId&&!comboLetters.has(ex.comboId))comboLetters.set(ex.comboId,letters[nextLetter++]||'Z');}));
@@ -4044,7 +4051,25 @@ function buildDayCardsHtml(days){
         groups.push({comboId:ex.comboId,items:valid.filter(x=>x.comboId===ex.comboId)});
       }else groups.push({comboId:null,items:[ex]});
     });
-    return `<div class="view-day-card">
+    return collapsible ? `<details class="view-day-card coach-profile-day">
+      <summary class="view-day-head"><span>${escapeHtml(d.label||'')}</span><span class="view-day-type">${escapeHtml(d.type||'')}</span></summary>
+      <div class="view-day-body">
+        <div class="view-athlete-start"><button type="button" onclick="showToast('Modo de visualização: peça ao treinador para iniciar o treino presencial.','ok')">▶ INICIAR TREINO PRESENCIAL</button><small>Visualização do treinador</small></div>
+        ${groups.map(g=>{
+          const letter=g.comboId?comboLetters.get(g.comboId):'';
+          return `<section class="athlete-exercise-group ${letter?'combined':''}">
+            ${letter?'<div class="athlete-group-title">Exercícios combinados <small>Alterne esses exercícios</small></div>':''}
+            <div class="athlete-exercise-track">
+              ${g.items.map(ex=>`<article class="athlete-exercise-tile">
+                <div class="athlete-tile-title"><b>${escapeHtml(ex.name)}</b>${letter?'<span class="athlete-combo-letter">'+letter+'</span>':''}</div>
+                <div class="athlete-tile-details"><span>Séries: ${escapeHtml(ex.series||'—')}${ex.reps?' · '+escapeHtml(ex.reps)+' reps':''}</span><span>Carga: ${escapeHtml(ex.carga||'—')}</span><span>Intervalo: ${escapeHtml(ex.descanso||'—')}</span></div>
+                ${ex.video?'<button class="athlete-video-thumb" type="button" onclick="openExerciseVideo(\''+escapeHtml(ex.video)+'\',\''+escapeHtml(ex.name)+'\')" aria-label="Assistir vídeo">▶</button>':'<span class="athlete-video-thumb no-video">Vídeo</span>'}
+                ${ex.obs?'<p class="view-ex-obs">'+escapeHtml(ex.obs)+'</p>':''}
+              </article>`).join('')}
+            </div>
+          </section>`;
+        }).join('')||'<div class="view-ex-empty">Nenhum exercício neste dia.</div>'}
+      </div></details>` : `<div class="view-day-card">
       <div class="view-athlete-start"><button type="button" onclick="showToast('Modo de visualização: peça ao treinador para iniciar o treino presencial.','ok')">▶ INICIAR TREINO PRESENCIAL</button><small>Você está em modo de visualização</small></div>
       <div class="view-day-head"><span>${escapeHtml(d.label||'')}</span><span class="view-day-type">${escapeHtml(d.type||'')}</span></div>
       <div class="view-day-body">
@@ -4063,7 +4088,6 @@ function buildDayCardsHtml(days){
           </section>`;
         }).join('')||'<div class="view-ex-empty">Nenhum exercício neste dia.</div>'}
       </div></div>`;
-  }).join('');
 }
 
 /* ---- Edição ---- */
