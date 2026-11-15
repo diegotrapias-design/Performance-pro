@@ -3798,6 +3798,8 @@ function renderProfileView(){
       ${a.notes ? `<div class="profile-notes"><span>Observações</span><p>${escapeHtml(a.notes)}</p></div>` : ''}
     </div>
 
+    <div id="athlete-profile-assessments"></div>
+
     <div class="profile-section-title">Treinos</div>
     ${renderCycleBadge(a.trainingPlan)}
     ${hasTraining
@@ -3816,6 +3818,57 @@ function renderProfileView(){
 
     ${!isNew ? renderJumpProgressSection(draft.id) : ''}
   `;
+  if(!isNew) loadAthleteProfileAssessments(draft.id);
+}
+
+async function loadAthleteProfileAssessments(athleteId){
+  const host=document.getElementById('athlete-profile-assessments');
+  if(!host||!currentProfile?.team_id||!athleteId)return;
+  host.innerHTML='<div class="loading">Verificando avaliações…</div>';
+  try{
+    const {data,error}=await supabaseClient.from('physical_assessments')
+      .select('id,file_name,file_type,file_path,file_size,notes,created_at')
+      .eq('team_id',currentProfile.team_id).eq('athlete_id',athleteId)
+      .order('created_at',{ascending:false}).limit(50);
+    if(error)throw error;
+    if(!document.getElementById('athlete-profile-assessments'))return;
+    if(!data?.length){host.innerHTML='';return;}
+    window.__athleteProfileAssessmentRows=data;
+    host.innerHTML='<div class="profile-section-title">Avaliações físicas</div>'+data.map(doc=>`
+      <article class="profile-card" style="margin:0 0 10px">
+        <b>${escapeHtml(doc.file_name||'Avaliação')}</b>
+        <div style="font-size:12px;color:var(--muted);margin-top:6px">${new Date(doc.created_at).toLocaleDateString('pt-BR')} · ${doc.file_type==='application/pdf'?'PDF':'HTML'}</div>
+        ${doc.notes?'<div style="font-size:13px;margin-top:6px">'+escapeHtml(doc.notes)+'</div>':''}
+        <button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="viewAthleteProfileAssessment('${doc.id}')">Visualizar avaliação</button>
+      </article>`).join('');
+  }catch(e){
+    console.error('Falha ao carregar avaliações no perfil:',e);
+    if(host)host.innerHTML='<div class="empty-state">Não foi possível carregar as avaliações deste atleta.</div>';
+  }
+}
+
+async function viewAthleteProfileAssessment(id){
+  const doc=(window.__athleteProfileAssessmentRows||[]).find(x=>String(x.id)===String(id));
+  if(!doc)return;
+  try{
+    const {data,error}=await supabaseClient.storage.from('physical-assessments').createSignedUrl(doc.file_path,300);
+    if(error)throw error;
+    const old=document.getElementById('athlete-profile-assessment-viewer');
+    if(old)old.remove();
+    const viewer=document.createElement('div');
+    viewer.id='athlete-profile-assessment-viewer';
+    viewer.style.cssText='position:fixed;inset:0;z-index:11000;background:#000c;display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)';
+    viewer.innerHTML=`
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:#17171d;color:#fff;border-bottom:2px solid #c92532">
+        <strong style="overflow-wrap:anywhere">${escapeHtml(doc.file_name||'Avaliação')}</strong>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('athlete-profile-assessment-viewer')?.remove()">Fechar ×</button>
+      </div>
+      <iframe title="Avaliação física" src="${data.signedUrl}" style="flex:1;width:100%;border:0;background:#fff" allow="fullscreen"></iframe>`;
+    document.body.appendChild(viewer);
+  }catch(e){
+    console.error('Falha ao abrir avaliação:',e);
+    showToast('Não foi possível visualizar esta avaliação.','err');
+  }
 }
 
 function renderDadosEditPanel(){
