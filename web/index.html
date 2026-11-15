@@ -3905,19 +3905,56 @@ async function viewAthleteProfileAssessment(id){
         <strong style="overflow-wrap:anywhere">${escapeHtml(doc.file_name||'Avaliação')}</strong>
         <button type="button" class="btn btn-outline btn-sm" style="flex:0 0 auto" onclick="closeAthleteProfileAssessmentViewer()">Voltar ×</button>
       </div>
-      <iframe title="Avaliação física" src="${data.signedUrl}#view=FitH" style="display:block;flex:1 1 auto;min-height:0;width:100%;border:0;background:#fff" allow="fullscreen"></iframe>`;
+      <div id="athlete-assessment-pdf-pages" style="flex:1 1 auto;min-height:0;width:100%;overflow:auto;overscroll-behavior:contain;background:#e5e5e5;padding:10px 0">
+        <div style="padding:24px;text-align:center;color:#222">Carregando avaliação…</div>
+      </div>`;
     document.body.appendChild(viewer);
     history.pushState({athleteAssessmentViewer:true},'','#avaliacao-atleta');
     window.__athleteAssessmentPopHandler=()=>closeAthleteProfileAssessmentViewer(true);
     window.addEventListener('popstate',window.__athleteAssessmentPopHandler,{once:true});
     window.__athleteAssessmentKeyHandler=e=>{if(e.key==='Escape')closeAthleteProfileAssessmentViewer();};
     document.addEventListener('keydown',window.__athleteAssessmentKeyHandler);
+
+    if(!window.__performanceProPdfJsPromise){
+      window.__performanceProPdfJsPromise=new Promise((resolve,reject)=>{
+        const script=document.createElement('script');
+        script.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        script.onload=()=>resolve(window.pdfjsLib);
+        script.onerror=()=>reject(new Error('Não foi possível carregar o leitor de PDF.'));
+        document.head.appendChild(script);
+      });
+    }
+    const pdfjs=await window.__performanceProPdfJsPromise;
+    if(!pdfjs)throw new Error('Leitor de PDF indisponível.');
+    pdfjs.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const pdf=await pdfjs.getDocument({url:data.signedUrl}).promise;
+    const pages=document.getElementById('athlete-assessment-pdf-pages');
+    if(!pages||!viewer.isConnected)return;
+    pages.innerHTML='';
+    for(let pageNumber=1;pageNumber<=pdf.numPages;pageNumber++){
+      if(!viewer.isConnected)return;
+      const page=await pdf.getPage(pageNumber);
+      const base=page.getViewport({scale:1});
+      const availableWidth=Math.max(240,pages.clientWidth-20);
+      const fitScale=availableWidth/base.width;
+      const pixelRatio=Math.min(window.devicePixelRatio||1,1.5);
+      const viewport=page.getViewport({scale:fitScale*pixelRatio});
+      const canvas=document.createElement('canvas');
+      canvas.setAttribute('aria-label','Página '+pageNumber+' de '+pdf.numPages);
+      canvas.style.cssText='display:block;width:min(100%,'+Math.round(base.width*fitScale)+'px);height:auto;margin:0 auto 12px;background:#fff;box-shadow:0 1px 5px #0003';
+      canvas.width=Math.ceil(viewport.width);
+      canvas.height=Math.ceil(viewport.height);
+      pages.appendChild(canvas);
+      const context=canvas.getContext('2d',{alpha:false});
+      await page.render({canvasContext:context,viewport}).promise;
+    }
   }catch(e){
     console.error('Falha ao abrir avaliação:',e);
+    const pages=document.getElementById('athlete-assessment-pdf-pages');
+    if(pages)pages.innerHTML='<div style="padding:24px;text-align:center;color:#222">Não foi possível exibir o PDF aqui. Tente baixar o arquivo pela aba de avaliações.</div>';
     showToast('Não foi possível visualizar esta avaliação.','err');
   }
 }
-
 function renderDadosEditPanel(){
   const p = document.getElementById('panel-athlete');
   if(!p) return;
