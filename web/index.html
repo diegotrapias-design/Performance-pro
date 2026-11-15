@@ -3905,7 +3905,7 @@ async function viewAthleteProfileAssessment(id){
         <strong style="overflow-wrap:anywhere">${escapeHtml(doc.file_name||'Avaliação')}</strong>
         <button type="button" class="btn btn-outline btn-sm" style="flex:0 0 auto" onclick="closeAthleteProfileAssessmentViewer()">Voltar ×</button>
       </div>
-      <iframe title="Avaliação física" src="${data.signedUrl}" style="display:block;flex:1 1 auto;min-height:0;width:100%;border:0;background:#fff" allow="fullscreen"></iframe>`;
+      <iframe title="Avaliação física" src="${data.signedUrl}#view=FitH" style="display:block;flex:1 1 auto;min-height:0;width:100%;border:0;background:#fff" allow="fullscreen"></iframe>`;
     document.body.appendChild(viewer);
     history.pushState({athleteAssessmentViewer:true},'','#avaliacao-atleta');
     window.__athleteAssessmentPopHandler=()=>closeAthleteProfileAssessmentViewer(true);
