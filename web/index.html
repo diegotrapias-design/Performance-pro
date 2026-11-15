@@ -413,15 +413,17 @@ window.handleLogin = async function(event){
     .day-foot .btn{max-width:100%;white-space:normal;}
   }
 
-  /* Menu do atleta em grade 2x2: Treinos e Faturas acima; Meu Progresso abaixo à esquerda */
+  /* Menu do atleta no formato da referência: dois quadrados e um cartão horizontal */
   .athlete-menu-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:stretch;}
   .athlete-menu-grid>button{min-width:0;min-height:0!important;box-sizing:border-box;padding:18px!important;gap:12px!important;border-radius:14px!important;justify-content:space-between;align-items:flex-start;flex-direction:column;aspect-ratio:1/1;}
+  .athlete-menu-grid>button:nth-child(3){grid-column:1/-1;aspect-ratio:auto;min-height:116px!important;flex-direction:row;align-items:center;justify-content:flex-start;padding:20px!important;}
   .athlete-menu-grid>button b{font-size:17px!important;line-height:1.25;}
   .athlete-menu-grid>button small{display:block;font-size:13px;line-height:1.4;margin-top:4px;}
   .athlete-menu-grid>button>span:first-child{width:52px!important;height:52px!important;flex:0 0 52px!important;font-size:24px!important;}
   @media(max-width:600px){
     .athlete-menu-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
     .athlete-menu-grid>button{padding:14px!important;border-radius:13px!important;}
+    .athlete-menu-grid>button:nth-child(3){min-height:104px!important;padding:16px!important;}
     .athlete-menu-grid>button b{font-size:16px!important;}
   }
 
