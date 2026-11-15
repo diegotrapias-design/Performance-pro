@@ -2410,6 +2410,11 @@ async function loadAthletePortal(){
       .select('id,session_date,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm,completed_workout_ids')
       .eq('athlete_id',athlete.id).order('session_date',{ascending:false}).limit(30);
     if(monitorError) throw monitorError;
+    const {data:invoiceRows,error:invoiceError}=await supabaseClient.from('athlete_invoices')
+      .select('id,description,amount,due_date,pix_key,pix_key_type,pix_beneficiary,status,created_at')
+      .eq('athlete_id',athlete.id).eq('status','pending').order('created_at',{ascending:false});
+    if(invoiceError) throw invoiceError;
+    window.__athletePendingInvoices=invoiceRows||[];
     const safe=x=>escapeHtml(x==null?'':String(x));
     const allWorkouts=workouts||[];
     const isAerobic=w=>/aer[oó]b|cardio|corrida|bike|ciclismo|esteira/i.test((w.title||'')+' '+(w.notes||''));
@@ -2524,7 +2529,7 @@ async function loadAthletePortal(){
         ${frequencyDashboard}
         <div class="athlete-menu-grid">
           ${tile('🏋️','Treinos','trainings','Suas rotinas')}
-          ${tile('＄','Faturas','invoices','Informações financeiras')}
+          ${tile('＄','Faturas','invoices',(window.__athletePendingInvoices||[]).length ? '🔔 '+window.__athletePendingInvoices.length+' cobrança(s) pendente(s)' : 'Informações financeiras')}
           ${tile('📈','Meu Progresso','progress','Gráficos de evolução')}
         </div>
         <footer class="athlete-menu-manifesto" aria-label="Princípios da alta performance">
@@ -2562,7 +2567,7 @@ async function loadAthletePortal(){
         </section>
       </section>
       <section id="athlete-progress" hidden>${backButton}<section class="panel" style="padding:18px;margin-top:8px">${buildMonitoringCharts((monitoring||[]).slice().reverse(),true)}</section></section>
-      <section id="athlete-invoices" hidden>${backButton}<h2>Faturas</h2><div class="empty-state">Não há faturas disponíveis no seu acesso.</div></section>
+      <section id="athlete-invoices" hidden>${backButton}<h2>Faturas</h2><div id="athlete-invoices-content"><div class="loading">Carregando faturas…</div></div></section>
 `;
     window.__athleteWorkouts=allWorkouts;
     window.__athleteWorkoutHtmlById=Object.fromEntries(allWorkouts.map(w=>[w.id,workoutDetails(w)]));
@@ -2643,6 +2648,227 @@ async function refreshAthleteProgressChart(){
   }catch(e){console.error('Não foi possível atualizar a evolução do atleta:',e);}
 }
 
+async function loadAthleteInvoices(){
+  const host=document.getElementById('athlete-invoices-content');
+  if(!host||!window.__athleteMonitoringId)return;
+  host.innerHTML='<div class="loading">Atualizando cobranças…</div>';
+  try{
+    const {data,error}=await supabaseClient.from('athlete_invoices')
+      .select('id,description,amount,due_date,pix_key,pix_key_type,pix_beneficiary,status,created_at')
+      .eq('athlete_id',window.__athleteMonitoringId).eq('status','pending').order('created_at',{ascending:false});
+    if(error)throw error;
+    window.__athletePendingInvoices=data||[];
+    if(!data?.length){
+      host.innerHTML='<div class="empty-state">Você não tem faturas pendentes no momento.</div>';
+      return;
+    }
+    host.innerHTML='<div style="display:grid;gap:12px">'+data.map(inv=>`
+      <article class="panel" style="padding:16px;border:1px solid #c92532;border-left:4px solid #c92532">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+          <strong style="font-size:16px">${escapeHtml(inv.description)}</strong>
+          <span style="background:#4a1118;color:#fff;border-radius:20px;padding:5px 10px;font-size:12px;font-weight:700">PENDENTE</span>
+        </div>
+        <div style="font-size:25px;font-weight:800;margin:12px 0;color:var(--red)">${Number(inv.amount).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</div>
+        ${inv.due_date?'<div style="font-size:13px;margin-bottom:8px"><b>Vencimento:</b> '+new Date(inv.due_date+'T12:00:00').toLocaleDateString('pt-BR')+'</div>':''}
+        <div style="background:var(--panel-2,#29292f);padding:12px;border-radius:10px;margin-top:10px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:5px">PAGAMENTO VIA PIX</div>
+          ${inv.pix_key_type?'<div style="font-size:13px;margin-bottom:4px"><b>Tipo:</b> '+escapeHtml(inv.pix_key_type)+'</div>':''}
+          ${inv.pix_beneficiary?'<div style="font-size:13px;margin-bottom:4px"><b>Recebedor:</b> '+escapeHtml(inv.pix_beneficiary)+'</div>':''}
+          <div style="font-size:14px;overflow-wrap:anywhere"><b>Chave Pix:</b> ${escapeHtml(inv.pix_key)}</div>
+          <button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="copyInvoicePixKey('${inv.id}')">Copiar chave Pix</button>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin:12px 0 0">Após realizar o pagamento, aguarde a confirmação do treinador. Esta cobrança permanecerá aqui até a confirmação.</p>
+      </article>`).join('')+'</div>';
+  }catch(e){
+    console.error('Falha ao carregar faturas do atleta:',e);
+    host.innerHTML='<div class="empty-state">Não foi possível carregar suas faturas. Tente novamente.</div>';
+  }
+}
+function copyInvoicePixKey(invoiceId){
+  const inv=(window.__athletePendingInvoices||[]).find(x=>String(x.id)===String(invoiceId));
+  if(!inv)return;
+  if(navigator.clipboard?.writeText){
+    navigator.clipboard.writeText(inv.pix_key).then(()=>showToast('Chave Pix copiada.','ok')).catch(()=>showToast('Não foi possível copiar a chave Pix.','err'));
+  }else{
+    const field=document.createElement('textarea');field.value=inv.pix_key;document.body.appendChild(field);field.select();
+    try{document.execCommand('copy');showToast('Chave Pix copiada.','ok');}catch(e){showToast('Copie a chave Pix manualmente.','err');}
+    field.remove();
+  }
+}
+
+function renderInvoiceManagement(){
+  if(currentProfile?.role!=='coach')return;
+  currentScreen='invoices-management';
+  const app=document.getElementById('app');
+  const options=athletes.map(a=>'<option value="'+escapeHtml(a.id)+'">'+escapeHtml(a.name)+'</option>').join('');
+  app.innerHTML=`
+    <div class="back-link" onclick="renderHome()">← Menu principal</div>
+    <h2 class="section-title">Faturas dos atletas</h2>
+    <section class="panel" style="padding:16px;margin-bottom:18px">
+      <h3 style="margin-top:0">Nova cobrança</h3>
+      <div class="field"><label for="invoice-athlete">Atleta</label><select id="invoice-athlete"><option value="">Selecione o atleta</option>${options}</select></div>
+      <div class="field"><label for="invoice-description">Descrição da cobrança</label><input id="invoice-description" type="text" placeholder="Ex.: Mensalidade de novembro"></div>
+      <div class="field"><label for="invoice-amount">Valor (R$)</label><input id="invoice-amount" type="number" min="0.01" step="0.01" placeholder="0,00"></div>
+      <div class="field"><label for="invoice-due-date">Data de vencimento</label><input id="invoice-due-date" type="date"></div>
+      <div class="field"><label for="invoice-pix-type">Tipo da chave Pix</label><select id="invoice-pix-type"><option value="">Não especificado</option><option>CPF/CNPJ</option><option>E-mail</option><option>Telefone</option><option>Chave aleatória</option></select></div>
+      <div class="field"><label for="invoice-pix-key">Chave Pix</label><input id="invoice-pix-key" type="text" placeholder="Digite sua chave Pix"></div>
+      <div class="field"><label for="invoice-pix-beneficiary">Nome do recebedor (opcional)</label><input id="invoice-pix-beneficiary" type="text" placeholder="Nome que aparecerá para o aluno"></div>
+      <button class="btn btn-primary" onclick="createAthleteInvoice()">Enviar cobrança ao aluno</button>
+      <p class="muted" style="font-size:12px;margin-bottom:0">A cobrança ficará visível na área Faturas do atleta até você confirmar o pagamento.</p>
+    </section>
+    <div id="invoice-management-list"><div class="loading">Carregando cobranças…</div></div>`;
+  loadInvoiceManagementList();
+}
+async function createAthleteInvoice(){
+  const athleteId=document.getElementById('invoice-athlete')?.value;
+  const description=document.getElementById('invoice-description')?.value.trim();
+  const amount=Number(document.getElementById('invoice-amount')?.value);
+  const dueDate=document.getElementById('invoice-due-date')?.value||null;
+  const pixType=document.getElementById('invoice-pix-type')?.value||null;
+  const pixKey=document.getElementById('invoice-pix-key')?.value.trim();
+  const beneficiary=document.getElementById('invoice-pix-beneficiary')?.value.trim()||null;
+  if(!athleteId||!description||!Number.isFinite(amount)||amount<=0||!pixKey){
+    showToast('Selecione o atleta e informe descrição, valor e chave Pix.','err');return;
+  }
+  const athlete=athletes.find(a=>String(a.id)===String(athleteId));
+  if(!athlete||!currentProfile?.team_id){showToast('Não foi possível identificar o atleta ou a equipe.','err');return;}
+  const btn=document.querySelector('button[onclick="createAthleteInvoice()"]');
+  if(btn){btn.disabled=true;btn.textContent='ENVIANDO…';}
+  try{
+    const {error}=await supabaseClient.from('athlete_invoices').insert({
+      team_id:currentProfile.team_id,athlete_id:athleteId,description,amount,due_date:dueDate,
+      pix_key:pixKey,pix_key_type:pixType,pix_beneficiary:beneficiary,created_by:currentUser.id
+    });
+    if(error)throw error;
+    showToast('Cobrança enviada para a área de Faturas do atleta.','ok');
+    ['invoice-description','invoice-amount','invoice-due-date','invoice-pix-key','invoice-pix-beneficiary'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    await loadInvoiceManagementList();
+  }catch(e){
+    console.error('Falha ao criar cobrança:',e);showToast(e.message||'Não foi possível enviar a cobrança.','err');
+  }finally{if(btn){btn.disabled=false;btn.textContent='Enviar cobrança ao aluno';}}
+}
+async function loadInvoiceManagementList(){
+  const host=document.getElementById('invoice-management-list');
+  if(!host)return;
+  try{
+    const {data,error}=await supabaseClient.from('athlete_invoices')
+      .select('id,athlete_id,description,amount,due_date,pix_key,pix_key_type,pix_beneficiary,status,created_at,paid_at')
+      .eq('team_id',currentProfile.team_id).order('created_at',{ascending:false}).limit(300);
+    if(error)throw error;
+    if(!data?.length){host.innerHTML='<div class="empty-state">Nenhuma cobrança cadastrada.</div>';return;}
+    host.innerHTML='<h3 style="margin:12px 0">Cobranças enviadas</h3>'+data.map(inv=>{
+      const athlete=athletes.find(a=>String(a.id)===String(inv.athlete_id));
+      const paid=inv.status==='paid';
+      return `<article class="panel" style="padding:14px;margin:10px 0;border-left:4px solid ${paid?'#83d6a3':'#c92532'}">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><b>${escapeHtml(athlete?.name||'Atleta')}</b><b>${Number(inv.amount).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</b></div>
+        <div style="margin:6px 0">${escapeHtml(inv.description)}</div>
+        <div style="font-size:12px;color:var(--muted)">${paid?'PAGO'+(inv.paid_at?' em '+new Date(inv.paid_at).toLocaleDateString('pt-BR'):''):'AGUARDANDO PAGAMENTO'}${inv.due_date?' · Vencimento '+new Date(inv.due_date+'T12:00:00').toLocaleDateString('pt-BR'):''}</div>
+        ${!paid?'<button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="confirmAthleteInvoicePaid(\''+inv.id+'\')">Confirmar pagamento recebido</button>':''}
+      </article>`;
+    }).join('');
+  }catch(e){console.error('Falha ao carregar cobranças:',e);host.innerHTML='<div class="empty-state">Não foi possível carregar as cobranças.</div>';}
+}
+async function confirmAthleteInvoicePaid(invoiceId){
+  if(!confirm('Confirma que este atleta realizou o pagamento? A cobrança será retirada da área Faturas dele.'))return;
+  try{
+    const {data,error}=await supabaseClient.from('athlete_invoices').update({status:'paid',paid_at:new Date().toISOString()})
+      .eq('id',invoiceId).eq('team_id',currentProfile.team_id).eq('status','pending').select('id').maybeSingle();
+    if(error)throw error;
+    if(!data)throw new Error('A cobrança não foi encontrada ou já foi confirmada.');
+    showToast('Pagamento confirmado. A fatura saiu das pendências do atleta.','ok');
+    await loadInvoiceManagementList();
+  }catch(e){console.error('Falha ao confirmar pagamento:',e);showToast(e.message||'Não foi possível confirmar o pagamento.','err');}
+}
+
+function renderPhysicalAssessments(){
+  if(currentProfile?.role!=='coach')return;
+  currentScreen='physical-assessments';
+  const app=document.getElementById('app');
+  const options=athletes.map(a=>'<option value="'+escapeHtml(a.id)+'">'+escapeHtml(a.name)+'</option>').join('');
+  app.innerHTML=`
+    <div class="back-link" onclick="renderHome()">← Menu principal</div>
+    <h2 class="section-title">Avaliações físicas</h2>
+    <section class="panel" style="padding:16px;margin-bottom:18px">
+      <h3 style="margin-top:0">Importar avaliação recebida do atleta</h3>
+      <div class="field"><label for="assessment-athlete">Atleta</label><select id="assessment-athlete"><option value="">Selecione o atleta</option>${options}</select></div>
+      <div class="field"><label for="assessment-file">Arquivo da avaliação (PDF ou HTML)</label><input id="assessment-file" type="file" accept=".pdf,.html,application/pdf,text/html"></div>
+      <div class="field"><label for="assessment-notes">Observações (opcional)</label><textarea id="assessment-notes" rows="2" placeholder="Ex.: Avaliação realizada em novembro"></textarea></div>
+      <button class="btn btn-primary" onclick="uploadPhysicalAssessment()">Importar avaliação</button>
+      <p class="muted" style="font-size:12px;margin-bottom:0">Arquivos privados, vinculados ao atleta selecionado. Limite de 15 MB por arquivo.</p>
+    </section>
+    <div id="physical-assessment-list"><div class="loading">Carregando avaliações…</div></div>`;
+  const select=document.getElementById('assessment-athlete');
+  if(select)select.addEventListener('change',loadPhysicalAssessmentList);
+  loadPhysicalAssessmentList();
+}
+async function uploadPhysicalAssessment(){
+  const athleteId=document.getElementById('assessment-athlete')?.value;
+  const file=document.getElementById('assessment-file')?.files?.[0];
+  const notes=document.getElementById('assessment-notes')?.value.trim()||'';
+  if(!athleteId||!file){showToast('Selecione o atleta e o arquivo da avaliação.','err');return;}
+  const ext=(file.name.split('.').pop()||'').toLowerCase();
+  const mime=ext==='pdf'?'application/pdf':ext==='html'?'text/html':'';
+  if(!mime){showToast('Envie somente arquivos PDF ou HTML.','err');return;}
+  if(file.size>15*1024*1024){showToast('O arquivo deve ter no máximo 15 MB.','err');return;}
+  const athlete=athletes.find(a=>String(a.id)===String(athleteId));
+  if(!athlete||!currentProfile?.team_id){showToast('Não foi possível identificar o atleta ou a equipe.','err');return;}
+  const btn=document.querySelector('button[onclick="uploadPhysicalAssessment()"]');
+  if(btn){btn.disabled=true;btn.textContent='ENVIANDO…';}
+  const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  const path=currentProfile.team_id+'/'+athleteId+'/'+Date.now()+'-'+uid()+'-'+safeName;
+  try{
+    const {error:uploadError}=await supabaseClient.storage.from('physical-assessments').upload(path,file,{upsert:false,contentType:mime});
+    if(uploadError)throw uploadError;
+    const {error:insertError}=await supabaseClient.from('physical_assessments').insert({
+      team_id:currentProfile.team_id,athlete_id:athleteId,file_name:file.name,file_path:path,
+      file_type:mime,file_size:file.size,notes,uploaded_by:currentUser.id
+    });
+    if(insertError){
+      await supabaseClient.storage.from('physical-assessments').remove([path]);
+      throw insertError;
+    }
+    showToast('Avaliação importada e vinculada ao atleta.','ok');
+    document.getElementById('assessment-file').value='';
+    document.getElementById('assessment-notes').value='';
+    await loadPhysicalAssessmentList();
+  }catch(e){console.error('Falha ao importar avaliação:',e);showToast(e.message||'Não foi possível importar o arquivo.','err');}
+  finally{if(btn){btn.disabled=false;btn.textContent='Importar avaliação';}}
+}
+async function loadPhysicalAssessmentList(){
+  const host=document.getElementById('physical-assessment-list');
+  const athleteId=document.getElementById('assessment-athlete')?.value;
+  if(!host||!currentProfile?.team_id)return;
+  try{
+    let query=supabaseClient.from('physical_assessments')
+      .select('id,athlete_id,file_name,file_path,file_type,file_size,notes,created_at')
+      .eq('team_id',currentProfile.team_id).order('created_at',{ascending:false}).limit(300);
+    if(athleteId)query=query.eq('athlete_id',athleteId);
+    const {data,error}=await query;
+    if(error)throw error;
+    if(!data?.length){host.innerHTML='<div class="empty-state">Nenhuma avaliação física importada.</div>';return;}
+    host.innerHTML='<h3 style="margin:12px 0">Avaliações importadas</h3>'+data.map(doc=>{
+      const athlete=athletes.find(a=>String(a.id)===String(doc.athlete_id));
+      return `<article class="panel" style="padding:14px;margin:10px 0">
+        <b>${escapeHtml(athlete?.name||'Atleta')}</b>
+        <div style="margin:6px 0;overflow-wrap:anywhere">${escapeHtml(doc.file_name)}</div>
+        <div style="font-size:12px;color:var(--muted)">${new Date(doc.created_at).toLocaleDateString('pt-BR')} · ${doc.file_type==='application/pdf'?'PDF':'HTML'} · ${(doc.file_size/1048576).toFixed(1)} MB</div>
+        ${doc.notes?'<div style="font-size:13px;margin-top:6px">'+escapeHtml(doc.notes)+'</div>':''}
+        <button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="downloadPhysicalAssessment('${doc.id}')">Baixar avaliação</button>
+      </article>`;
+    }).join('');
+    window.__physicalAssessmentRows=data;
+  }catch(e){console.error('Falha ao listar avaliações:',e);host.innerHTML='<div class="empty-state">Não foi possível carregar as avaliações.</div>';}
+}
+async function downloadPhysicalAssessment(id){
+  const doc=(window.__physicalAssessmentRows||[]).find(x=>String(x.id)===String(id));
+  if(!doc)return;
+  try{
+    const {data,error}=await supabaseClient.storage.from('physical-assessments').createSignedUrl(doc.file_path,60,{download:doc.file_name});
+    if(error)throw error;
+    window.open(data.signedUrl,'_blank','noopener');
+  }catch(e){console.error('Falha ao gerar link da avaliação:',e);showToast('Não foi possível baixar o arquivo.','err');}
+}
+
 function showAthleteSection(section){
   const ids=['home','trainings','extras','assessments','progress','invoices','workout-detail'];
   ids.forEach(id=>{const el=document.getElementById('athlete-'+id);if(el)el.hidden=(id!==section);});
@@ -2651,6 +2877,7 @@ function showAthleteSection(section){
   if(section!=='workout-detail' && monitor && homeSlot) homeSlot.appendChild(monitor);
   if(section==='trainings') setAthleteWorkoutTab('routines');
   if(section==='progress') refreshAthleteProgressChart();
+  if(section==='invoices') loadAthleteInvoices();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function setAthleteWorkoutTab(tab){
@@ -3178,6 +3405,16 @@ function renderHome(){
         <div class="home-card-icon">🦘</div>
         <div class="home-card-title">Salto (CMJ)</div>
         <div class="home-card-desc">Altura de salto por vídeo, tempo de voo</div>
+      </div>
+      <div class="home-card" onclick="renderInvoiceManagement()">
+        <div class="home-card-icon">💳</div>
+        <div class="home-card-title">Faturas</div>
+        <div class="home-card-desc">Enviar cobranças Pix e confirmar pagamentos</div>
+      </div>
+      <div class="home-card" onclick="renderPhysicalAssessments()">
+        <div class="home-card-icon">📄</div>
+        <div class="home-card-title">Avaliações físicas</div>
+        <div class="home-card-desc">Importar PDF ou HTML por atleta</div>
       </div>
     </div>
   `;
