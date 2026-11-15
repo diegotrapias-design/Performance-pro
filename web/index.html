@@ -4535,7 +4535,9 @@ function addExtraWorkout(category){if(!draft.trainingPlan.extraWorkouts)draft.tr
 function updateExtraWorkout(i,k,v){const w=draft?.trainingPlan?.extraWorkouts?.[i];if(w)w[k]=v;}
 function addExtraExercise(i){const w=draft?.trainingPlan?.extraWorkouts?.[i];if(!w)return;w.exercises.push({id:uid(),name:'',series:'',reps:'',descanso:'',obs:'',video:''});renderTreinoEditPanel();}
 function updateExtraExercise(wi,ei,k,v){const e=draft?.trainingPlan?.extraWorkouts?.[wi]?.exercises?.[ei];if(e)e[k]=v;}
-function selectExtraLibraryExercise(wi,ei,id){const e=draft?.trainingPlan?.extraWorkouts?.[wi]?.exercises?.[ei];const x=EXTRA_CARDIO_SPEED_LIBRARY.find(x=>String(x.id)===String(id))||exerciseLibrary.find(x=>String(x.id||x.name)===String(id));if(!e||!x)return;e.name=x.name||'';e.video=x.video||'';e.obs=x.description||e.obs||'';renderTreinoEditPanel();}
+function findExtraLibraryExercise(id){return EXTRA_CARDIO_SPEED_LIBRARY.find(x=>String(x.id)===String(id))||exerciseLibrary.find(x=>String(x.id||x.name)===String(id));}
+function previewExtraLibraryExercise(id){const x=findExtraLibraryExercise(id);if(!x)return;openExerciseVideo(x.video||'',x.name||'Demonstração do exercício');}
+function selectExtraLibraryExercise(wi,ei,id){const e=draft?.trainingPlan?.extraWorkouts?.[wi]?.exercises?.[ei];const x=findExtraLibraryExercise(id);if(!e||!x)return;e.name=x.name||'';e.video=x.video||'';e.obs=x.description||e.obs||'';renderTreinoEditPanel();}
 function removeExtraExercise(wi,ei){draft?.trainingPlan?.extraWorkouts?.[wi]?.exercises?.splice(ei,1);renderTreinoEditPanel();}
 function removeExtraWorkout(i){if(!confirm('Remover este treino extra?'))return;draft?.trainingPlan?.extraWorkouts?.splice(i,1);renderTreinoEditPanel();}
 function renderTreinoEditPanel(){
@@ -4609,9 +4611,9 @@ function renderTreinoEditPanel(){
     <div class="day-block" style="border-color:#c92532"><div class="day-head"><b>${w.category==='speed'?'Velocidade / aceleração':'Cardio'} · ${escapeHtml(w.title||'Treino extra')}</b><button class="btn btn-danger btn-sm" onclick="removeExtraWorkout(${wi})">Remover</button></div><div class="day-body">
       <input style="width:100%;padding:10px;margin-bottom:10px" value="${escapeHtml(w.title||'')}" placeholder="Nome do treino" oninput="updateExtraWorkout(${wi},'title',this.value)">
       ${(w.exercises||[]).map((e,ei)=>`<div class="ex-card">
-        <select style="width:100%;padding:9px;margin-bottom:8px" onchange="selectExtraLibraryExercise(${wi},${ei},this.value)"><option value="">Biblioteca de ${w.category==='speed'?'velocidade':'cardio'} — selecionar exercício</option>
+        <select id="extra-lib-${wi}-${ei}" style="width:100%;padding:9px;margin-bottom:8px" onchange="previewExtraLibraryExercise(this.value)"><option value="">Biblioteca de ${w.category==='speed'?'velocidade':'cardio'} — visualizar antes de adicionar</option>
           ${[...EXTRA_CARDIO_SPEED_LIBRARY.filter(x=>w.category==='speed'?x.group==='Velocidade':x.group==='Cardio'),...exerciseLibrary.filter(x=>w.category==='speed'?/veloc|sprint|acelera|corrida|tiro|agilidade|mudan[cç]a de dire[cç][aã]o/i.test((x.name||'')+' '+(x.group||'')):/cardio|corrida|bike|bicicleta|esteira|aer[oó]b|resist[eê]ncia/i.test((x.name||'')+' '+(x.group||'')))].map(x=>`<option value="${escapeHtml(x.id||x.name)}" ${e.name===x.name?'selected':''}>${escapeHtml(x.name)}</option>`).join('')}
-        </select><input style="width:100%;padding:9px;margin-bottom:8px" value="${escapeHtml(e.name||'')}" placeholder="Exercício / variação" oninput="updateExtraExercise(${wi},${ei},'name',this.value)">
+        </select><div style="display:flex;gap:7px;flex-wrap:wrap;margin:0 0 8px"><button type="button" class="btn btn-outline btn-sm" onclick="previewExtraLibraryExercise(document.getElementById('extra-lib-${wi}-${ei}').value)">▶ Visualizar vídeo</button><button type="button" class="btn btn-primary btn-sm" onclick="selectExtraLibraryExercise(${wi},${ei},document.getElementById('extra-lib-${wi}-${ei}').value)">＋ Adicionar exercício</button></div><input style="width:100%;padding:9px;margin-bottom:8px" value="${escapeHtml(e.name||'')}" placeholder="Exercício / variação" oninput="updateExtraExercise(${wi},${ei},'name',this.value)">
         <div class="ex-card-grid"><div><label>Séries</label><input value="${escapeHtml(e.series||'')}" oninput="updateExtraExercise(${wi},${ei},'series',this.value)"></div><div><label>Reps / distância / tempo</label><input value="${escapeHtml(e.reps||'')}" oninput="updateExtraExercise(${wi},${ei},'reps',this.value)"></div><div><label>Descanso</label><input value="${escapeHtml(e.descanso||'')}" oninput="updateExtraExercise(${wi},${ei},'descanso',this.value)"></div></div>
         <input style="width:100%;padding:9px;margin-top:8px" value="${escapeHtml(e.obs||'')}" placeholder="Intensidade / observações" oninput="updateExtraExercise(${wi},${ei},'obs',this.value)">
         ${e.video?`<button class="btn btn-outline btn-sm" style="margin-top:8px" onclick="openExerciseVideo('${escapeHtml(e.video)}','${escapeHtml(e.name)}')">▶ Ver vídeo</button>`:'<small style="color:#a33">Sem vídeo cadastrado</small>'}
@@ -4788,7 +4790,14 @@ const EXTRA_CARDIO_SPEED_LIBRARY = [
   {id:'extra-cardio-row',name:'Remo ergômetro — intervalado',group:'Cardio',video:'https://www.youtube.com/watch?v=6mnmZnRnxoM'},
   {id:'extra-cardio-stairs',name:'Simulador de escada — contínuo',group:'Cardio',video:'https://www.youtube.com/watch?v=6mnmZnRnxoM'},
   {id:'extra-cardio-outdoor',name:'Corrida ao ar livre — ritmo contínuo',group:'Cardio',video:'https://www.youtube.com/watch?v=6mnmZnRnxoM'},
-  {id:'extra-cardio-fartlek',name:'Fartlek — variação de ritmo',group:'Cardio',video:'https://www.youtube.com/watch?v=6mnmZnRnxoM'}
+  {id:'extra-cardio-fartlek',name:'Fartlek — variação de ritmo',group:'Cardio',video:'https://www.youtube.com/watch?v=6mnmZnRnxoM'},
+
+  {id:'extra-speed-carioca',name:'Carioca / deslocamento cruzado',group:'Velocidade',video:'https://www.youtube.com/watch?v=8jwLfM1onqI'},
+  {id:'extra-speed-straightleg',name:'Corrida com pernas estendidas (straight-leg run)',group:'Velocidade',video:'https://www.youtube.com/watch?v=pWphIaaaM5E'},
+  {id:'extra-speed-accelstart',name:'Saídas de aceleração (variações de posição)',group:'Velocidade',video:'https://www.youtube.com/watch?v=Z1IQEK07p_4'},
+  {id:'extra-cardio-machines',name:'Cardio intervalado em máquinas (bike, esteira, remo ou elíptico)',group:'Cardio',video:'https://www.youtube.com/watch?v=Qv0iOBpOfI8'},
+  {id:'extra-cardio-rowtech',name:'Remo ergômetro — técnica e sequência',group:'Cardio',video:'https://www.youtube.com/watch?v=st_AakadXdk'},
+  {id:'extra-cardio-rowinterval',name:'Remo ergômetro — intervalado',group:'Cardio',video:'https://www.youtube.com/watch?v=THuWp4-pbYs'},
 ];
 
 
