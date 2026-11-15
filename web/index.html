@@ -2860,7 +2860,10 @@ async function loadPhysicalAssessmentList(){
         <div style="margin:6px 0;overflow-wrap:anywhere">${escapeHtml(doc.file_name)}</div>
         <div style="font-size:12px;color:var(--muted)">${new Date(doc.created_at).toLocaleDateString('pt-BR')} · ${doc.file_type==='application/pdf'?'PDF':'HTML'} · ${(doc.file_size/1048576).toFixed(1)} MB</div>
         ${doc.notes?'<div style="font-size:13px;margin-top:6px">'+escapeHtml(doc.notes)+'</div>':''}
-        <button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="downloadPhysicalAssessment('${doc.id}')">Baixar avaliação</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="btn btn-outline btn-sm" onclick="downloadPhysicalAssessment('${doc.id}')">Baixar avaliação</button>
+          <button class="btn btn-danger btn-sm" onclick="deletePhysicalAssessment('${doc.id}')">Excluir avaliação</button>
+        </div>
       </article>`;
     }).join('');
     window.__physicalAssessmentRows=data;
@@ -2874,6 +2877,30 @@ async function downloadPhysicalAssessment(id){
     if(error)throw error;
     window.open(data.signedUrl,'_blank','noopener');
   }catch(e){console.error('Falha ao gerar link da avaliação:',e);showToast('Não foi possível baixar o arquivo.','err');}
+}
+
+async function deletePhysicalAssessment(id){
+  const doc=(window.__physicalAssessmentRows||[]).find(x=>String(x.id)===String(id));
+  if(!doc||!currentProfile?.team_id)return;
+  if(!confirm('Excluir permanentemente a avaliação "'+(doc.file_name||'Avaliação')+'"? Esta ação não pode ser desfeita.'))return;
+  const buttons=Array.from(document.querySelectorAll('#physical-assessment-list button'));
+  buttons.forEach(btn=>btn.disabled=true);
+  try{
+    const {error:deleteError}=await supabaseClient.from('physical_assessments')
+      .delete().eq('id',doc.id).eq('team_id',currentProfile.team_id);
+    if(deleteError)throw deleteError;
+    const {error:storageError}=await supabaseClient.storage.from('physical-assessments').remove([doc.file_path]);
+    if(storageError)console.error('Registro excluído, mas não foi possível remover o arquivo do armazenamento:',storageError);
+    window.__physicalAssessmentRows=(window.__physicalAssessmentRows||[]).filter(item=>String(item.id)!==String(id));
+    showToast(storageError?'Avaliação removida da lista. O arquivo armazenado precisa de limpeza.':'Avaliação excluída com sucesso.','ok');
+    await loadPhysicalAssessmentList();
+  }catch(e){
+    console.error('Falha ao excluir avaliação física:',e);
+    showToast(e.message||'Não foi possível excluir a avaliação.','err');
+    await loadPhysicalAssessmentList();
+  }finally{
+    buttons.forEach(btn=>btn.disabled=false);
+  }
 }
 
 function showAthleteSection(section){
