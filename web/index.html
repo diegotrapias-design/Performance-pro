@@ -429,15 +429,11 @@ window.handleLogin = async function(event){
   .athlete-menu-grid>button b{font-size:17px!important;line-height:1.25;}
   .athlete-menu-grid>button small{display:block;font-size:13px;line-height:1.4;margin-top:4px;}
   .athlete-menu-grid>button>span:first-child{width:52px!important;height:52px!important;flex:0 0 52px!important;font-size:24px!important;}
-  .athlete-menu-grid>button:nth-child(3){grid-column:1/-1;aspect-ratio:auto;min-height:112px!important;flex-direction:row;align-items:center;justify-content:flex-start;padding:18px 20px!important;}
-  .athlete-menu-grid>button:nth-child(3)>span:nth-child(2){min-width:0;}
-  .athlete-menu-grid>button:nth-child(3)>span:first-child{width:58px!important;height:58px!important;flex-basis:58px!important;font-size:26px!important;}
-  .athlete-menu-grid>button:nth-child(3) b{font-size:18px!important;}
+  .athlete-menu-grid>button{background:linear-gradient(145deg,#29292f,#19191d)!important;border:1px solid #44444b!important;color:#f8f8f8!important;}
   @media(max-width:600px){
     .athlete-menu-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
     .athlete-menu-grid>button{padding:14px!important;border-radius:13px!important;}
     .athlete-menu-grid>button b{font-size:16px!important;}
-    .athlete-menu-grid>button:nth-child(3){min-height:104px!important;padding:16px!important;}
   }
 
   /* ---- Assinatura institucional no rodapé do menu do atleta ---- */
@@ -2543,6 +2539,7 @@ async function loadAthletePortal(){
         ${frequencyDashboard}
         <div class="athlete-menu-grid">
           ${tile('🏋️','Treinos','trainings','Suas rotinas')}
+          ${tile('📝','Avaliações','assessments','Avaliações físicas')}
           ${tile('⚡','Treinos extras','extras','Cardio e velocidade')}
           ${tile('＄','Faturas','invoices',(window.__athletePendingInvoices||[]).length ? '🔔 '+window.__athletePendingInvoices.length+' cobrança(s) pendente(s)' : 'Informações financeiras')}
           ${tile('📈','Meu Progresso','progress','Gráficos de evolução')}
@@ -4525,7 +4522,7 @@ function addExtraWorkout(category){if(!draft.trainingPlan.extraWorkouts)draft.tr
 function updateExtraWorkout(i,k,v){const w=draft?.trainingPlan?.extraWorkouts?.[i];if(w)w[k]=v;}
 function addExtraExercise(i){const w=draft?.trainingPlan?.extraWorkouts?.[i];if(!w)return;w.exercises.push({id:uid(),name:'',series:'',reps:'',descanso:'',obs:'',video:''});renderTreinoEditPanel();}
 function updateExtraExercise(wi,ei,k,v){const e=draft?.trainingPlan?.extraWorkouts?.[wi]?.exercises?.[ei];if(e)e[k]=v;}
-function selectExtraLibraryExercise(wi,ei,id){const e=draft?.trainingPlan?.extraWorkouts?.[wi]?.exercises?.[ei];const x=exerciseLibrary.find(x=>String(x.id||x.name)===String(id));if(!e||!x)return;e.name=x.name||'';e.video=x.video||'';e.obs=x.description||e.obs||'';renderTreinoEditPanel();}
+function selectExtraLibraryExercise(wi,ei,id){const e=draft?.trainingPlan?.extraWorkouts?.[wi]?.exercises?.[ei];const x=EXTRA_CARDIO_SPEED_LIBRARY.find(x=>String(x.id)===String(id))||exerciseLibrary.find(x=>String(x.id||x.name)===String(id));if(!e||!x)return;e.name=x.name||'';e.video=x.video||'';e.obs=x.description||e.obs||'';renderTreinoEditPanel();}
 function removeExtraExercise(wi,ei){draft?.trainingPlan?.extraWorkouts?.[wi]?.exercises?.splice(ei,1);renderTreinoEditPanel();}
 function removeExtraWorkout(i){if(!confirm('Remover este treino extra?'))return;draft?.trainingPlan?.extraWorkouts?.splice(i,1);renderTreinoEditPanel();}
 function renderTreinoEditPanel(){
@@ -4600,7 +4597,7 @@ function renderTreinoEditPanel(){
       <input style="width:100%;padding:10px;margin-bottom:10px" value="${escapeHtml(w.title||'')}" placeholder="Nome do treino" oninput="updateExtraWorkout(${wi},'title',this.value)">
       ${(w.exercises||[]).map((e,ei)=>`<div class="ex-card">
         <select style="width:100%;padding:9px;margin-bottom:8px" onchange="selectExtraLibraryExercise(${wi},${ei},this.value)"><option value="">Biblioteca de ${w.category==='speed'?'velocidade':'cardio'} — selecionar exercício</option>
-          ${exerciseLibrary.filter(x=>w.category==='speed'?/veloc|sprint|acelera|corrida|tiro|agilidade|mudan[cç]a de dire[cç][aã]o/i.test((x.name||'')+' '+(x.group||'')):/cardio|corrida|bike|bicicleta|esteira|aer[oó]b|resist[eê]ncia/i.test((x.name||'')+' '+(x.group||''))).map(x=>`<option value="${escapeHtml(x.id||x.name)}" ${e.name===x.name?'selected':''}>${escapeHtml(x.name)}</option>`).join('')}
+          ${[...EXTRA_CARDIO_SPEED_LIBRARY.filter(x=>w.category==='speed'?x.group==='Velocidade':x.group==='Cardio'),...exerciseLibrary.filter(x=>w.category==='speed'?/veloc|sprint|acelera|corrida|tiro|agilidade|mudan[cç]a de dire[cç][aã]o/i.test((x.name||'')+' '+(x.group||'')):/cardio|corrida|bike|bicicleta|esteira|aer[oó]b|resist[eê]ncia/i.test((x.name||'')+' '+(x.group||'')))].map(x=>`<option value="${escapeHtml(x.id||x.name)}" ${e.name===x.name?'selected':''}>${escapeHtml(x.name)}</option>`).join('')}
         </select><input style="width:100%;padding:9px;margin-bottom:8px" value="${escapeHtml(e.name||'')}" placeholder="Exercício / variação" oninput="updateExtraExercise(${wi},${ei},'name',this.value)">
         <div class="ex-card-grid"><div><label>Séries</label><input value="${escapeHtml(e.series||'')}" oninput="updateExtraExercise(${wi},${ei},'series',this.value)"></div><div><label>Reps / distância / tempo</label><input value="${escapeHtml(e.reps||'')}" oninput="updateExtraExercise(${wi},${ei},'reps',this.value)"></div><div><label>Descanso</label><input value="${escapeHtml(e.descanso||'')}" oninput="updateExtraExercise(${wi},${ei},'descanso',this.value)"></div></div>
         <input style="width:100%;padding:9px;margin-top:8px" value="${escapeHtml(e.obs||'')}" placeholder="Intensidade / observações" oninput="updateExtraExercise(${wi},${ei},'obs',this.value)">
@@ -4751,6 +4748,36 @@ const EXTRA_GYM_EXERCISES = [
   {name:'Abdominal canivete',group:'Abdômen / Core',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/v-up.mp4'},
   {name:'Abdominal infra no banco',group:'Abdômen / Core',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/bench-leg-raise.mp4'}
 ];
+
+// Biblioteca exclusiva de Treinos Extras: cardio, velocidade e aceleração.
+// Vídeos públicos do YouTube; o player interno abre sem áudio.
+const EXTRA_CARDIO_SPEED_LIBRARY = [
+  {id:'extra-speed-wall',name:'Wall sprint drill (saída na parede)',group:'Velocidade',video:'https://www.youtube.com/watch?v=862cmbZQzEo'},
+  {id:'extra-speed-falling',name:'Falling start (saída inclinada)',group:'Velocidade',video:'https://www.youtube.com/watch?v=77YR0tOHn44'},
+  {id:'extra-speed-askip',name:'A-skip (drill de corrida)',group:'Velocidade',video:'https://www.youtube.com/watch?v=hp9mnnlB3Nc'},
+  {id:'extra-speed-highknees',name:'Skipping alto / high knees',group:'Velocidade',video:'https://www.youtube.com/watch?v=uj5PmQD87vk'},
+  {id:'extra-speed-sprintdrills',name:'Progressão de 5 drills de aceleração',group:'Velocidade',video:'https://www.youtube.com/watch?v=PzjxFXQy1XI'},
+  {id:'extra-speed-sprint10',name:'Sprint curto 5–10 m (aceleração)',group:'Velocidade',video:'https://www.youtube.com/watch?v=PzjxFXQy1XI'},
+  {id:'extra-speed-sprint20',name:'Sprint 10–20 m (aceleração progressiva)',group:'Velocidade',video:'https://www.youtube.com/watch?v=PzjxFXQy1XI'},
+  {id:'extra-speed-flying',name:'Flying sprint (corrida lançada)',group:'Velocidade',video:'https://www.youtube.com/watch?v=PzjxFXQy1XI'},
+  {id:'extra-speed-bskip',name:'B-skip (coordenação e mecânica)',group:'Velocidade',video:'https://www.youtube.com/watch?v=hp9mnnlB3Nc'},
+  {id:'extra-speed-shuffle',name:'Deslocamento lateral rápido (shuffle)',group:'Velocidade',video:'https://www.youtube.com/watch?v=IMVtip30M-0'},
+  {id:'extra-speed-shuttle',name:'Shuttle run 5-10-5 (mudança de direção)',group:'Velocidade',video:'https://youtu.be/z-wV9O8y-a0'},
+  {id:'extra-speed-bounds',name:'Saltos horizontais / bounds',group:'Velocidade',video:'https://www.youtube.com/watch?v=PzjxFXQy1XI'},
+  {id:'extra-cardio-hiit',name:'Cardio HIIT (intervalado)',group:'Cardio',video:'https://www.youtube.com/watch?v=6mnmZnRnxoM'},
+  {id:'extra-cardio-runinterval',name:'Corrida intervalada (tiros + recuperação)',group:'Cardio',video:'https://www.youtube.com/watch?v=6mnmZnRnxoM'},
+  {id:'extra-cardio-treadmill',name:'Esteira — corrida intervalada',group:'Cardio',video:'https://www.youtube.com/watch?v=6mnmZnRnxoM'},
+  {id:'extra-cardio-walkrun',name:'Esteira — caminhada + trote',group:'Cardio',video:'https://www.youtube.com/watch?v=6mnmZnRnxoM'},
+  {id:'extra-cardio-bike',name:'Bicicleta ergométrica — contínuo',group:'Cardio',video:'https://www.youtube.com/watch?v=5smhCvXOv9Y'},
+  {id:'extra-cardio-bikehiit',name:'Bike — HIIT / spinning intervalado',group:'Cardio',video:'https://www.youtube.com/watch?v=cF639qQyXX8'},
+  {id:'extra-cardio-elliptical',name:'Elíptico — contínuo ou intervalado',group:'Cardio',video:'https://www.youtube.com/watch?v=6mnmZnRnxoM'},
+  {id:'extra-cardio-rope',name:'Pular corda — intervalado',group:'Cardio',video:'https://www.youtube.com/watch?v=6mnmZnRnxoM'},
+  {id:'extra-cardio-row',name:'Remo ergômetro — intervalado',group:'Cardio',video:'https://www.youtube.com/watch?v=6mnmZnRnxoM'},
+  {id:'extra-cardio-stairs',name:'Simulador de escada — contínuo',group:'Cardio',video:'https://www.youtube.com/watch?v=6mnmZnRnxoM'},
+  {id:'extra-cardio-outdoor',name:'Corrida ao ar livre — ritmo contínuo',group:'Cardio',video:'https://www.youtube.com/watch?v=6mnmZnRnxoM'},
+  {id:'extra-cardio-fartlek',name:'Fartlek — variação de ritmo',group:'Cardio',video:'https://www.youtube.com/watch?v=6mnmZnRnxoM'}
+];
+
 
 function seedDefaultLibrary(){
   const seeded = [];
