@@ -2371,7 +2371,7 @@ async function loadAthletePortal(){
       items=data||[];
     }
     const {data:monitoring,error:monitorError}=await supabaseClient.from('monitoring_sessions')
-      .select('id,session_date,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm')
+      .select('id,session_date,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm,completed_workout_ids')
       .eq('athlete_id',athlete.id).order('session_date',{ascending:false}).limit(30);
     if(monitorError) throw monitorError;
     const safe=x=>escapeHtml(x==null?'':String(x));
@@ -2379,6 +2379,46 @@ async function loadAthletePortal(){
     const isAerobic=w=>/aer[oó]b|cardio|corrida|bike|ciclismo|esteira/i.test((w.title||'')+' '+(w.notes||''));
     const routineWorkouts=allWorkouts.filter(w=>!isAerobic(w));
     const aerobicWorkouts=allWorkouts.filter(isAerobic);
+    // Frequência baseada somente em sessões que tiveram treino efetivamente finalizado.
+    const completedDays=new Map();
+    (monitoring||[]).forEach(row=>{
+      const completed=Array.isArray(row.completed_workout_ids)?row.completed_workout_ids:[];
+      if(completed.length && row.session_date){
+        completedDays.set(row.session_date,(completedDays.get(row.session_date)||0)+completed.length);
+      }
+    });
+    const today=performanceProLocalDateISO();
+    const todayDate=new Date(today+'T12:00:00');
+    const monday=new Date(todayDate);
+    monday.setDate(monday.getDate()-((monday.getDay()+6)%7));
+    const weekdayLabels=['S','T','Q','Q','S','S','D'];
+    const frequencyDays=weekdayLabels.map((label,index)=>{
+      const date=new Date(monday);date.setDate(monday.getDate()+index);
+      const iso=date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
+      const done=completedDays.has(iso);
+      const isToday=iso===today;
+      return {label,done,isToday,future:date>todayDate};
+    });
+    const completedCount=Array.from(completedDays.values()).reduce((sum,n)=>sum+n,0);
+    const oldestCompleted=Array.from(completedDays.keys()).sort()[0];
+    const weeksObserved=oldestCompleted?Math.max(1,(todayDate-new Date(oldestCompleted+'T12:00:00'))/(7*86400000)+1):1;
+    const averageFrequency=completedCount/weeksObserved;
+    const lastCompletedDate=Array.from(completedDays.keys()).sort().pop()||null;
+    const daysSinceLast=lastCompletedDate?Math.max(0,Math.floor((todayDate-new Date(lastCompletedDate+'T12:00:00'))/86400000)):null;
+    const engagementLabel=daysSinceLast===null?'Sem registros':daysSinceLast<=2?'Constante':daysSinceLast<=5?'Oscilando':'Atenção';
+    const frequencyDashboard=`<section class="panel" style="padding:18px;margin:12px 0;border-radius:14px;background:#fff">
+      <h2 style="margin:0 0 22px;font-size:21px">Frequência de Treinos</h2>
+      <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;text-align:center;margin-bottom:22px">
+        ${frequencyDays.map(day=>`<div><div aria-label="${day.done?'Treino concluído':day.isToday?'Hoje, sem treino concluído':'Sem treino concluído'}" style="width:min(100%,52px);aspect-ratio:1;border:4px solid ${day.done?'#397bd5':day.isToday?'#397bd5':'#aaa'};background:${day.done?'#397bd5':'transparent'};color:${day.done?'#fff':day.isToday?'#397bd5':'#aaa'};border-radius:50%;display:grid;place-items:center;margin:0 auto;font-size:27px;font-weight:700">${day.done?'✓':day.isToday?'!':'×'}</div><div style="font-size:19px;font-weight:600;margin-top:7px">${day.label}</div></div>`).join('')}
+      </div>
+      <div style="border-top:1px solid #eee;padding-top:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:18px"><h2 style="margin:0;font-size:20px">Engajamento do aluno</h2><span style="background:${engagementLabel==='Constante'?'#e5f5eb':engagementLabel==='Atenção'?'#fde8e8':'#fff1cc'};color:${engagementLabel==='Constante'?'#23834d':engagementLabel==='Atenção'?'#bd3030':'#c18a16'};border-radius:22px;padding:7px 14px;font-size:14px;font-weight:600">${engagementLabel}</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div><div style="font-size:15px;color:#999;margin-bottom:8px">Último treino há</div><strong style="font-size:21px">${daysSinceLast===null?'—':daysSinceLast===0?'Hoje':daysSinceLast+' '+(daysSinceLast===1?'dia':'dias')}</strong></div>
+          <div><div style="font-size:15px;color:#999;margin-bottom:8px">Frequência média</div><strong style="font-size:21px">${averageFrequency.toFixed(2).replace('.',',')}x semana</strong></div>
+        </div>
+      </div>
+    </section>`;
     const workoutDetails=w=>{
       const list=items.filter(i=>i.workout_id===w.id);
       const cleanNotes=i=>(i.notes||'').replace(/\[\[PP_COMBO:[^\]]+\]\]/g,'').trim();
@@ -2445,9 +2485,9 @@ async function loadAthletePortal(){
     app.innerHTML=`<div class="home-hero"><div class="home-hero-title">Olá, ${safe(athlete.full_name)}</div><div class="home-hero-sub">${safe(athlete.sport)} ${athlete.category?'· '+safe(athlete.category):''} · Sua área individual</div></div>
       <section id="athlete-home" style="padding:8px 0 24px">
         <div class="panel" style="padding:16px;margin:12px 0"><div style="font-weight:700">Bem-vindo à sua área de atleta</div><div class="muted" style="margin-top:4px">Acesse seus treinos e acompanhe sua evolução.</div></div>
+        ${frequencyDashboard}
         <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
           ${tile('🏋️','Treinos','trainings','Suas rotinas')}
-          ${tile('⚡','Treinos Extras','extras','Atividades adicionais')}
           ${tile('📈','Meu Progresso','progress','Gráficos de evolução')}
           ${tile('＄','Faturas','invoices','Informações financeiras')}
         </div>
@@ -2463,7 +2503,6 @@ async function loadAthletePortal(){
         <div id="athlete-routines-list">${workoutCards(routineWorkouts,'Ainda não há rotinas de treino atribuídas.')}</div>
         <div id="athlete-aerobic-list" hidden>${workoutCards(aerobicWorkouts,'Ainda não há treinos aeróbicos atribuídos.')}</div>
       </section>
-      <section id="athlete-extras" hidden>${backButton}<h2>Treinos Extras</h2>${workoutCards(allWorkouts.filter(w=>/extra|complementar/i.test((w.title||'')+' '+(w.notes||''))),'Nenhum treino extra foi identificado nos treinos atribuídos.')}</section>
       <section id="athlete-workout-detail" hidden><button type="button" class="btn btn-outline btn-sm" onclick="backFromAthleteWorkout('${athlete.id}')" style="margin:8px 0 16px">← Voltar aos treinos</button><div id="athlete-workout-detail-content"></div></section>
       <section id="athlete-assessments" hidden>${backButton}
         <div id="athlete-assessment-form-slot"></div>
