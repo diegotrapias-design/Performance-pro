@@ -9,7 +9,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "build:web": "expo export --platform web && mkdir -p dist && sed \"s/__APP_BUILD_VERSION__/${VERCEL_GIT_COMMIT_SHA:-local}/g\" web/index.html > dist/index.html && cp web/manifest.webmanifest web/sw.js web/icon.svg web/apple-touch-icon.png dist/ && printf '{\\"version\\":\\"%s\\"}' \"${VERCEL_GIT_COMMIT_SHA:-local}\" > dist/version.json"
+    "build:web": "expo export --platform web && mkdir -p dist && sed \"s/__APP_BUILD_VERSION__/${VERCEL_GIT_COMMIT_SHA:-local}/g\" web/index.html > dist/index.html && sed \"s/__APP_BUILD_VERSION__/${VERCEL_GIT_COMMIT_SHA:-local}/g\" web/sw.js > dist/sw.js && cp web/manifest.webmanifest web/icon.svg web/apple-touch-icon.png dist/ && printf '{\\"version\\":\\"%s\\"}' \"${VERCEL_GIT_COMMIT_SHA:-local}\" > dist/version.json"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",
