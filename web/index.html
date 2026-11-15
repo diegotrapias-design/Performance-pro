@@ -413,6 +413,17 @@ window.handleLogin = async function(event){
     .day-foot .btn{max-width:100%;white-space:normal;}
   }
 
+  /* Menu do atleta: cartões distribuídos sem deixar espaço vazio */
+  .athlete-menu-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:stretch;}
+  .athlete-menu-grid>button{min-width:0;min-height:112px!important;padding:16px!important;gap:14px!important;border-radius:14px!important;}
+  .athlete-menu-grid>button b{font-size:16px!important;line-height:1.25;}
+  .athlete-menu-grid>button small{display:block;font-size:13px;line-height:1.4;margin-top:4px;}
+  .athlete-menu-grid>button>span:first-child{width:48px!important;height:48px!important;flex-basis:48px!important;font-size:22px!important;}
+  @media(max-width:600px){
+    .athlete-menu-grid{grid-template-columns:1fr;gap:10px;}
+    .athlete-menu-grid>button{min-height:84px!important;padding:14px 16px!important;}
+  }
+
   /* ---- Assinatura institucional no rodapé do menu do atleta ---- */
   .athlete-menu-manifesto{margin:26px -12px -24px;padding:42px 22px 34px;background:#090909;color:#fff;}
   .athlete-manifesto-line{padding:0 0 30px;margin:0 0 28px;border-bottom:2px solid #454545;display:flex;flex-direction:column;gap:30px;}
@@ -2486,7 +2497,7 @@ async function loadAthletePortal(){
       <section id="athlete-home" style="padding:8px 0 24px">
         <div class="panel" style="padding:16px;margin:12px 0"><div style="font-weight:700">Bem-vindo à sua área de atleta</div><div class="muted" style="margin-top:4px">Acesse seus treinos e acompanhe sua evolução.</div></div>
         ${frequencyDashboard}
-        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+        <div class="athlete-menu-grid">
           ${tile('🏋️','Treinos','trainings','Suas rotinas')}
           ${tile('📈','Meu Progresso','progress','Gráficos de evolução')}
           ${tile('＄','Faturas','invoices','Informações financeiras')}
