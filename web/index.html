@@ -1534,6 +1534,7 @@ function showToast(msg, type){
 
 let currentUser = null;
 let currentProfile = null;
+let coachUnreadNotificationCount = 0;
 let authTransition = 0;
 let auth = null;
 let db = null;
@@ -1723,6 +1724,7 @@ async function onAuthChange(user){
       if(!profile.team_id) throw new Error('A conta do treinador está sem equipe vinculada.');
       await loadAthletes();
       setupCoachPushNotifications();
+      syncDailyCoachAlerts();
       const pushParams=new URLSearchParams(location.search);
       const pushAthleteId=pushParams.get('pushAthlete');
       const pushWorkoutId=pushParams.get('pushWorkout');
@@ -1761,6 +1763,78 @@ function ppUrlBase64ToUint8Array(value){
   const raw=atob((value+padding).replace(/-/g,'+').replace(/_/g,'/'));
   return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
 }
+
+async function syncDailyCoachAlerts(){
+  if(currentProfile?.role!=='coach') return;
+  try{
+    const {data,error}=await supabaseClient.functions.invoke('push-notifications',{body:{action:'daily_coach_alerts'}});
+    if(error) throw error;
+    if(!data?.ok) throw new Error(data?.error||'Não foi possível atualizar os avisos.');
+    await refreshCoachNotificationCount();
+  }catch(e){ console.warn('Não foi possível sincronizar avisos diários:',e); }
+}
+async function refreshCoachNotificationCount(){
+  if(!currentUser || currentProfile?.role!=='coach') return;
+  const {count,error}=await supabaseClient.from('coach_notifications').select('id',{count:'exact',head:true}).is('read_at',null);
+  if(error){console.warn('Falha ao consultar notificações pendentes:',error);return;}
+  coachUnreadNotificationCount=Number(count||0);
+}
+async function renderCoachNotifications(showRead=false){
+  if(currentProfile?.role!=='coach') return;
+  currentScreen='notifications';
+  const app=document.getElementById('app');
+  app.innerHTML='<div class="loading">Carregando notificações…</div>';
+  try{
+    const {data,error}=await supabaseClient.from('coach_notifications').select('id,athlete_id,notification_type,title,body,target_url,read_at,created_at').order('created_at',{ascending:false}).limit(200);
+    if(error) throw error;
+    const rows=data||[], pending=rows.filter(n=>!n.read_at), read=rows.filter(n=>!!n.read_at);
+    coachUnreadNotificationCount=pending.length;
+    const visible=showRead?read:pending;
+    const dateLabel=value=>new Date(value).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
+    app.innerHTML=`
+      <div class="back-link" onclick="renderHome()">← Menu principal</div>
+      <h2 class="section-title">Notificações</h2>
+      <div class="toolbar" style="gap:8px">
+        <button class="btn ${showRead?'btn-outline':'btn-primary'} btn-sm" onclick="renderCoachNotifications(false)">Pendentes (${pending.length})</button>
+        <button class="btn ${showRead?'btn-primary':'btn-outline'} btn-sm" onclick="renderCoachNotifications(true)">Lidas (${read.length})</button>
+        ${!showRead&&pending.length?'<button class="btn btn-outline btn-sm" onclick="markAllCoachNotificationsRead()">Marcar todas como lidas</button>':''}
+      </div>
+      ${visible.length?visible.map(n=>`
+        <div class="card" style="margin:10px 0;padding:14px;border-left:4px solid ${n.read_at?'#777':'#c92532'}">
+          <div style="font-weight:700;margin-bottom:6px">${n.notification_type==='birthday'?'🎂':n.notification_type==='routine_expiry'?'📅':'🔔'} ${escapeHtml(n.title)}</div>
+          <div style="color:var(--muted,#b7b7bd);margin-bottom:8px">${escapeHtml(n.body)}</div>
+          <div style="font-size:12px;opacity:.75;margin-bottom:10px">${dateLabel(n.created_at)}</div>
+          <div class="actions-row">
+            ${n.athlete_id?'<button class="btn btn-outline btn-sm" onclick="openAthleteFromNotification(\''+n.athlete_id+'\',\''+n.id+'\')">Ir para o atleta</button>':''}
+            ${!n.read_at?'<button class="btn btn-primary btn-sm" onclick="markCoachNotificationRead(\''+n.id+'\')">Marcar como lida</button>':'<span style="font-size:12px;opacity:.7">Lida</span>'}
+          </div>
+        </div>`).join(''):'<div class="empty-state"><div class="icon">🔔</div><div>${showRead?'Nenhuma notificação lida.':'Nenhuma notificação pendente.'}</div></div>'}
+    `;
+  }catch(e){
+    console.error('Falha ao carregar notificações:',e);
+    app.innerHTML='<div class="back-link" onclick="renderHome()">← Menu principal</div><div class="empty-state">Não foi possível carregar as notificações.</div>';
+  }
+}
+async function markCoachNotificationRead(notificationId){
+  try{
+    const {error}=await supabaseClient.from('coach_notifications').update({read_at:new Date().toISOString()}).eq('id',notificationId).is('read_at',null);
+    if(error) throw error;
+    await renderCoachNotifications(false);
+  }catch(e){showToast('Não foi possível marcar como lida.','err');}
+}
+async function markAllCoachNotificationsRead(){
+  try{
+    const {error}=await supabaseClient.from('coach_notifications').update({read_at:new Date().toISOString()}).is('read_at',null);
+    if(error) throw error;
+    await renderCoachNotifications(false);
+  }catch(e){showToast('Não foi possível atualizar as notificações.','err');}
+}
+async function openAthleteFromNotification(athleteId,notificationId){
+  await markCoachNotificationRead(notificationId);
+  listMode='dados';
+  openAthlete(athleteId);
+}
+
 async function setupCoachPushNotifications(){
   const {data:{user}}=await supabaseClient.auth.getUser();
   if(!user)return;
@@ -2894,6 +2968,11 @@ function renderHome(){
         <div class="home-card-icon">📊</div>
         <div class="home-card-title">Dashboard</div>
         <div class="home-card-desc">Resumo geral dos atletas</div>
+      </div>
+      <div class="home-card" onclick="renderCoachNotifications(false)">
+        <div class="home-card-icon">🔔</div>
+        <div class="home-card-title">Notificações ${coachUnreadNotificationCount?'<span style="display:inline-block;background:#c92532;color:#fff;border-radius:99px;padding:2px 7px;font-size:12px">'+coachUnreadNotificationCount+'</span>':''}</div>
+        <div class="home-card-desc">Aniversários e vencimentos de rotinas</div>
       </div>
       <div class="home-card" onclick="goList('dados')">
         <div class="home-card-icon">🧑‍🤝‍🧑</div>
