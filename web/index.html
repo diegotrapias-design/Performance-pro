@@ -2529,8 +2529,7 @@ async function loadAthletePortal(){
         ${frequencyDashboard}
         <div class="athlete-menu-grid">
           ${tile('🏋️','Treinos','trainings','Suas rotinas')}
-          ${tile('＄','Faturas','invoices','Informações financeiras')}
-          ${(window.__athletePendingInvoices||[]).length ? '<span style="display:inline-flex;align-items:center;gap:6px;background:#4a1118;color:#fff;border:1px solid #c92532;border-radius:10px;padding:7px 10px;font-size:12px;font-weight:700;margin-top:8px">🔔 '+window.__athletePendingInvoices.length+' cobrança(s) pendente(s)</span>' : ''}
+          ${tile('＄','Faturas','invoices',(window.__athletePendingInvoices||[]).length ? '🔔 '+window.__athletePendingInvoices.length+' cobrança(s) pendente(s)' : 'Informações financeiras')}
           ${tile('📈','Meu Progresso','progress','Gráficos de evolução')}
         </div>
         <footer class="athlete-menu-manifesto" aria-label="Princípios da alta performance">
