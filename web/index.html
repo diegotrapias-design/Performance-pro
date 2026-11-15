@@ -3562,8 +3562,9 @@ function renderProfileView(){
           <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="setAthleteMode('edit-treino')">Montar treino</button></div>`}
 
     <div class="actions-row">
+      ${hasTraining && !isNew ? `<button class="btn btn-outline" onclick="downloadRoutinePdf('${draft.id}', true)">Baixar rotina (PDF)</button>` : ''}
+      ${hasTraining && !isNew ? `<button class="btn btn-outline" onclick="downloadTrainingPdf('${draft.id}', true)">Baixar treinos (PDF)</button>` : ''}
       ${!isNew ? `<button class="btn btn-outline" onclick="downloadAthletePdf('${draft.id}', true)">Baixar dados (PDF)</button>` : ''}
-      ${hasTraining && !isNew ? `<button class="btn btn-outline" onclick="downloadTrainingPdf('${draft.id}', true)">Baixar treino (PDF)</button>` : ''}
     </div>
 
     <div class="profile-section-title">Maturação</div>
@@ -5106,6 +5107,49 @@ function downloadAthletePdf(id, fromDraft){
   }
 
   doc.save(sanitizeFilename(a.name) + '_dados.pdf');
+}
+
+function downloadRoutinePdf(id, fromDraft){
+  const a = fromDraft && draft && draft.id === id ? draft : athletes.find(x => x.id === id);
+  if(!a){ showToast('Atleta não encontrado.', 'err'); return; }
+  if(typeof window.jspdf === 'undefined'){ showToast('Não foi possível carregar o gerador de PDF.', 'err'); return; }
+  const days = (a.trainingPlan && a.trainingPlan.days) || [];
+  if(days.length === 0){ showToast('Esse atleta ainda não tem rotina montada.', 'err'); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  pdfHeader(doc, 'Rotina semanal — ' + (a.name || ''));
+
+  const cycle = a.trainingPlan || {};
+  const cycleRows = [
+    ['Início do ciclo', cycle.startDate ? formatDateBR(cycle.startDate) : '—'],
+    ['Fim do ciclo', cycle.endDate ? formatDateBR(cycle.endDate) : '—']
+  ];
+  doc.autoTable({
+    startY: 44,
+    head: [['Período','Data']],
+    body: cycleRows,
+    theme: 'grid',
+    headStyles: { fillColor: [10,10,10], textColor: 255 },
+    styles: { fontSize: 10, cellPadding: 4 }
+  });
+
+  const routineRows = days.map((day, index) => [
+    day.label || 'Dia ' + (index + 1),
+    day.type || 'Não informado',
+    (day.exercises || []).filter(ex => ex.name && ex.name.trim()).length + ' exercício(s)'
+  ]);
+  doc.autoTable({
+    startY: doc.lastAutoTable.finalY + 8,
+    head: [['Dia','Tipo de treino','Quantidade']],
+    body: routineRows,
+    theme: 'striped',
+    headStyles: { fillColor: [10,10,10], textColor: 255 },
+    styles: { fontSize: 10, cellPadding: 4 },
+    columnStyles: { 0: { cellWidth: 55 }, 1: { cellWidth: 75 } }
+  });
+
+  doc.save(sanitizeFilename(a.name) + '_rotina.pdf');
 }
 
 function downloadTrainingPdf(id, fromDraft){
