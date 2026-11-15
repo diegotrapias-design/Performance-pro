@@ -100,6 +100,7 @@ window.toggleLoginPassword = function(){
   button.setAttribute('aria-pressed', reveal ? 'true' : 'false');
 };
 
+window.__ppLoginHandoff = false;
 window.handleLogin = async function(event){
   if(event) event.preventDefault();
   const email = (document.getElementById('login-email')?.value || '').trim().toLowerCase();
@@ -111,21 +112,25 @@ window.handleLogin = async function(event){
   if(!email){ showError('Informe seu e-mail.'); return; }
   if(!password){ showError('Informe sua senha.'); return; }
   if(button){ button.disabled = true; button.textContent = 'ENTRANDO...'; }
+  window.__ppLoginHandoff = true;
   try {
     const {data, error} = await supabaseClient.auth.signInWithPassword({email, password});
     if(error) throw error;
     if(!data?.user) throw new Error('A autenticação não retornou o usuário.');
-    // O evento SIGNED_IN do Supabase encaminha o usuário ao painel.
-    // Não aguarde uma função global do script principal: em iPhones mais lentos
-    // essa espera podia expirar mesmo depois de a autenticação ter sido concluída.
-    showError('Acesso confirmado. Abrindo seu painel…');
+    if(typeof window.onAuthChange !== 'function'){
+      throw new Error('O painel não carregou corretamente. Atualize a página e tente novamente.');
+    }
+    // Encaminha explicitamente a sessão autenticada ao painel. O evento SIGNED_IN
+    // fica suspenso durante esta transição para evitar duas inicializações simultâneas.
+    await window.onAuthChange(data.user);
   } catch(e) {
-    console.error('Falha no login:', e);
+    console.error('Falha no login ou na abertura do painel:', e);
     const message = /invalid login credentials/i.test(e?.message || '')
       ? 'E-mail ou senha incorretos. Confira os dados ou toque em “Esqueci minha senha” para criar uma nova senha.'
-      : 'Não foi possível entrar: ' + (e?.message || 'erro desconhecido');
+      : 'Não foi possível abrir seu painel: ' + (e?.message || 'erro desconhecido');
     showError(message);
   } finally {
+    window.__ppLoginHandoff = false;
     if(button){ button.disabled = false; button.textContent = 'ENTRAR'; }
   }
 };
@@ -1736,7 +1741,9 @@ function initSupabase(){
     if(event==='PASSWORD_RECOVERY'){showPasswordSetupPanel('Crie uma nova senha para acessar o Performance Pro.');return;}
     if(event==='SIGNED_IN'&&session?.user?.user_metadata?.invitation_pending){showPasswordSetupPanel('Bem-vindo! Crie sua senha para concluir seu primeiro acesso.');return;}
     if(event==='SIGNED_IN'&&session?.user){
-      // Executa após o callback do Auth terminar para não bloquear o lock interno do Supabase.
+      // O formulário de login faz a transição explícita após signInWithPassword.
+      // Evita inicializar o painel duas vezes para a mesma autenticação.
+      if(window.__ppLoginHandoff)return;
       setTimeout(()=>{if(!passwordFlowActive)void onAuthChange(session.user);},0);
       return;
     }
