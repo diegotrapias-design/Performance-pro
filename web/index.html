@@ -2416,7 +2416,7 @@ async function loadAthletePortal(){
     }
     const {data:monitoring,error:monitorError}=await supabaseClient.from('monitoring_sessions')
       .select('id,session_date,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm,completed_workout_ids')
-      .eq('athlete_id',athlete.id).order('session_date',{ascending:false}).limit(30);
+      .eq('athlete_id',athlete.id).order('session_date',{ascending:false}).limit(100);
     if(monitorError) throw monitorError;
     const {data:invoiceRows,error:invoiceError}=await supabaseClient.from('athlete_invoices')
       .select('id,description,amount,due_date,pix_key,pix_key_type,pix_beneficiary,status,created_at')
@@ -2450,24 +2450,38 @@ async function loadAthletePortal(){
       const isToday=iso===today;
       return {label,done,isToday,future:date>todayDate};
     });
-    const completedCount=Array.from(completedDays.values()).reduce((sum,n)=>sum+n,0);
-    const oldestCompleted=Array.from(completedDays.keys()).sort()[0];
+    const currentMonthStart=new Date(todayDate.getFullYear(),todayDate.getMonth(),1,12);
+    const monthName=currentMonthStart.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+    const monthOffset=(currentMonthStart.getDay()+6)%7;
+    const daysInMonth=new Date(todayDate.getFullYear(),todayDate.getMonth()+1,0).getDate();
+    const calendarCells=Array.from({length:monthOffset},()=>({empty:true}));
+    for(let dayNumber=1;dayNumber<=daysInMonth;dayNumber++){
+      const date=new Date(todayDate.getFullYear(),todayDate.getMonth(),dayNumber,12);
+      const iso=date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
+      calendarCells.push({day:dayNumber,done:completedDays.has(iso),today:iso===today,future:date>todayDate});
+    }
+    while(calendarCells.length%7)calendarCells.push({empty:true});
+    const recentMonitoring=(monitoring||[]).slice(0,30);
+    const recentCompletedDays=new Map();
+    recentMonitoring.forEach(row=>{const completed=Array.isArray(row.completed_workout_ids)?row.completed_workout_ids:[];if(completed.length&&row.session_date)recentCompletedDays.set(row.session_date,(recentCompletedDays.get(row.session_date)||0)+completed.length);});
+    const completedCount=Array.from(recentCompletedDays.values()).reduce((sum,n)=>sum+n,0);
+    const oldestCompleted=Array.from(recentCompletedDays.keys()).sort()[0];
     const weeksObserved=oldestCompleted?Math.max(1,(todayDate-new Date(oldestCompleted+'T12:00:00'))/(7*86400000)+1):1;
     const averageFrequency=completedCount/weeksObserved;
-    const lastCompletedDate=Array.from(completedDays.keys()).sort().pop()||null;
+    const lastCompletedDate=Array.from(recentCompletedDays.keys()).sort().pop()||null;
     const daysSinceLast=lastCompletedDate?Math.max(0,Math.floor((todayDate-new Date(lastCompletedDate+'T12:00:00'))/86400000)):null;
     const engagementLabel=daysSinceLast===null?'Sem registros':daysSinceLast<=2?'Constante':daysSinceLast<=5?'Oscilando':'Atenção';
     const frequencyDashboard=`<section class="panel" style="padding:16px;margin:10px 0;border-radius:14px;background:#1c1c21;color:#f8f8f8;border:1px solid #44444b">
-      <h2 style="margin:0 0 17px;font-size:19px;color:#f8f8f8">Frequência Semanal</h2>
-      <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center;margin-bottom:18px">
-        ${frequencyDays.map(day=>`<div><div aria-label="${day.done?'Treino concluído':day.isToday?'Hoje, sem treino concluído':'Sem treino concluído'}" style="width:min(100%,44px);aspect-ratio:1;border:3px solid ${day.done?'#c92532':day.isToday?'#c9cbd0':'#777'};background:${day.done?'#c92532':'transparent'};color:${day.done?'#fff':day.isToday?'#c9cbd0':'#999'};border-radius:50%;display:grid;place-items:center;margin:0 auto;font-size:23px;font-weight:700">${day.done?'✓':day.isToday?'!':'×'}</div><div style="font-size:15px;font-weight:600;margin-top:6px;color:#f8f8f8">${day.label}</div></div>`).join('')}
+      <h2 style="margin:0 0 8px;font-size:19px;color:#f8f8f8">Frequência Semanal</h2>
+      <div style="font-size:14px;text-transform:capitalize;color:#c9cbd0;font-weight:700;margin-bottom:14px">${monthName}</div>
+      <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;text-align:center;margin-bottom:14px">
+        ${['S','T','Q','Q','S','S','D'].map(label=>`<div style="font-size:12px;font-weight:800;color:#b7b7bd;padding:4px 0">${label}</div>`).join('')}
+        ${calendarCells.map(cell=>cell.empty?'<div></div>':`<div aria-label="Dia ${cell.day}: ${cell.done?'treino concluído':cell.future?'data futura':cell.today?'hoje, aguardando registro':'sem treino registrado'}" style="min-width:0;aspect-ratio:1;border-radius:9px;border:1px solid ${cell.done?'#c92532':cell.today?'#c9cbd0':'#44444b'};background:${cell.done?'#c92532':cell.future?'transparent':'#242429'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:#f8f8f8"><span style="font-size:12px;font-weight:700;line-height:1.1">${cell.day}</span><span style="font-size:17px;font-weight:900;line-height:1.1;color:${cell.done?'#fff':cell.future?'#555':cell.today?'#c9cbd0':'#888'}">${cell.done?'✓':cell.future?'':cell.today?'•':'×'}</span></div>`).join('')}
       </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#b7b7bd;margin-bottom:15px"><span><b style="color:#c92532">✓</b> Treinou</span><span><b style="color:#999">×</b> Não treinou</span><span><b style="color:#c9cbd0">•</b> Hoje</span></div>
       <div style="border-top:1px solid #44444b;padding-top:15px">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px"><h2 style="margin:0;font-size:17px;color:#f8f8f8">Engajamento do aluno</h2><span style="background:#29292f;color:#c9cbd0;border:1px solid #c92532;border-radius:18px;padding:6px 12px;font-size:13px;font-weight:700">${engagementLabel}</span></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div><div style="font-size:13px;color:#b7b7bd;margin-bottom:6px">Último treino há</div><strong style="font-size:19px;color:#f8f8f8">${daysSinceLast===null?'—':daysSinceLast===0?'Hoje':daysSinceLast+' '+(daysSinceLast===1?'dia':'dias')}</strong></div>
-          <div><div style="font-size:13px;color:#b7b7bd;margin-bottom:6px">Frequência média</div><strong style="font-size:19px;color:#f8f8f8">${averageFrequency.toFixed(2).replace('.',',')}x semana</strong></div>
-        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><div style="font-size:13px;color:#b7b7bd;margin-bottom:6px">Último treino há</div><strong style="font-size:19px;color:#f8f8f8">${daysSinceLast===null?'—':daysSinceLast===0?'Hoje':daysSinceLast+' '+(daysSinceLast===1?'dia':'dias')}</strong></div><div><div style="font-size:13px;color:#b7b7bd;margin-bottom:6px">Frequência média</div><strong style="font-size:19px;color:#f8f8f8">${averageFrequency.toFixed(2).replace('.',',')}x semana</strong></div></div>
       </div>
     </section>`;
     const workoutDetails=w=>{
