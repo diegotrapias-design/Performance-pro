@@ -3595,7 +3595,19 @@ function handleExerciseVideoError(video){
   const loading=video.parentElement?.querySelector('.pp-video-loading');
   if(loading)loading.style.display='none';
 }
-function openExerciseVideo(url,title,loop){
+async function openExerciseVideo(url,title,loop){
+  // Links assinados do Storage expiram. Renova o link original no momento da reprodução
+  // quando a sessão atual tem permissão (treinador), sem alterar nem substituir o arquivo.
+  if(url && currentUser && supabaseClient?.storage){
+    const storagePath=getAthleteMediaStoragePath(url);
+    if(storagePath){
+      try{
+        const {data,error}=await supabaseClient.storage.from('athlete-media').createSignedUrl(storagePath,3600);
+        if(!error && data?.signedUrl) url=data.signedUrl.startsWith('http')?data.signedUrl:new URL(data.signedUrl,SUPABASE_URL).href;
+        else if(error) console.warn('Não foi possível renovar o link do vídeo original:',error);
+      }catch(refreshError){console.warn('Falha ao renovar o link do vídeo original:',refreshError);}
+    }
+  }
   const modal=document.getElementById('exercise-video-modal');
   const player=document.getElementById('exercise-video-player');
   const safeTitle=title||'Demonstração do exercício';
