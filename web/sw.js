@@ -1,3 +1,5 @@
+/* Build version is replaced on every Vercel deployment to force iOS PWA update checks. */
+const APP_BUILD_VERSION = '__APP_BUILD_VERSION__';
 self.addEventListener('install', event => {
   self.skipWaiting();
 });

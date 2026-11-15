@@ -3,21 +3,50 @@
 <head>
 <script>
 (function(){
-  if(!('serviceWorker' in navigator)) return;
-  var reloading=false;
-  navigator.serviceWorker.addEventListener('controllerchange',function(){
+  var BUILD_VERSION='__APP_BUILD_VERSION__';
+  var reloading=false, checking=false, registration=null;
+  function reloadForUpdate(){
     if(reloading) return;
     reloading=true;
     window.location.reload();
+  }
+  async function checkPublishedVersion(){
+    if(checking || reloading || document.visibilityState==='hidden') return;
+    checking=true;
+    try{
+      var response=await fetch('/version.json?check='+Date.now(),{cache:'no-store',credentials:'same-origin'});
+      if(!response.ok) throw new Error('HTTP '+response.status);
+      var release=await response.json();
+      if(release && release.version && release.version!==BUILD_VERSION){
+        reloadForUpdate();
+        return;
+      }
+      if(registration) await registration.update();
+    }catch(error){
+      console.warn('Não foi possível verificar a versão do Performance Pro:',error);
+    }finally{
+      checking=false;
+    }
+  }
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.addEventListener('controllerchange',reloadForUpdate);
+    window.addEventListener('load',function(){
+      navigator.serviceWorker.register('/sw.js',{scope:'/',updateViaCache:'none'})
+        .then(function(reg){
+          registration=reg;
+          reg.update().catch(function(){});
+          if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
+          checkPublishedVersion();
+        })
+        .catch(function(err){console.warn('Atualização automática indisponível:',err);});
+    });
+  }
+  window.addEventListener('pageshow',checkPublishedVersion);
+  window.addEventListener('focus',checkPublishedVersion);
+  document.addEventListener('visibilitychange',function(){
+    if(document.visibilityState==='visible') checkPublishedVersion();
   });
-  window.addEventListener('load',function(){
-    navigator.serviceWorker.register('/sw.js',{scope:'/',updateViaCache:'none'})
-      .then(function(reg){
-        reg.update().catch(function(){});
-        if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
-      })
-      .catch(function(err){console.warn('Atualização automática indisponível:',err);});
-  });
+  window.setInterval(checkPublishedVersion,60000);
 })();
 </script>
 <link rel="manifest" href="/manifest.webmanifest">
