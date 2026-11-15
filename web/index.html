@@ -3602,9 +3602,17 @@ async function openExerciseVideo(url,title,loop){
     const storagePath=getAthleteMediaStoragePath(url);
     if(storagePath){
       try{
-        const {data,error}=await supabaseClient.storage.from('athlete-media').createSignedUrl(storagePath,3600);
-        if(!error && data?.signedUrl) url=data.signedUrl.startsWith('http')?data.signedUrl:new URL(data.signedUrl,SUPABASE_URL).href;
-        else if(error) console.warn('Não foi possível renovar o link do vídeo original:',error);
+        // Primeiro tenta a renovação direta (treinador). Para atleta, solicita
+        // uma URL temporária ao servidor, que valida o vínculo com a equipe.
+        let refreshed=null;
+        const direct=await supabaseClient.storage.from('athlete-media').createSignedUrl(storagePath,3600);
+        if(!direct.error && direct.data?.signedUrl) refreshed=direct.data.signedUrl;
+        if(!refreshed){
+          const {data,error}=await supabaseClient.functions.invoke('get-exercise-video-url',{body:{path:storagePath}});
+          if(!error && data?.signedUrl) refreshed=data.signedUrl;
+          else if(error) console.warn('Não foi possível renovar o link do vídeo original:',error);
+        }
+        if(refreshed) url=refreshed.startsWith('http')?refreshed:new URL(refreshed,SUPABASE_URL).href;
       }catch(refreshError){console.warn('Falha ao renovar o link do vídeo original:',refreshError);}
     }
   }
