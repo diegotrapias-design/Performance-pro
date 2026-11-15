@@ -1728,6 +1728,7 @@ async function onAuthChange(user){
       const pushParams=new URLSearchParams(location.search);
       const pushAthleteId=pushParams.get('pushAthlete');
       const pushWorkoutId=pushParams.get('pushWorkout');
+      const showNotifications=pushParams.get('notifications')==='1';
       if(pushAthleteId){
         const target=athletes.find(a=>a.id===pushAthleteId);
         if(target){
@@ -1742,6 +1743,9 @@ async function onAuthChange(user){
             document.getElementById('panel-athlete')?.prepend(note);
           },100);
         }
+        history.replaceState({},'',location.pathname);
+      }else if(showNotifications){
+        renderCoachNotifications(false);
         history.replaceState({},'',location.pathname);
       }
     }else if(profile.role === 'athlete'){
@@ -3013,7 +3017,6 @@ function renderDashboard(){
   const catRows = Object.entries(porCategoria).sort((a,b) => b[1]-a[1]);
 
   const alerts = buildAlerts();
-  notifyAlertsIfNeeded(alerts);
 
   app.innerHTML = `
     <div class="back-link" onclick="renderHome()">← Menu principal</div>
