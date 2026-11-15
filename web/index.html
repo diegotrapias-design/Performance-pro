@@ -56,14 +56,10 @@ window.handleLogin = async function(event){
     const {data, error} = await supabaseClient.auth.signInWithPassword({email, password});
     if(error) throw error;
     if(!data?.user) throw new Error('A autenticação não retornou o usuário.');
-    // Aguarda o bootstrap principal do painel terminar antes de encaminhar o usuário autenticado.
-    // Evita perder o primeiro login quando o formulário fica disponível antes do script principal.
-    const initStartedAt = Date.now();
-    while(typeof window.onAuthChange !== 'function' && Date.now() - initStartedAt < 15000){
-      await new Promise(resolve => setTimeout(resolve, 50));
-    }
-    if(typeof window.onAuthChange !== 'function') throw new Error('O painel ainda está carregando. Aguarde alguns segundos e tente novamente; sua autenticação foi preservada.');
-    await window.onAuthChange(data.user);
+    // O evento SIGNED_IN do Supabase encaminha o usuário ao painel.
+    // Não aguarde uma função global do script principal: em iPhones mais lentos
+    // essa espera podia expirar mesmo depois de a autenticação ter sido concluída.
+    showError('Acesso confirmado. Abrindo seu painel…');
   } catch(e) {
     console.error('Falha no login:', e);
     showError('Não foi possível entrar: ' + (e?.message || 'erro desconhecido'));
@@ -1634,6 +1630,11 @@ function initSupabase(){
   auth.onAuthStateChange((event,session)=>{
     if(event==='PASSWORD_RECOVERY'){showPasswordSetupPanel('Crie uma nova senha para acessar o Performance Pro.');return;}
     if(event==='SIGNED_IN'&&session?.user?.user_metadata?.invitation_pending){showPasswordSetupPanel('Bem-vindo! Crie sua senha para concluir seu primeiro acesso.');return;}
+    if(event==='SIGNED_IN'&&session?.user){
+      // Executa após o callback do Auth terminar para não bloquear o lock interno do Supabase.
+      setTimeout(()=>{if(!passwordFlowActive)void onAuthChange(session.user);},0);
+      return;
+    }
     if(event==='SIGNED_OUT'){passwordFlowActive=false;setTimeout(()=>onAuthChange(null),0);}
   });
   auth.getSession().then(({data,error})=>{
