@@ -1787,58 +1787,93 @@ async function renderCoachNotifications(showRead=false){
   if(currentProfile?.role!=='coach') return;
   currentScreen='notifications';
   const app=document.getElementById('app');
-  app.innerHTML='<div class="loading">Carregando notificações…</div>';
+  app.innerHTML='<div class="loading">Carregando atualizações…</div>';
   try{
-    const {data,error}=await supabaseClient.from('coach_notifications').select('id,athlete_id,notification_type,title,body,target_url,read_at,created_at').order('created_at',{ascending:false}).limit(200);
+    const {data,error}=await supabaseClient.from('coach_notifications')
+      .select('id,athlete_id,notification_type,title,body,target_url,read_at,created_at')
+      .order('created_at',{ascending:false}).limit(300);
     if(error) throw error;
     const rows=data||[], pending=rows.filter(n=>!n.read_at), read=rows.filter(n=>!!n.read_at);
     coachUnreadNotificationCount=pending.length;
     const visible=showRead?read:pending;
+    const q=(document.getElementById('pp-updates-search')?.value||'').trim().toLocaleLowerCase('pt-BR');
+    const matches=n=>{
+      const athlete=athletes.find(a=>String(a.id)===String(n.athlete_id));
+      return !q || [n.title,n.body,athlete?.name].some(v=>String(v||'').toLocaleLowerCase('pt-BR').includes(q));
+    };
+    const birthdays=visible.filter(n=>n.notification_type==='birthday'&&matches(n));
+    const trainings=visible.filter(n=>n.notification_type!=='birthday'&&matches(n));
+    const ageFor=n=>{
+      const a=athletes.find(x=>String(x.id)===String(n.athlete_id));
+      if(!a?.birthDate)return null;
+      const birth=new Date(a.birthDate+'T00:00:00');
+      if(isNaN(birth))return null;
+      const today=new Date();
+      let age=today.getFullYear()-birth.getFullYear();
+      const before=today.getMonth()<birth.getMonth()||(today.getMonth()===birth.getMonth()&&today.getDate()<birth.getDate());
+      if(before)age--;
+      return age>=0?age:null;
+    };
+    const birthdayDateFor=n=>{
+      const a=athletes.find(x=>String(x.id)===String(n.athlete_id));
+      if(!a?.birthDate)return '';
+      const p=a.birthDate.split('-');
+      return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:'';
+    };
     const dateLabel=value=>new Date(value).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
+    const renderCard=n=>{
+      const birthday=n.notification_type==='birthday';
+      const athlete=athletes.find(a=>String(a.id)===String(n.athlete_id));
+      const age=ageFor(n), birthDate=birthdayDateFor(n);
+      const title=birthday?(athlete?.name||n.title):n.title;
+      return `
+        <article class="card" style="margin:12px 0;padding:16px;border:1px solid var(--border);border-left:4px solid ${n.read_at?'#9ca3af':'var(--red)'};gap:12px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div aria-hidden="true" style="width:54px;height:54px;flex:0 0 54px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#f1f3f6;color:#273449;font-size:25px">${birthday?'🎂':'🏋️'}</div>
+            <div style="min-width:0;flex:1">
+              <div style="font-weight:750;font-size:16px;margin-bottom:5px">${escapeHtml(title)}</div>
+              ${birthday?`<div style="font-size:13px;line-height:1.6"><b>Aniversário:</b> ${escapeHtml(birthDate||'Data não informada')}<br>${age!==null?`<b>Idade:</b> ${age} anos`:''}</div>`:`<div style="font-size:13px;line-height:1.5;color:var(--gray)">${escapeHtml(n.body)}</div>`}
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--gray)">Aviso em ${dateLabel(n.created_at)}</div>
+          <div class="actions-row" style="margin-top:0;justify-content:stretch">
+            ${n.athlete_id?'<button class="btn btn-primary" onclick="openAthleteFromNotification(\''+n.athlete_id+'\',\''+n.id+'\')">Ir para o aluno</button>':''}
+            ${!n.read_at?'<button class="btn btn-outline" onclick="markCoachNotificationRead(\''+n.id+'\')">Marcar como lida</button>':'<span style="font-size:12px;color:var(--gray);align-self:center">Lida</span>'}
+          </div>
+        </article>`;
+    };
     app.innerHTML=`
       <div class="back-link" onclick="renderHome()">← Menu principal</div>
-      <h2 class="section-title">Notificações</h2>
-      <div class="toolbar" style="gap:8px">
-        <button class="btn ${showRead?'btn-outline':'btn-primary'} btn-sm" onclick="renderCoachNotifications(false)">Pendentes (${pending.length})</button>
-        <button class="btn ${showRead?'btn-primary':'btn-outline'} btn-sm" onclick="renderCoachNotifications(true)">Lidas (${read.length})</button>
-        ${!showRead&&pending.length?'<button class="btn btn-outline btn-sm" onclick="markAllCoachNotificationsRead()">Marcar todas como lidas</button>':''}
+      <h2 class="section-title">Atualizações</h2>
+      <div class="toolbar" style="gap:8px;align-items:stretch">
+        <button class="btn ${showRead?'btn-outline':'btn-primary'}" onclick="renderCoachNotifications(false)">Pendentes (${pending.length})</button>
+        <button class="btn ${showRead?'btn-primary':'btn-outline'}" onclick="renderCoachNotifications(true)">Resolvidas (${read.length})</button>
       </div>
-      ${visible.length?visible.map(n=>`
-        <div class="card" style="margin:10px 0;padding:14px;border-left:4px solid ${n.read_at?'#777':'#c92532'}">
-          <div style="font-weight:700;margin-bottom:6px">${n.notification_type==='birthday'?'🎂':n.notification_type==='routine_expiry'?'📅':'🔔'} ${escapeHtml(n.title)}</div>
-          <div style="color:var(--muted,#b7b7bd);margin-bottom:8px">${escapeHtml(n.body)}</div>
-          <div style="font-size:12px;opacity:.75;margin-bottom:10px">${dateLabel(n.created_at)}</div>
-          <div class="actions-row">
-            ${n.athlete_id?'<button class="btn btn-outline btn-sm" onclick="openAthleteFromNotification(\''+n.athlete_id+'\',\''+n.id+'\')">Ir para o atleta</button>':''}
-            ${!n.read_at?'<button class="btn btn-primary btn-sm" onclick="markCoachNotificationRead(\''+n.id+'\')">Marcar como lida</button>':'<span style="font-size:12px;opacity:.7">Lida</span>'}
-          </div>
-        </div>`).join(''):'<div class="empty-state"><div class="icon">🔔</div><div>${showRead?'Nenhuma notificação lida.':'Nenhuma notificação pendente.'}</div></div>'}
-    `;
+      ${!showRead&&pending.length?'<button class="btn btn-primary" style="width:100%;justify-content:center;margin:0 0 12px" onclick="markAllCoachNotificationsRead()">Marcar todas como lidas</button>':''}
+      <div class="toolbar" style="gap:8px">
+        <input id="pp-updates-search" type="search" placeholder="Pesquisar aluno" value="${escapeHtml(q)}" oninput="filterCoachUpdates(this.value)" style="flex:1;min-width:0;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:#fff;font:inherit">
+      </div>
+      <section style="margin-top:20px">
+        <h2 style="font-size:20px;margin:0 0 8px">Aniversários</h2>
+        ${birthdays.length?birthdays.map(renderCard).join(''):'<div class="empty-state" style="padding:22px 12px">Nenhum aniversário '+(showRead?'resolvido':'pendente')+'.</div>'}
+      </section>
+      <section style="margin-top:24px">
+        <h2 style="font-size:20px;margin:0 0 8px">Treinos</h2>
+        ${trainings.length?trainings.map(renderCard).join(''):'<div class="empty-state" style="padding:22px 12px">Nenhuma atualização de treino '+(showRead?'resolvida':'pendente')+'.</div>'}
+      </section>`;
   }catch(e){
-    console.error('Falha ao carregar notificações:',e);
-    app.innerHTML='<div class="back-link" onclick="renderHome()">← Menu principal</div><div class="empty-state">Não foi possível carregar as notificações.</div>';
+    console.error('Falha ao carregar atualizações:',e);
+    app.innerHTML='<div class="back-link" onclick="renderHome()">← Menu principal</div><div class="empty-state">Não foi possível carregar as atualizações.</div>';
   }
 }
-async function markCoachNotificationRead(notificationId){
-  try{
-    const {error}=await supabaseClient.from('coach_notifications').update({read_at:new Date().toISOString()}).eq('id',notificationId).is('read_at',null);
-    if(error) throw error;
-    await renderCoachNotifications(false);
-  }catch(e){showToast('Não foi possível marcar como lida.','err');}
+function filterCoachUpdates(value){
+  const active=document.querySelector('#app .section-title')?.textContent==='Atualizações';
+  if(!active)return;
+  const input=document.getElementById('pp-updates-search');
+  if(input)input.value=value;
+  const resolved=document.querySelector('#app .btn-primary[onclick="renderCoachNotifications(true)"]')!==null;
+  renderCoachNotifications(resolved);
 }
-async function markAllCoachNotificationsRead(){
-  try{
-    const {error}=await supabaseClient.from('coach_notifications').update({read_at:new Date().toISOString()}).is('read_at',null);
-    if(error) throw error;
-    await renderCoachNotifications(false);
-  }catch(e){showToast('Não foi possível atualizar as notificações.','err');}
-}
-async function openAthleteFromNotification(athleteId,notificationId){
-  await markCoachNotificationRead(notificationId);
-  listMode='dados';
-  openAthlete(athleteId);
-}
-
 async function setupCoachPushNotifications(){
   const {data:{user}}=await supabaseClient.auth.getUser();
   if(!user)return;
