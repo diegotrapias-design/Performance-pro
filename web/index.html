@@ -41,6 +41,17 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLI
 
 // Login definido neste primeiro bloco para ficar disponível mesmo se outro
 // bloco grande do aplicativo falhar ao carregar no Safari/iOS.
+window.toggleLoginPassword = function(){
+  const field = document.getElementById('login-password');
+  const button = document.getElementById('toggle-login-password');
+  if(!field || !button) return;
+  const reveal = field.type === 'password';
+  field.type = reveal ? 'text' : 'password';
+  button.textContent = reveal ? 'Ocultar' : 'Mostrar';
+  button.setAttribute('aria-label', reveal ? 'Ocultar senha' : 'Mostrar senha');
+  button.setAttribute('aria-pressed', reveal ? 'true' : 'false');
+};
+
 window.handleLogin = async function(event){
   if(event) event.preventDefault();
   const email = (document.getElementById('login-email')?.value || '').trim().toLowerCase();
@@ -62,7 +73,10 @@ window.handleLogin = async function(event){
     showError('Acesso confirmado. Abrindo seu painel…');
   } catch(e) {
     console.error('Falha no login:', e);
-    showError('Não foi possível entrar: ' + (e?.message || 'erro desconhecido'));
+    const message = /invalid login credentials/i.test(e?.message || '')
+      ? 'E-mail ou senha incorretos. Confira os dados ou toque em “Esqueci minha senha” para criar uma nova senha.'
+      : 'Não foi possível entrar: ' + (e?.message || 'erro desconhecido');
+    showError(message);
   } finally {
     if(button){ button.disabled = false; button.textContent = 'ENTRAR'; }
   }
@@ -637,6 +651,10 @@ window.handleLogin = async function(event){
     padding:14px;border-radius:3px;border:1px solid #d9d8d2;background:#fff;font-size:14px;font-family:'Inter',sans-serif;
   }
   .lp-login-form input:focus{outline:2px solid var(--lp-red);outline-offset:0;border-color:transparent;}
+  .lp-password-wrap{position:relative;display:flex;align-items:center;}
+  .lp-password-wrap input{width:100%;padding-right:78px;}
+  .lp-password-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:#555;font-size:12px;font-weight:600;padding:8px;cursor:pointer;}
+  .lp-password-toggle:focus-visible{outline:2px solid var(--lp-red);outline-offset:2px;border-radius:3px;}
   .lp-footer{background:#0a0a0a;color:#fff;}
   .lp-footer-inner{max-width:1180px;margin:0 auto;padding:48px 24px 30px;}
   .lp-footer-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(20px,4vw,48px);}
@@ -1185,11 +1203,14 @@ window.handleLogin = async function(event){
     <div id="lp-login-panel" class="lp-login-panel" hidden>
       <form id="login-form" class="lp-login-form" onsubmit="event.preventDefault(); if(typeof window.handleLogin==='function'){window.handleLogin(event);}else{document.getElementById('login-error').textContent='O sistema de login não carregou corretamente. Atualize a página e tente novamente.';} return false;">
         <input type="email" id="login-email" placeholder="E-mail" required autocomplete="username">
-        <input type="password" id="login-password" placeholder="Senha" required autocomplete="current-password">
+        <div class="lp-password-wrap">
+          <input type="password" id="login-password" placeholder="Senha" required autocomplete="current-password">
+          <button type="button" class="lp-password-toggle" id="toggle-login-password" aria-label="Mostrar senha" aria-pressed="false" onclick="toggleLoginPassword()">Mostrar</button>
+        </div>
         <button type="button" id="login-submit" class="lp-cta" onclick="if(typeof window.handleLogin==='function'){window.handleLogin(event);}else{document.getElementById('login-error').textContent='O sistema de login não carregou corretamente. Atualize a página e tente novamente.';}">ENTRAR <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11L11 3M5 3h6v6"/></svg></button>
       </form>
       <div id="login-error" class="login-error"></div>
-      <div class="login-hint">Acesso do treinador. Entre com seu e-mail e senha cadastrados.</div>
+      <div class="login-hint">Acesso de atleta ou treinador. Entre com seu e-mail e senha cadastrados.</div>
       <button type="button" class="login-hint" style="border:0;background:none;text-decoration:underline;cursor:pointer" onclick="sendPasswordRecovery()">Esqueci minha senha</button>
     </div>
     <div id="password-recovery-panel" class="lp-login-panel" hidden>
