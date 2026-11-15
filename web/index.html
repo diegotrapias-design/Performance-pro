@@ -1516,7 +1516,7 @@ let libraryFilterFavOnly = false;
 let exerciseLibrary = [];
 // Tombstones persistem exclusões da biblioteca para impedir que itens padrão retornem.
 let deletedLibraryExerciseKeys = [];
-function libraryExerciseKey(name){ return (name||'').trim().toLocaleLowerCase('pt-BR').replace(/\\s+/g,' '); }
+function libraryExerciseKey(name){ return (name||'').trim().toLocaleLowerCase('pt-BR').replace(/\s+/g,' '); }
 let seriesPresets = [];
 let presetTarget = null;
 
