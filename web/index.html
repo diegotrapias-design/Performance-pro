@@ -2684,10 +2684,16 @@ function showAthleteWorkout(workoutId){
   const legacyHasWeights=allAthleteWorkouts.some(w=>/muscula[cç][aã]o/i.test(w.title||''));
   const legacyHasFunctional=allAthleteWorkouts.some(w=>/funcional/i.test(w.title||''));
   const legacyRoutine=legacyHasWeights&&legacyHasFunctional?'funcional_musculacao':legacyHasWeights?'musculacao':'funcional';
-  const workoutType=selectedWorkout?.routine_type||allAthleteWorkouts.find(w=>w.routine_type)?.routine_type||legacyRoutine;
+  // A rotina pode ser mista, mas a avaliação de salto depende do tipo deste dia.
+  // O título do treino é gravado como "Dia — Tipo" (ex.: "Terça-feira — Musculação").
+  const dayType=(selectedWorkout?.title||'').split('—').pop().trim();
+  const dayIsMusculacao=/muscula[cç][aã]o/i.test(dayType);
+  const dayIsFuncional=/funcional/i.test(dayType);
+  const workoutType=dayIsMusculacao?'musculacao':dayIsFuncional?'funcional':
+    (selectedWorkout?.routine_type||allAthleteWorkouts.find(w=>w.routine_type)?.routine_type||legacyRoutine);
   window.__activeAthleteRoutineType=workoutType;
   const jumpAssessment=document.getElementById('athlete-jump-assessment');
-  if(jumpAssessment) jumpAssessment.hidden=workoutType==='musculacao';
+  if(jumpAssessment) jumpAssessment.hidden=workoutType!=='funcional';
   const monitorMessage=document.getElementById('athlete-monitor-message');
   if(monitorMessage && workoutType==='musculacao') monitorMessage.textContent='Registre sua recuperação e o esforço desta sessão. A carga será calculada automaticamente: PSE × duração.';
   else if(monitorMessage) monitorMessage.textContent='TQR e salto pré-sessão podem ser salvos antes de terminar. Depois, registre PSE e salto pós-sessão.';
