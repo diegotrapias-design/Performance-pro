@@ -1376,7 +1376,7 @@ window.handleLogin = async function(event){
       <select id="library-group-filter" aria-label="Grupo muscular" onchange="renderLibraryList(document.getElementById('library-search').value)">
         <option value="">Todos os grupos musculares</option>
       </select>
-      <select id="library-category-filter" aria-label="Categoria" onchange="renderLibraryList(document.getElementById('library-search').value)">
+      <select id="library-category-filter" aria-label="Categoria" onchange="setLibraryPickerCategoryFilter(this.value)">
         <option value="">Todas as categorias</option>
         <option value="Musculação">Musculação</option><option value="Funcional">Funcional</option>
         <option value="Aeróbico">Aeróbico</option><option value="Mobilidade">Mobilidade</option>
@@ -5061,13 +5061,26 @@ function openExerciseLibrary(dayId, replaceExId){
   libraryPickerTab = 'all';
   document.getElementById('library-search').value = '';
   document.getElementById('library-modal-title').textContent = replaceExId ? 'Substituir exercício' : 'Biblioteca de exercícios';
-  const groupSelect=document.getElementById('library-group-filter');
-  groupSelect.innerHTML='<option value="">Todos os grupos musculares</option>'+[...new Set(exerciseLibrary.map(libraryMuscleGroup).filter(Boolean))].sort().map(g=>'<option value="'+escapeHtml(g)+'">'+escapeHtml(g)+'</option>').join('');
-  document.getElementById('library-category-filter').value='';
+  const categorySelect=document.getElementById('library-category-filter');
+  categorySelect.value='';
+  refreshLibraryPickerGroupOptions();
   renderLibraryList('');
   document.getElementById('library-modal').style.display = 'flex';
 }
 
+function refreshLibraryPickerGroupOptions(){
+  const groupSelect=document.getElementById('library-group-filter');
+  const category=document.getElementById('library-category-filter').value;
+  const previous=groupSelect.value;
+  const groups=[...new Set(exerciseLibrary.filter(ex=>!category||exerciseCategory(ex)===category).map(libraryMuscleGroup).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  groupSelect.innerHTML='<option value="">Todos os grupos musculares</option>'+groups.map(g=>'<option value="'+escapeHtml(g)+'">'+escapeHtml(g)+'</option>').join('');
+  groupSelect.value=groups.includes(previous)?previous:'';
+}
+function setLibraryPickerCategoryFilter(value){
+  document.getElementById('library-category-filter').value=value;
+  refreshLibraryPickerGroupOptions();
+  renderLibraryList(document.getElementById('library-search').value);
+}
 function closeExerciseLibrary(){
   document.getElementById('library-modal').style.display = 'none';
 }
@@ -5091,14 +5104,19 @@ function exerciseCategory(ex){
 
 function libraryMuscleGroup(ex){
   const group=(ex.group||'').trim();
+  const normalized=group.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLocaleLowerCase('pt-BR');
   const name=(ex.name||'').toLocaleLowerCase('pt-BR');
-  if(group==='Pernas — Quadríceps') return 'Quadríceps';
+  if(/quadriceps/.test(normalized) || normalized==='quadriceps') return 'Quadríceps';
+  if(/posterior|hamstring/.test(normalized)) return 'Posteriores';
+  if(/glute/.test(normalized)) return 'Glúteos';
+  if(/adutor|adductor/.test(normalized)) return 'Adutores';
   if(group==='Pernas — Posterior/Glúteo'){
     if(/adutor|adutora|adduction/.test(name)) return 'Adutores';
     if(/glúte|glute|hip thrust|abdutor|abdução|coice|ponte|hip extension|hip abduction|kickback/.test(name)) return 'Glúteos';
     return 'Posteriores';
   }
-  if(group==='Ombros') return 'Ombro';
+  if(group==='Pernas — Quadríceps') return 'Quadríceps';
+  if(/ombro/.test(normalized)) return 'Ombro';
   return group||'Sem grupo';
 }
 
@@ -5213,6 +5231,12 @@ function toggleLibraryFavFilter(){
   libraryFilterFavOnly = !libraryFilterFavOnly;
   renderLibraryScreen(document.getElementById('lib-screen-search') ? document.getElementById('lib-screen-search').value : '');
 }
+function setLibraryScreenCategoryFilter(value){
+  libraryScreenCategoryFilter=value;
+  const availableGroups=new Set(exerciseLibrary.filter(ex=>!value||exerciseCategory(ex)===value).map(libraryMuscleGroup));
+  if(libraryScreenGroupFilter&&!availableGroups.has(libraryScreenGroupFilter)) libraryScreenGroupFilter='';
+  renderLibraryScreen(document.getElementById('lib-screen-search') ? document.getElementById('lib-screen-search').value : '');
+}
 
 function renderLibraryScreen(filter){
   currentScreen = 'library';
@@ -5254,7 +5278,7 @@ function renderLibraryScreen(filter){
       </div>
     `).join('');
 
-  const groupOptions = [...new Set(exerciseLibrary.map(libraryMuscleGroup).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const groupOptions = [...new Set(exerciseLibrary.filter(ex=>!categoryFilter||exerciseCategory(ex)===categoryFilter).map(libraryMuscleGroup).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const categoryOptions = ['Musculação','Funcional','Aeróbico','Mobilidade','Alongamento','Esportivo'];
   const groupSelectHtml = '<option value="">Todos os grupos musculares</option>' + groupOptions.map(g=>'<option value="'+escapeHtml(g)+'" '+(g===groupFilter?'selected':'')+'>'+escapeHtml(g)+'</option>').join('');
   const categorySelectHtml = '<option value="">Todas as categorias</option>' + categoryOptions.map(c=>'<option value="'+escapeHtml(c)+'" '+(c===categoryFilter?'selected':'')+'>'+escapeHtml(c)+'</option>').join('');
@@ -5272,7 +5296,7 @@ function renderLibraryScreen(filter){
         <button class="btn btn-primary" onclick="openCreateExerciseForm()">+ Novo exercício</button>
       </div>
       <div class="library-filter-row" style="margin:-4px 0 14px">
-        <select id="lib-screen-category-filter" aria-label="Filtrar por categoria" onchange="libraryScreenCategoryFilter=this.value;renderLibraryScreen(document.getElementById('lib-screen-search').value)">
+        <select id="lib-screen-category-filter" aria-label="Filtrar por categoria" onchange="setLibraryScreenCategoryFilter(this.value)">
           ${categorySelectHtml}
         </select>
         <select id="lib-screen-group-filter" aria-label="Filtrar por grupo muscular" onchange="libraryScreenGroupFilter=this.value;renderLibraryScreen(document.getElementById('lib-screen-search').value)">
@@ -5287,7 +5311,7 @@ function renderLibraryScreen(filter){
     if(favoritesButton) favoritesButton.className = 'btn ' + (libraryFilterFavOnly?'btn-primary':'btn-outline') + ' btn-sm';
     const groupSelect=document.getElementById('lib-screen-group-filter');
     const categorySelect=document.getElementById('lib-screen-category-filter');
-    if(groupSelect && groupSelect.value!==groupFilter) groupSelect.value=groupFilter;
+    if(groupSelect){groupSelect.innerHTML=groupSelectHtml;groupSelect.value=groupFilter;}
     if(categorySelect && categorySelect.value!==categoryFilter) categorySelect.value=categoryFilter;
   }
 }
