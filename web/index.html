@@ -4388,7 +4388,7 @@ function handleExerciseVideoError(video){
   const loading=video.parentElement?.querySelector('.pp-video-loading');
   if(loading)loading.style.display='none';
 }
-async function buildExerciseDemoSvg(slug,title,kind){
+function buildExerciseDemoSvg(slug,title,kind){
  const label=escapeHtml(title||'Demonstração do exercício'),machine=kind==='machine';
  const data={
  press:['Empurrar e retornar','265 164','-14;10;-14','M265 164 L330 168 L385 168'],
@@ -4421,7 +4421,7 @@ async function buildExerciseDemoSvg(slug,title,kind){
  const body='<circle cx="245" cy="112" r="27" fill="#d7a77e" stroke="#20242b" stroke-width="5"/><path d="M245 145 L245 245 M245 245 L210 305 L180 350 M245 245 L280 305 L315 350" stroke="#20242b" stroke-width="17" stroke-linecap="round" fill="none"/>'+arm;
  return '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420" viewBox="0 0 640 420"><defs><linearGradient id="bg" x2="0" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#eef0f3"/></linearGradient></defs><rect width="640" height="420" rx="22" fill="url(#bg)"/><text x="28" y="38" font-family="Arial,sans-serif" font-size="18" font-weight="700" fill="#252932">'+label+'</text><text x="28" y="62" font-family="Arial,sans-serif" font-size="11" letter-spacing="1.5" fill="#858b94">'+(machine?'DEMONSTRAÇÃO ANIMADA 2D · MÁQUINA':'DEMONSTRAÇÃO ANIMADA 2D · EM CASA')+'</text>'+apparatus+body+'<g transform-origin="'+pivot+'"><path d="'+path+'" stroke="#c92532" stroke-width="17" stroke-linecap="round" stroke-linejoin="round" fill="none"/><animateTransform attributeName="transform" type="rotate" values="'+vals[0]+' '+pivot+';'+vals[1]+' '+pivot+';'+vals[2]+' '+pivot+'" dur="2.2s" repeatCount="indefinite"/></g><path d="M70 385 H570" stroke="#d6d9de" stroke-width="2"/><text x="320" y="405" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" fill="#858b94">'+d[0]+' · loop · sem áudio</text></svg>';
 }
-function openExerciseVideo(url,title,loop){
+async function openExerciseVideo(url,title,loop){
   // Links assinados do Storage expiram. Renova o link original no momento da reprodução
   // quando a sessão atual tem permissão (treinador), sem alterar nem substituir o arquivo.
   if(url && !String(url).startsWith('pp2d://') && currentUser && supabaseClient?.storage){
