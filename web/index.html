@@ -439,10 +439,12 @@ window.handleLogin = async function(event){
     .athlete-menu-grid>button{padding:14px!important;border-radius:13px!important;}
     .athlete-menu-grid>button b{font-size:16px!important;}
   }
-  /* Ajuste exclusivo do cartão Meu Progresso: impedir corte do subtítulo em telas estreitas */
-  .athlete-menu-grid>.athlete-menu-tile-progress{aspect-ratio:auto;min-height:176px!important;justify-content:flex-start;}
-  .athlete-menu-grid>.athlete-menu-tile-progress>span:last-child{overflow:visible;}
-  .athlete-menu-grid>.athlete-menu-tile-progress small{white-space:normal;overflow:visible;line-height:1.35!important;}
+  /* Quatro cartões uniformes, com ícones centralizados e textos dentro dos limites */
+  .athlete-menu-grid{grid-auto-rows:1fr;}
+  .athlete-menu-grid>.athlete-menu-tile{width:100%;height:100%;aspect-ratio:1/1!important;min-height:0!important;box-sizing:border-box;align-items:center!important;justify-content:space-between!important;}
+  .athlete-menu-grid>.athlete-menu-tile>span:first-child{align-self:center;margin-inline:auto;}
+  .athlete-menu-grid>.athlete-menu-tile>span:last-child{align-self:stretch;text-align:left;overflow:visible;min-height:0;}
+  .athlete-menu-grid>.athlete-menu-tile small{white-space:normal;overflow:visible;line-height:1.3!important;}
 
   /* ---- Assinatura institucional no rodapé do menu do atleta ---- */
   .athlete-menu-manifesto{margin:26px -12px -24px;padding:42px 22px 34px;background:#090909;color:#fff;}
