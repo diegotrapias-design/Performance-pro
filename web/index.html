@@ -439,6 +439,10 @@ window.handleLogin = async function(event){
     .athlete-menu-grid>button{padding:14px!important;border-radius:13px!important;}
     .athlete-menu-grid>button b{font-size:16px!important;}
   }
+  /* Ajuste exclusivo do cartão Meu Progresso: impedir corte do subtítulo em telas estreitas */
+  .athlete-menu-grid>.athlete-menu-tile-progress{aspect-ratio:auto;min-height:176px!important;justify-content:flex-start;}
+  .athlete-menu-grid>.athlete-menu-tile-progress>span:last-child{overflow:visible;}
+  .athlete-menu-grid>.athlete-menu-tile-progress small{white-space:normal;overflow:visible;line-height:1.35!important;}
 
   /* ---- Assinatura institucional no rodapé do menu do atleta ---- */
   .athlete-menu-manifesto{margin:26px -12px -24px;padding:42px 22px 34px;background:#090909;color:#fff;}
@@ -2549,7 +2553,7 @@ async function loadAthletePortal(){
       </section>`;
     };
     const workoutCards=(list,empty)=>list.length?list.map(w=>`<button type="button" class="panel" onclick="showAthleteWorkout('${w.id}')" style="display:block;width:100%;text-align:left;margin:10px 0;padding:16px;border:1px solid var(--border,#ddd);color:inherit;background:var(--panel,#fff);cursor:pointer"><b>${safe(w.title)}</b><div class="muted" style="margin-top:6px">${w.scheduled_for?'Data: '+safe(w.scheduled_for):'Treino atribuído'} · ${items.filter(i=>i.workout_id===w.id).length} exercícios</div><div style="text-align:right;color:var(--red,#c92532);font-weight:700;margin-top:8px">Ver treino →</div></button>`).join(''): `<div class="empty-state">${empty}</div>`;
-    const tile=(icon,label,section,sub='')=>`<button type="button" onclick="showAthleteSection('${section}')" style="min-height:92px;border:1px solid rgba(255,255,255,.12);border-radius:10px;background:linear-gradient(145deg,#29292f,#19191d);color:#fff;padding:14px 10px;text-align:left;display:flex;align-items:center;gap:12px"><span style="width:42px;height:42px;flex:0 0 42px;border-radius:50%;background:#c92532;display:grid;place-items:center;font-size:20px">${icon}</span><span><b style="display:block;font-size:14px">${label}</b><small style="color:#c9cbd0">${sub}</small></span></button>`;
+    const tile=(icon,label,section,sub='')=>`<button type="button" class="athlete-menu-tile athlete-menu-tile-${section}" onclick="showAthleteSection('${section}')" style="min-height:92px;border:1px solid rgba(255,255,255,.12);border-radius:10px;background:linear-gradient(145deg,#29292f,#19191d);color:#fff;padding:14px 10px;text-align:left;display:flex;align-items:center;gap:12px"><span style="width:42px;height:42px;flex:0 0 42px;border-radius:50%;background:#c92532;display:grid;place-items:center;font-size:20px">${icon}</span><span><b style="display:block;font-size:14px">${label}</b><small style="color:#c9cbd0">${sub}</small></span></button>`;
     const backButton='<button type="button" class="btn btn-outline btn-sm" onclick="showAthleteSection(\'home\')" style="margin:8px 0 16px">← Voltar ao menu</button>';
     app.innerHTML=`<div class="home-hero"><div class="home-hero-title">Olá, ${safe(athlete.full_name)}</div><div class="home-hero-sub">${safe(athlete.sport)} ${athlete.category?'· '+safe(athlete.category):''} · Sua área individual</div></div>
       ${(window.__athletePendingInvoices||[]).length?`<button type="button" onclick="showAthleteSection('invoices')" aria-label="Abrir pagamento pendente" style="position:fixed;z-index:999;left:14px;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));width:calc(100% - 28px);max-width:520px;margin:0 auto;padding:14px 16px;border:1px solid #ff8b91;border-left:5px solid #c92532;border-radius:12px;background:#fff;color:#a5121d;box-shadow:0 8px 28px rgba(0,0,0,.28);font-weight:800;text-align:left;cursor:pointer">🔔 ${(window.__athletePendingInvoices||[]).length===1?'1 pagamento pendente':(window.__athletePendingInvoices||[]).length+' pagamentos pendentes'} · Toque para visualizar</button>`:''}
