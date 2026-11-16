@@ -5062,7 +5062,7 @@ function openExerciseLibrary(dayId, replaceExId){
   document.getElementById('library-search').value = '';
   document.getElementById('library-modal-title').textContent = replaceExId ? 'Substituir exercício' : 'Biblioteca de exercícios';
   const groupSelect=document.getElementById('library-group-filter');
-  groupSelect.innerHTML='<option value="">Todos os grupos musculares</option>'+[...new Set(exerciseLibrary.map(x=>x.group).filter(Boolean))].sort().map(g=>'<option value="'+escapeHtml(g)+'">'+escapeHtml(g)+'</option>').join('');
+  groupSelect.innerHTML='<option value="">Todos os grupos musculares</option>'+[...new Set(exerciseLibrary.map(libraryMuscleGroup).filter(Boolean))].sort().map(g=>'<option value="'+escapeHtml(g)+'">'+escapeHtml(g)+'</option>').join('');
   document.getElementById('library-category-filter').value='';
   renderLibraryList('');
   document.getElementById('library-modal').style.display = 'flex';
@@ -5089,6 +5089,19 @@ function exerciseCategory(ex){
   return 'Musculação';
 }
 
+function libraryMuscleGroup(ex){
+  const group=(ex.group||'').trim();
+  const name=(ex.name||'').toLocaleLowerCase('pt-BR');
+  if(group==='Pernas — Quadríceps') return 'Quadríceps';
+  if(group==='Pernas — Posterior/Glúteo'){
+    if(/adutor|adutora|adduction/.test(name)) return 'Adutores';
+    if(/glúte|glute|hip thrust|abdutor|abdução|coice|ponte|hip extension|hip abduction|kickback/.test(name)) return 'Glúteos';
+    return 'Posteriores';
+  }
+  if(group==='Ombros') return 'Ombro';
+  return group||'Sem grupo';
+}
+
 let libraryMultiSelect=false;
 let selectedLibraryIds=[];
 function toggleLibraryMultiSelect(){libraryMultiSelect=!libraryMultiSelect;selectedLibraryIds=[];renderLibraryList(document.getElementById('library-search').value);}
@@ -5098,7 +5111,7 @@ function renderLibraryList(filter){
   const q=(filter||'').toLowerCase();
   const group=document.getElementById('library-group-filter').value;
   const category=document.getElementById('library-category-filter').value;
-  const filtered=exerciseLibrary.filter(ex=>(!q||[ex.name,...(ex.aliases||[])].some(n=>(n||'').toLowerCase().includes(q)))&&(!group||ex.group===group)&&(!category||exerciseCategory(ex)===category)&&(libraryPickerTab!=='favorites'||ex.favorite));
+  const filtered=exerciseLibrary.filter(ex=>(!q||[ex.name,...(ex.aliases||[])].some(n=>(n||'').toLowerCase().includes(q)))&&(!group||libraryMuscleGroup(ex)===group)&&(!category||exerciseCategory(ex)===category)&&(libraryPickerTab!=='favorites'||ex.favorite));
   filtered.sort((x,y)=>(x.name||'').localeCompare(y.name||'','pt-BR',{sensitivity:'base'}));
   const container=document.getElementById('library-list');
   const header='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><button class="btn btn-outline btn-sm" onclick="toggleLibraryMultiSelect()">'+(libraryMultiSelect?'Cancelar seleção':'Selecionar vários')+'</button>'+(libraryMultiSelect?'<span id="library-multi-count">'+selectedLibraryIds.length+' selecionados</span><button class="btn btn-primary btn-sm" onclick="addSelectedLibraryIds()">Adicionar selecionados</button>':'')+'</div>';
@@ -5209,14 +5222,14 @@ function renderLibraryScreen(filter){
   const categoryFilter = libraryScreenCategoryFilter;
   let list = exerciseLibrary.filter(ex =>
     (!q || [ex.name,...(ex.aliases||[])].some(n=>(n||'').toLowerCase().includes(q))) &&
-    (!groupFilter || ex.group === groupFilter) &&
+    (!groupFilter || libraryMuscleGroup(ex) === groupFilter) &&
     (!categoryFilter || exerciseCategory(ex) === categoryFilter)
   );
   list.sort((x,y)=>(x.name||'').localeCompare(y.name||'','pt-BR',{sensitivity:'base'}));
   if(libraryFilterFavOnly) list = list.filter(ex => ex.favorite);
 
   const groups = {};
-  list.forEach(ex => (groups[ex.group] = groups[ex.group] || []).push(ex));
+  list.forEach(ex => { const muscleGroup=libraryMuscleGroup(ex); (groups[muscleGroup] = groups[muscleGroup] || []).push(ex); });
   const groupNames = Object.keys(groups);
   const resultsHtml = groupNames.length === 0 ? '<div class="empty-state"><div class="icon">📚</div><div>Nenhum exercício encontrado com esses filtros.</div></div>' :
     groupNames.sort().map(g => `
@@ -5241,7 +5254,7 @@ function renderLibraryScreen(filter){
       </div>
     `).join('');
 
-  const groupOptions = [...new Set(exerciseLibrary.map(ex=>ex.group).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const groupOptions = [...new Set(exerciseLibrary.map(libraryMuscleGroup).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const categoryOptions = ['Musculação','Funcional','Aeróbico','Mobilidade','Alongamento','Esportivo'];
   const groupSelectHtml = '<option value="">Todos os grupos musculares</option>' + groupOptions.map(g=>'<option value="'+escapeHtml(g)+'" '+(g===groupFilter?'selected':'')+'>'+escapeHtml(g)+'</option>').join('');
   const categorySelectHtml = '<option value="">Todas as categorias</option>' + categoryOptions.map(c=>'<option value="'+escapeHtml(c)+'" '+(c===categoryFilter?'selected':'')+'>'+escapeHtml(c)+'</option>').join('');
