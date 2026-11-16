@@ -5,8 +5,25 @@
 (function(){
   var BUILD_VERSION='__APP_BUILD_VERSION__';
   var reloading=false, checking=false, registration=null;
+  function athleteHasActiveWorkout(){
+    try{
+      var routePrefix='performance_pro_active_workout_v1:';
+      var sessionPrefix='performance_pro_workout_session_v1:';
+      for(var i=0;i<localStorage.length;i++){
+        var key=localStorage.key(i);
+        if(!key || key.indexOf(routePrefix)!==0) continue;
+        var route=JSON.parse(localStorage.getItem(key)||'null');
+        if(!route || !route.workoutId) continue;
+        var athleteId=key.slice(routePrefix.length);
+        var sessionKey=sessionPrefix+athleteId+':'+route.workoutId+':'+(route.date||'');
+        var session=JSON.parse(localStorage.getItem(sessionKey)||'null');
+        if(session && (session.status==='running'||session.status==='paused')) return true;
+      }
+    }catch(error){console.warn('Não foi possível verificar o treino ativo antes da atualização:',error);}
+    return false;
+  }
   function reloadForUpdate(){
-    if(reloading) return;
+    if(reloading || athleteHasActiveWorkout()) return;
     reloading=true;
     window.location.reload();
   }
