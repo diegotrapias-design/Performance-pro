@@ -5104,7 +5104,7 @@ function exerciseCategory(ex){
 
 function libraryMuscleGroup(ex){
   const group=(ex.group||'').trim();
-  const normalized=group.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLocaleLowerCase('pt-BR');
+  const normalized=group.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR');
   const name=(ex.name||'').toLocaleLowerCase('pt-BR');
   if(/quadriceps/.test(normalized) || normalized==='quadriceps') return 'Quadríceps';
   if(/posterior|hamstring/.test(normalized)) return 'Posteriores';
