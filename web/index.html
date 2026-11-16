@@ -2548,13 +2548,14 @@ async function loadAthletePortal(){
     const tile=(icon,label,section,sub='')=>`<button type="button" onclick="showAthleteSection('${section}')" style="min-height:92px;border:1px solid rgba(255,255,255,.12);border-radius:10px;background:linear-gradient(145deg,#29292f,#19191d);color:#fff;padding:14px 10px;text-align:left;display:flex;align-items:center;gap:12px"><span style="width:42px;height:42px;flex:0 0 42px;border-radius:50%;background:#c92532;display:grid;place-items:center;font-size:20px">${icon}</span><span><b style="display:block;font-size:14px">${label}</b><small style="color:#c9cbd0">${sub}</small></span></button>`;
     const backButton='<button type="button" class="btn btn-outline btn-sm" onclick="showAthleteSection(\'home\')" style="margin:8px 0 16px">← Voltar ao menu</button>';
     app.innerHTML=`<div class="home-hero"><div class="home-hero-title">Olá, ${safe(athlete.full_name)}</div><div class="home-hero-sub">${safe(athlete.sport)} ${athlete.category?'· '+safe(athlete.category):''} · Sua área individual</div></div>
+      ${(window.__athletePendingInvoices||[]).length?`<button type="button" onclick="showAthleteSection('invoices')" aria-label="Abrir cobrança pendente" style="position:fixed;z-index:999;left:14px;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));width:calc(100% - 28px);max-width:520px;margin:0 auto;padding:14px 16px;border:1px solid #ff8b91;border-left:5px solid #c92532;border-radius:12px;background:#fff;color:#a5121d;box-shadow:0 8px 28px rgba(0,0,0,.28);font-weight:800;text-align:left;cursor:pointer">🔔 ${(window.__athletePendingInvoices||[]).length===1?'1 cobrança pendente':(window.__athletePendingInvoices||[]).length+' cobranças pendentes'} · Toque para visualizar</button>`:''}
       <section id="athlete-home" style="padding:8px 0 24px">
         <div class="panel" style="padding:16px;margin:12px 0"><div style="font-weight:700">Bem-vindo à sua área de atleta</div><div class="muted" style="margin-top:4px">Acesse seus treinos e acompanhe sua evolução.</div></div>
         ${frequencyDashboard}
         <div class="athlete-menu-grid">
           ${tile('🏋️','Treinos','trainings','Suas rotinas')}
           ${tile('⚡','Treinos extras','extras','Cardio e velocidade')}
-          ${tile('＄','Faturas','invoices',(window.__athletePendingInvoices||[]).length ? '🔔 '+window.__athletePendingInvoices.length+' cobrança(s) pendente(s)' : 'Informações financeiras')}
+          ${tile('＄','Faturas','invoices',(window.__athletePendingInvoices||[]).length ? '<span style="color:#ff525d;font-weight:800">1 cobrança pendente</span>'.replace('1 cobrança pendente',window.__athletePendingInvoices.length===1?'1 cobrança pendente':window.__athletePendingInvoices.length+' cobranças pendentes') : 'Informações financeiras')}
           ${tile('📈','Meu Progresso','progress','Gráficos de evolução')}
         </div>
         <footer class="athlete-menu-manifesto" aria-label="Princípios da alta performance">
