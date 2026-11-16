@@ -1843,8 +1843,15 @@ async function onAuthChange(user){
       const pushAthleteId=pushParams.get('pushAthlete');
       const pushWorkoutId=pushParams.get('pushWorkout');
       const showNotifications=pushParams.get('notifications')==='1';
-      if(pushAthleteId){
-        const target=athletes.find(a=>a.id===pushAthleteId);
+      if(pushAthleteId && pushWorkoutId){
+        const target=athletes.find(a=>String(a.id)===String(pushAthleteId));
+        if(target) await renderCoachWorkoutNotificationDetail(pushAthleteId,pushWorkoutId);
+        else{
+          document.getElementById('app').innerHTML='<div class="empty-state">Não foi possível localizar o atleta desta notificação.</div>';
+        }
+        history.replaceState({},'',location.pathname);
+      }else if(pushAthleteId){
+        const target=athletes.find(a=>String(a.id)===String(pushAthleteId));
         if(target){
           openAthlete(pushAthleteId);
           setTimeout(()=>{
@@ -1853,7 +1860,7 @@ async function onAuthChange(user){
             const note=document.createElement('div');
             note.className='panel';
             note.style.cssText='padding:14px;margin:12px 0;border-left:4px solid #c92532';
-            note.textContent='Treino finalizado'+(pushWorkoutId?' · Registro do atleta aberto.':'');
+            note.textContent='Treino finalizado';
             document.getElementById('panel-athlete')?.prepend(note);
           },100);
         }
@@ -3338,6 +3345,64 @@ ${buildCoachMonitoringExtras(rows)}
         <tbody>${(rows||[]).slice().reverse().map(r=>`<tr><td>${safe(r.session_date)}</td><td>${safe(r.psr)}</td><td>${safe(r.pse)}</td><td>${safe(r.duration_min)}</td><td>${safe(r.load_ua)}</td><td>${safe(r.jump_pre_cm)}</td><td>${safe(r.jump_post_cm)}</td><td>${r.jump_pre_cm!=null&&r.jump_post_cm!=null?(Number(r.jump_post_cm)-Number(r.jump_pre_cm)).toFixed(1):'—'}</td><td>${videoLinks[r.id+'_jump_video_pre_path']?'<a target="_blank" rel="noopener" href="'+videoLinks[r.id+'_jump_video_pre_path']+'">Vídeo pré</a>':''} ${videoLinks[r.id+'_jump_video_post_path']?'<a target="_blank" rel="noopener" href="'+videoLinks[r.id+'_jump_video_post_path']+'">Vídeo pós</a>':''}</td></tr>`).join('')}</tbody></table></div>
       </div>`;
   }catch(e){console.error('Monitoramento do atleta:',e);host.innerHTML='<div class="empty-state">Não foi possível carregar o monitoramento: '+escapeHtml(e.message||'erro')+'</div>';}
+}
+
+async function renderCoachWorkoutNotificationDetail(athleteId,workoutId){
+  const app=document.getElementById('app');
+  const athlete=athletes.find(a=>String(a.id)===String(athleteId));
+  const athleteName=athlete?.name||athlete?.full_name||'Atleta';
+  app.innerHTML='<div class="loading">Carregando sessão finalizada…</div>';
+  try{
+    const {data:workout,error:workoutError}=await supabaseClient.from('workouts')
+      .select('id,title,scheduled_for').eq('id',workoutId).eq('athlete_id',athleteId).maybeSingle();
+    if(workoutError)throw workoutError;
+    if(!workout)throw new Error('O treino finalizado não foi encontrado para este atleta.');
+    const {data:items,error:itemsError}=await supabaseClient.from('workout_items')
+      .select('id,exercise_name,sets,reps,load_text,rest_seconds,notes,sort_order')
+      .eq('workout_id',workoutId).order('sort_order',{ascending:true});
+    if(itemsError)throw itemsError;
+    const {data:sessions,error:sessionsError}=await supabaseClient.from('monitoring_sessions')
+      .select('id,session_date,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm,completed_workout_ids')
+      .eq('athlete_id',athleteId).order('session_date',{ascending:false}).limit(90);
+    if(sessionsError)throw sessionsError;
+    const session=(sessions||[]).find(row=>Array.isArray(row.completed_workout_ids)&&row.completed_workout_ids.some(id=>String(id)===String(workoutId)));
+    const safe=value=>escapeHtml(value==null||value===''?'—':String(value));
+    const dateValue=session?.session_date||workout.scheduled_for;
+    const dateLabel=dateValue?new Date(String(dateValue).slice(0,10)+'T12:00:00').toLocaleDateString('pt-BR'):'—';
+    const metric=(label,value,unit='')=>'<div class="stat-card"><div class="stat-num">'+safe(value)+'</div><div class="stat-label">'+label+(unit?' ('+unit+')':'')+'</div></div>';
+    app.innerHTML=`
+      <div class="back-link" onclick="renderCoachNotifications(false)">← Voltar às notificações</div>
+      <h2 class="section-title">Sessão finalizada</h2>
+      <section class="panel" style="padding:16px;margin:12px 0">
+        <div class="profile-section-title" style="margin-bottom:6px">${safe(athleteName)}</div>
+        <div style="font-size:18px;font-weight:800;margin:4px 0 8px">${safe(workout.title||'Treino')}</div>
+        <div style="font-size:13px;color:var(--gray)">Data da sessão: ${safe(dateLabel)}</div>
+      </section>
+      <section style="margin:16px 0">
+        <h3 style="font-size:16px;margin:0 0 10px;color:var(--red)">📊 Dados do monitoramento desta sessão</h3>
+        ${session?`<div class="stat-grid">
+          ${metric('TQR',session.psr,'6–20')}
+          ${metric('PSE',session.pse,'0–10')}
+          ${metric('Duração',session.duration_min,'min')}
+          ${metric('Carga da sessão',session.load_ua,'UA')}
+          ${metric('CMJ pré',session.jump_pre_cm,'cm')}
+          ${metric('CMJ pós',session.jump_post_cm,'cm')}
+        </div>`:'<div class="empty-state">Não foi encontrado um registro de monitoramento vinculado especificamente a este treino.</div>'}
+      </section>
+      <section style="margin:18px 0">
+        <h3 style="font-size:16px;margin:0 0 10px;color:var(--red)">🏋️ Treino realizado</h3>
+        <div class="panel" style="padding:14px">
+          ${items?.length?items.map((item,index)=>`<div style="padding:11px 0;border-bottom:${index===items.length-1?'0':'1px solid var(--border)'}">
+            <div style="font-weight:750">${index+1}. ${safe(item.exercise_name)}</div>
+            <div style="font-size:13px;color:var(--gray);margin-top:4px">Séries: ${safe(item.sets)} · Repetições: ${safe(item.reps)} · Carga: ${safe(item.load_text)} · Intervalo: ${safe(item.rest_seconds)} s</div>
+            ${item.notes?'<div style="font-size:12px;color:var(--gray);margin-top:4px">'+safe(item.notes)+'</div>':''}
+          </div>`).join(''):'<div class="empty-state">Este treino não possui exercícios cadastrados.</div>'}
+        </div>
+      </section>`;
+  }catch(error){
+    console.error('Detalhe da sessão finalizada:',error);
+    app.innerHTML='<div class="back-link" onclick="renderCoachNotifications(false)">← Voltar às notificações</div><div class="empty-state">Não foi possível carregar os dados desta sessão: '+escapeHtml(error.message||'erro')+'</div>';
+  }
 }
 
 function calcAge(birthDate){
