@@ -429,6 +429,10 @@ window.handleLogin = async function(event){
   .athlete-menu-grid>button b{font-size:17px!important;line-height:1.25;}
   .athlete-menu-grid>button small{display:block;font-size:13px;line-height:1.4;margin-top:4px;}
   .athlete-menu-grid>button>span:first-child{width:52px!important;height:52px!important;flex:0 0 52px!important;font-size:24px!important;}
+  .athlete-menu-grid>button>span:last-child{display:block;min-width:0;width:100%;max-width:100%;overflow:hidden;}
+  .athlete-menu-grid>button b,.athlete-menu-grid>button small{display:block;max-width:100%;white-space:normal;overflow-wrap:anywhere;word-break:normal;}
+  .athlete-menu-grid>button b{font-size:clamp(14px,3.8vw,17px)!important;line-height:1.2!important;}
+  .athlete-menu-grid>button small{font-size:clamp(11px,3.2vw,13px)!important;line-height:1.3!important;}
   .athlete-menu-grid>button{background:linear-gradient(145deg,#29292f,#19191d)!important;border:1px solid #44444b!important;color:#f8f8f8!important;}
   @media(max-width:600px){
     .athlete-menu-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
@@ -2548,14 +2552,14 @@ async function loadAthletePortal(){
     const tile=(icon,label,section,sub='')=>`<button type="button" onclick="showAthleteSection('${section}')" style="min-height:92px;border:1px solid rgba(255,255,255,.12);border-radius:10px;background:linear-gradient(145deg,#29292f,#19191d);color:#fff;padding:14px 10px;text-align:left;display:flex;align-items:center;gap:12px"><span style="width:42px;height:42px;flex:0 0 42px;border-radius:50%;background:#c92532;display:grid;place-items:center;font-size:20px">${icon}</span><span><b style="display:block;font-size:14px">${label}</b><small style="color:#c9cbd0">${sub}</small></span></button>`;
     const backButton='<button type="button" class="btn btn-outline btn-sm" onclick="showAthleteSection(\'home\')" style="margin:8px 0 16px">← Voltar ao menu</button>';
     app.innerHTML=`<div class="home-hero"><div class="home-hero-title">Olá, ${safe(athlete.full_name)}</div><div class="home-hero-sub">${safe(athlete.sport)} ${athlete.category?'· '+safe(athlete.category):''} · Sua área individual</div></div>
-      ${(window.__athletePendingInvoices||[]).length?`<button type="button" onclick="showAthleteSection('invoices')" aria-label="Abrir cobrança pendente" style="position:fixed;z-index:999;left:14px;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));width:calc(100% - 28px);max-width:520px;margin:0 auto;padding:14px 16px;border:1px solid #ff8b91;border-left:5px solid #c92532;border-radius:12px;background:#fff;color:#a5121d;box-shadow:0 8px 28px rgba(0,0,0,.28);font-weight:800;text-align:left;cursor:pointer">🔔 ${(window.__athletePendingInvoices||[]).length===1?'1 cobrança pendente':(window.__athletePendingInvoices||[]).length+' cobranças pendentes'} · Toque para visualizar</button>`:''}
+      ${(window.__athletePendingInvoices||[]).length?`<button type="button" onclick="showAthleteSection('invoices')" aria-label="Abrir pagamento pendente" style="position:fixed;z-index:999;left:14px;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));width:calc(100% - 28px);max-width:520px;margin:0 auto;padding:14px 16px;border:1px solid #ff8b91;border-left:5px solid #c92532;border-radius:12px;background:#fff;color:#a5121d;box-shadow:0 8px 28px rgba(0,0,0,.28);font-weight:800;text-align:left;cursor:pointer">🔔 ${(window.__athletePendingInvoices||[]).length===1?'1 pagamento pendente':(window.__athletePendingInvoices||[]).length+' pagamentos pendentes'} · Toque para visualizar</button>`:''}
       <section id="athlete-home" style="padding:8px 0 24px">
         <div class="panel" style="padding:16px;margin:12px 0"><div style="font-weight:700">Bem-vindo à sua área de atleta</div><div class="muted" style="margin-top:4px">Acesse seus treinos e acompanhe sua evolução.</div></div>
         ${frequencyDashboard}
         <div class="athlete-menu-grid">
           ${tile('🏋️','Treinos','trainings','Suas rotinas')}
           ${tile('⚡','Treinos extras','extras','Cardio e velocidade')}
-          ${tile('＄','Faturas','invoices',(window.__athletePendingInvoices||[]).length ? '<span style="color:#ff525d;font-weight:800">1 cobrança pendente</span>'.replace('1 cobrança pendente',window.__athletePendingInvoices.length===1?'1 cobrança pendente':window.__athletePendingInvoices.length+' cobranças pendentes') : 'Informações financeiras')}
+          ${tile('＄','Faturas','invoices',(window.__athletePendingInvoices||[]).length ? '<span style="color:#ff525d;font-weight:800">1 pagamento pendente</span>'.replace('1 pagamento pendente',window.__athletePendingInvoices.length===1?'1 pagamento pendente':window.__athletePendingInvoices.length+' pagamentos pendentes') : 'Informações financeiras')}
           ${tile('📈','Meu Progresso','progress','Gráficos de evolução')}
         </div>
         <footer class="athlete-menu-manifesto" aria-label="Princípios da alta performance">
@@ -2697,14 +2701,14 @@ async function loadAthleteInvoices(){
         </div>
         <div style="font-size:25px;font-weight:800;margin:12px 0;color:var(--red)">${Number(inv.amount).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</div>
         ${inv.due_date?'<div style="font-size:13px;margin-bottom:8px"><b>Vencimento:</b> '+new Date(inv.due_date+'T12:00:00').toLocaleDateString('pt-BR')+'</div>':''}
-        <div style="background:var(--panel-2,#29292f);padding:12px;border-radius:10px;margin-top:10px">
-          <div style="font-size:12px;color:var(--muted);margin-bottom:5px">PAGAMENTO VIA PIX</div>
-          ${inv.pix_key_type?'<div style="font-size:13px;margin-bottom:4px"><b>Tipo:</b> '+escapeHtml(inv.pix_key_type)+'</div>':''}
-          ${inv.pix_beneficiary?'<div style="font-size:13px;margin-bottom:4px"><b>Recebedor:</b> '+escapeHtml(inv.pix_beneficiary)+'</div>':''}
-          <div style="font-size:14px;overflow-wrap:anywhere"><b>Chave Pix:</b> ${escapeHtml(inv.pix_key)}</div>
-          <button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="copyInvoicePixKey('${inv.id}')">Copiar chave Pix</button>
+        <div style="background:#f1f2f4;color:#161616;padding:14px;border:1px solid #d5d7dc;border-radius:10px;margin-top:10px">
+          <div style="font-size:12px;color:#4b5563;font-weight:800;margin-bottom:8px">PAGAMENTO VIA PIX</div>
+          ${inv.pix_key_type?'<div style="font-size:14px;color:#161616;margin-bottom:6px"><b>Tipo:</b> '+escapeHtml(inv.pix_key_type)+'</div>':''}
+          ${inv.pix_beneficiary?'<div style="font-size:14px;color:#161616;margin-bottom:6px"><b>Recebedor:</b> '+escapeHtml(inv.pix_beneficiary)+'</div>':''}
+          <div style="font-size:15px;color:#161616;overflow-wrap:anywhere;word-break:break-word"><b>Chave Pix:</b> ${escapeHtml(inv.pix_key)}</div>
+          <button class="btn btn-outline btn-sm" style="margin-top:10px;background:#fff;color:#111;border:1px solid #777" onclick="copyInvoicePixKey('${inv.id}')">Copiar chave Pix</button>
         </div>
-        <p style="font-size:12px;color:var(--muted);margin:12px 0 0">Após realizar o pagamento, aguarde a confirmação do treinador. Esta cobrança permanecerá aqui até a confirmação.</p>
+        <p style="font-size:12px;color:#4b5563;margin:12px 0 0;line-height:1.5">Após realizar o pagamento, aguarde a confirmação do treinador. Este pagamento permanecerá pendente até a confirmação.</p>
       </article>`).join('')+'</div>';
   }catch(e){
     console.error('Falha ao carregar faturas do atleta:',e);
