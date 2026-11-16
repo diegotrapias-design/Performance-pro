@@ -2250,7 +2250,14 @@ async function persistExerciseLibrary(){
 
 
 const ATHLETE_WORKOUT_SESSION_PREFIX='performance_pro_workout_session_v1';
+const ATHLETE_ACTIVE_WORKOUT_PREFIX='performance_pro_active_workout_v1';
 let athleteWorkoutClockInterval=null;
+function athleteActiveWorkoutKey(athleteId){return ATHLETE_ACTIVE_WORKOUT_PREFIX+':'+(athleteId||window.__athleteMonitoringId||'');}
+function saveAthleteActiveWorkoutRoute(workoutId,date){
+  try{localStorage.setItem(athleteActiveWorkoutKey(),JSON.stringify({workoutId:String(workoutId||''),date:date||performanceProLocalDateISO()}));}catch(e){console.warn('Não foi possível preservar a tela do treino:',e);}
+}
+function clearAthleteActiveWorkoutRoute(){try{localStorage.removeItem(athleteActiveWorkoutKey());}catch(e){}}
+function readAthleteActiveWorkoutRoute(){try{return JSON.parse(localStorage.getItem(athleteActiveWorkoutKey())||'null');}catch(e){return null;}}
 function athleteWorkoutSessionKey(){
   const athleteId=window.__athleteMonitoringId||'';
   const workoutId=window.__activeAthleteWorkoutId||'';
@@ -2298,6 +2305,7 @@ function startAthleteWorkoutSession(){
   if(!window.__activeAthleteWorkoutId||!window.__athleteMonitoringId)return;
   const session={status:'running',elapsedMs:0,resumedAt:Date.now(),startedAt:Date.now()};
   writeAthleteWorkoutSession(session);
+  saveAthleteActiveWorkoutRoute(window.__activeAthleteWorkoutId,document.getElementById('athlete-monitor-date')?.value);
   startAthleteWorkoutClock();
 }
 function pauseAthleteWorkoutSession(){
@@ -2358,6 +2366,7 @@ async function completeAthleteWorkoutSession(){
     }
     session.elapsedMs=elapsed;session.resumedAt=null;session.status='finished';session.finishedAt=Date.now();
     writeAthleteWorkoutSession(session);
+    clearAthleteActiveWorkoutRoute();
     if(athleteWorkoutClockInterval){clearInterval(athleteWorkoutClockInterval);athleteWorkoutClockInterval=null;}
     renderAthleteWorkoutSession();
     const complete=document.getElementById('athlete-workout-complete');
@@ -2610,7 +2619,17 @@ async function loadAthletePortal(){
     window.__athleteWorkoutHtmlById=Object.fromEntries(allWorkouts.map(w=>[w.id,workoutDetails(w)]));
     window.__athleteMonitoringId=athlete.id;
     window.__athleteScale={tqr:null,pse:null};
-    showAthleteSection('home');
+    const savedWorkoutRoute=readAthleteActiveWorkoutRoute();
+    let shouldRestoreWorkout=false;
+    if(savedWorkoutRoute?.workoutId && allWorkouts.some(w=>String(w.id)===String(savedWorkoutRoute.workoutId))){
+      const monitorDate=document.getElementById('athlete-monitor-date');
+      if(monitorDate&&savedWorkoutRoute.date)monitorDate.value=savedWorkoutRoute.date;
+      window.__activeAthleteWorkoutId=String(savedWorkoutRoute.workoutId);
+      const savedSession=readAthleteWorkoutSession();
+      shouldRestoreWorkout=!!savedSession&&['running','paused'].includes(savedSession.status);
+    }
+    if(shouldRestoreWorkout)showAthleteWorkout(savedWorkoutRoute.workoutId);
+    else{clearAthleteActiveWorkoutRoute();showAthleteSection('home');}
     // Carga aguda, monotonia e strain são exibidos exclusivamente no painel do treinador.
 
   }catch(e){
@@ -2964,6 +2983,7 @@ async function backFromAthleteWorkout(athleteId){
     if(msg)msg.textContent='Não foi possível salvar o progresso. Permaneça nesta tela e tente novamente.';
     return;
   }
+  clearAthleteActiveWorkoutRoute();
   showAthleteSection('trainings');
 }
 function showAthleteWorkout(workoutId){
@@ -2994,6 +3014,8 @@ function showAthleteWorkout(workoutId){
   if(monitorMessage && workoutType==='musculacao') monitorMessage.textContent='Registre sua recuperação e o esforço desta sessão. A carga será calculada automaticamente: PSE × duração.';
   else if(monitorMessage) monitorMessage.textContent='TQR e salto pré-sessão podem ser salvos antes de terminar. Depois, registre PSE e salto pós-sessão.';
   showAthleteSection('workout-detail');
+  const activeSession=readAthleteWorkoutSession();
+  if(activeSession&&['running','paused'].includes(activeSession.status))saveAthleteActiveWorkoutRoute(workoutId,document.getElementById('athlete-monitor-date')?.value);
   loadAthleteProgressForWorkout(window.__athleteMonitoringId,workoutId);
   startAthleteWorkoutClock();
 }
