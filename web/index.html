@@ -1625,6 +1625,8 @@ let listMode = 'dados';     // 'dados' | 'treino' — define o contexto da lista
 let libraryTargetDayId = null;
 let libraryReplaceExId = null;
 let libraryFilterFavOnly = false;
+let libraryScreenGroupFilter = '';
+let libraryScreenCategoryFilter = '';
 let exerciseLibrary = [];
 // Tombstones persistem exclusões da biblioteca para impedir que itens padrão retornem.
 let deletedLibraryExerciseKeys = [];
@@ -4946,6 +4948,47 @@ const EXTRA_GYM_EXERCISES = [
   {name:"Extensão de tríceps inclinado com halteres",group:"Tríceps",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-incline-triceps-extension.mp4"},
   {name:"Panturrilha sentada com halter",group:"Panturrilha",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-seated-calf-raise.mp4"},
   {name:"Remada com halteres no banco inclinado",group:"Costas",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-hammer-grip-incline-bench-row.mp4"}
+  {name:"Supino reto com barra",group:"Peito",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/barbell-bench-press.mp4"},
+  {name:"Mergulho nas paralelas para peito",group:"Peito",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/chest-dips.mp4"},
+  {name:"Supino declinado com halteres",group:"Peito",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/decline-dumbbell-bench-press-45-degree.mp4"},
+  {name:"Flexão profunda de braços",group:"Peito",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/deep-push-ups.mp4"},
+  {name:"Crucifixo na polia no banco reto",group:"Peito",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-lying-fly-flat-bench-cable-fly.mp4"},
+  {name:"Crucifixo alto com elástico",group:"Peito",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/band-high-fly.mp4"},
+  {name:"Puxada alta na polia pegada aberta",group:"Costas",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-bar-lateral-pulldown-wide-shoulder-grip.mp4"},
+  {name:"Remada baixa na polia pegada V",group:"Costas",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-straight-back-seated-row-v-grip.mp4"},
+  {name:"Puxada alta supinada na polia",group:"Costas",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-bar-lateral-pulldown-reverse-grip.mp4"},
+  {name:"Barra fixa pegada aberta",group:"Costas",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/pull-up-wide-front-grip.mp4"},
+  {name:"Remada alta com argolas",group:"Costas",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/ring-high-row.mp4"},
+  {name:"Remada invertida com fitas",group:"Costas",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/inverted-row-with-straps.mp4"},
+  {name:"Desenvolvimento militar com barra",group:"Ombro",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/military-press.mp4"},
+  {name:"Elevação frontal unilateral na polia",group:"Ombro",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-one-arm-forward-raise.mp4"},
+  {name:"Remada para deltoide posterior com corda",group:"Ombro",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-rear-delt-row-with-rope.mp4"},
+  {name:"Elevação lateral com halteres",group:"Ombro",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-lateral-raise.mp4"},
+  {name:"Desenvolvimento sentado com halteres",group:"Ombro",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-bench-seated-press.mp4"},
+  {name:"Rosca direta com barra EZ",group:"Bíceps",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/ez-barbell-biceps-curl.mp4"},
+  {name:"Rosca martelo cruzada com halteres",group:"Bíceps",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-cross-body-hammer-curl.mp4"},
+  {name:"Rosca alternada sentada",group:"Bíceps",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-alternate-seated-biceps-curl.mp4"},
+  {name:"Rosca bíceps deitado",group:"Bíceps",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/lying-supine-dumbbell-curl.mp4"},
+  {name:"Tríceps na polia com corda",group:"Tríceps",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-pushdown-rope-attachment.mp4"},
+  {name:"Extensão unilateral de tríceps na polia",group:"Tríceps",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-standing-one-arm-triceps-extension.mp4"},
+  {name:"Tríceps coice com halter",group:"Tríceps",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-kickback.mp4"},
+  {name:"Extensão de joelho sentado com elástico",group:"Quadríceps",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/band-seated-leg-extension.mp4"},
+  {name:"Afundo com barra",group:"Quadríceps",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/barbell-lunge.mp4"},
+  {name:"Afundo com halteres",group:"Quadríceps",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-lunge.mp4"},
+  {name:"Agachamento sissy com carga",group:"Quadríceps",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/weighted-sissy-squat.mp4"},
+  {name:"Subida no banco com salto",group:"Quadríceps",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/jump-step-up.mp4"},
+  {name:"Flexão de joelhos deitado com elástico",group:"Posteriores",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/band-leg-curl.mp4"},
+  {name:"Flexão de joelho em pé com elástico",group:"Posteriores",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/band-standing-leg-curl.mp4"},
+  {name:"Pull-through com elástico",group:"Posteriores",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/band-pull-through.mp4"},
+  {name:"Levantamento terra com pernas estendidas",group:"Posteriores",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/barbell-straight-leg-deadlift.mp4"},
+  {name:"Stiff unilateral com halter",group:"Posteriores",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/single-dumbbell-stiff-leg-deadlift.mp4"},
+  {name:"Abdução de quadril com elástico",group:"Glúteos",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/band-hip-abduction.mp4"},
+  {name:"Ponte de glúteos com pés elevados",group:"Glúteos",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/rear-decline-bridge.mp4"},
+  {name:"Levantamento terra com kettlebell",group:"Glúteos",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/kettlebell-deadlift.mp4"},
+  {name:"Coice de glúteo com elástico",group:"Glúteos",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/band-one-leg-kickback-bent-position.mp4"},
+  {name:"Panturrilha donkey",group:"Panturrilha",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/donkey-calf-raise.mp4"},
+  {name:"Panturrilha em pé com halteres",group:"Panturrilha",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-standing-calf-raise.mp4"},
+  {name:"Panturrilha unilateral com halter",group:"Panturrilha",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-single-leg-calf-raise.mp4"},
 ];
 
 // Biblioteca exclusiva de Treinos Extras: cardio, velocidade e aceleração.
@@ -5162,24 +5205,29 @@ function renderLibraryScreen(filter){
   currentScreen = 'library';
   const app = document.getElementById('app');
   const q = (filter || '').toLowerCase();
-  let list = exerciseLibrary.filter(ex => !q || [ex.name,...(ex.aliases||[])].some(n=>(n||'').toLowerCase().includes(q)));
+  const groupFilter = libraryScreenGroupFilter;
+  const categoryFilter = libraryScreenCategoryFilter;
+  let list = exerciseLibrary.filter(ex =>
+    (!q || [ex.name,...(ex.aliases||[])].some(n=>(n||'').toLowerCase().includes(q))) &&
+    (!groupFilter || ex.group === groupFilter) &&
+    (!categoryFilter || exerciseCategory(ex) === categoryFilter)
+  );
   list.sort((x,y)=>(x.name||'').localeCompare(y.name||'','pt-BR',{sensitivity:'base'}));
   if(libraryFilterFavOnly) list = list.filter(ex => ex.favorite);
 
   const groups = {};
   list.forEach(ex => (groups[ex.group] = groups[ex.group] || []).push(ex));
   const groupNames = Object.keys(groups);
-
-  const resultsHtml = groupNames.length === 0 ? '<div class="empty-state"><div class="icon">📚</div><div>Nenhum exercício encontrado.</div></div>' :
+  const resultsHtml = groupNames.length === 0 ? '<div class="empty-state"><div class="icon">📚</div><div>Nenhum exercício encontrado com esses filtros.</div></div>' :
     groupNames.sort().map(g => `
-      <div class="profile-section-title">${escapeHtml(g)} <span style="font-weight:600;color:var(--gray);font-size:.85em">(${exerciseLibrary.filter(ex => ex.group === g).length} ${exerciseLibrary.filter(ex => ex.group === g).length === 1 ? 'exercício' : 'exercícios'})</span></div>
+      <div class="profile-section-title">${escapeHtml(g)} <span style="font-weight:600;color:var(--gray);font-size:.85em">(${groups[g].length} ${groups[g].length === 1 ? 'exercício' : 'exercícios'})</span></div>
       <div class="lib-manage-list">
         ${groups[g].map(ex => `
           <div class="lib-manage-row">
             <button class="lib-fav-btn ${ex.favorite?'active':''}" onclick="toggleLibraryFavorite('${ex.id}')" title="Favoritar">⭐</button>
             <div class="lib-manage-info">
               <div class="lib-manage-name">${escapeHtml(ex.name)}</div>
-              <div class="lib-manage-meta">${ex.video ? 'Vídeo anexado' : (ex.description ? 'Descrição disponível' : 'Sem vídeo')}</div>
+              <div class="lib-manage-meta">${ex.video ? 'Vídeo anexado' : (ex.description ? 'Descrição disponível' : 'Sem vídeo')} · ${escapeHtml(exerciseCategory(ex))}</div>
             </div>
             <label class="video-upload-btn" title="Enviar vídeo da galeria">
               🎥
@@ -5193,6 +5241,11 @@ function renderLibraryScreen(filter){
       </div>
     `).join('');
 
+  const groupOptions = [...new Set(exerciseLibrary.map(ex=>ex.group).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const categoryOptions = ['Musculação','Funcional','Aeróbico','Mobilidade','Alongamento','Esportivo'];
+  const groupSelectHtml = '<option value="">Todos os grupos musculares</option>' + groupOptions.map(g=>'<option value="'+escapeHtml(g)+'" '+(g===groupFilter?'selected':'')+'>'+escapeHtml(g)+'</option>').join('');
+  const categorySelectHtml = '<option value="">Todas as categorias</option>' + categoryOptions.map(c=>'<option value="'+escapeHtml(c)+'" '+(c===categoryFilter?'selected':'')+'>'+escapeHtml(c)+'</option>').join('');
+
   // Atualiza somente os resultados. Recriar app.innerHTML a cada tecla removia
   // o campo de busca do DOM e fazia o teclado do iPhone perder o foco.
   let results = document.getElementById('lib-screen-results');
@@ -5205,15 +5258,26 @@ function renderLibraryScreen(filter){
         <button id="lib-screen-favorites" class="btn ${libraryFilterFavOnly?'btn-primary':'btn-outline'} btn-sm" onclick="toggleLibraryFavFilter()">⭐ Favoritos</button>
         <button class="btn btn-primary" onclick="openCreateExerciseForm()">+ Novo exercício</button>
       </div>
+      <div class="library-filter-row" style="margin:-4px 0 14px">
+        <select id="lib-screen-category-filter" aria-label="Filtrar por categoria" onchange="libraryScreenCategoryFilter=this.value;renderLibraryScreen(document.getElementById('lib-screen-search').value)">
+          ${categorySelectHtml}
+        </select>
+        <select id="lib-screen-group-filter" aria-label="Filtrar por grupo muscular" onchange="libraryScreenGroupFilter=this.value;renderLibraryScreen(document.getElementById('lib-screen-search').value)">
+          ${groupSelectHtml}
+        </select>
+      </div>
       <div id="lib-screen-results">${resultsHtml}</div>
     `;
   }else{
     results.innerHTML = resultsHtml;
     const favoritesButton = document.getElementById('lib-screen-favorites');
     if(favoritesButton) favoritesButton.className = 'btn ' + (libraryFilterFavOnly?'btn-primary':'btn-outline') + ' btn-sm';
+    const groupSelect=document.getElementById('lib-screen-group-filter');
+    const categorySelect=document.getElementById('lib-screen-category-filter');
+    if(groupSelect && groupSelect.value!==groupFilter) groupSelect.value=groupFilter;
+    if(categorySelect && categorySelect.value!==categoryFilter) categorySelect.value=categoryFilter;
   }
 }
-
 let editingExerciseId = null;
 
 function populateGroupSelect(selected){
