@@ -2131,7 +2131,9 @@ async function loadAthletes(){
     if(deletedKeys.has(libraryExerciseKey(item.name)))return;
     const existing=exerciseLibrary.find(ex=>(ex.name||'').trim().toLocaleLowerCase('pt-BR')===key);
     if(existing){
-      if(!existing.video){existing.video=item.video;needsSave=true;}
+      // Remove somente as animações esquemáticas desta leva; preserva vídeos próprios já cadastrados.
+      if(String(existing.video||'').startsWith('pp2d://')){existing.video='';needsSave=true;}
+      else if(!existing.video && item.video){existing.video=item.video;needsSave=true;}
       return;
     }
     // Não cadastra uma variação diferente reutilizando a mídia de outro exercício.
@@ -4388,43 +4390,11 @@ function handleExerciseVideoError(video){
   const loading=video.parentElement?.querySelector('.pp-video-loading');
   if(loading)loading.style.display='none';
 }
-function buildExerciseDemoSvg(slug,title,kind){
- const label=escapeHtml(title||'Demonstração do exercício'),machine=kind==='machine';
- const data={
- press:['Empurrar e retornar','265 164','-14;10;-14','M265 164 L330 168 L385 168'],
- pecdeck:['Fechar os braços à frente','265 164','-20;20;-20','M265 164 L315 205 L350 230'],
- row:['Puxar os cotovelos para trás','265 164','24;-12;24','M265 164 L305 205 L340 190'],
- pulldown:['Puxar a barra em direção ao peito','265 164','25;-10;25','M265 164 L300 210 L340 220'],
- pullover:['Trazer os braços em direção ao quadril','265 164','-5;42;-5','M265 164 L315 125 L370 105'],
- shoulder:['Empurrar para cima e controlar a volta','265 164','-5;25;-5','M265 164 L300 105 L300 60'],
- lateral:['Elevar os braços até a linha dos ombros','265 164','-5;-38;-5','M265 164 L330 150 L375 150'],
- rear:['Abrir os braços para trás','265 164','-18;18;-18','M265 164 L330 190 L380 195'],
- curl:['Flexionar os cotovelos','305 205','28;-42;28','M265 164 L305 205 L355 155'],
- triceps:['Estender os cotovelos','305 205','-28;22;-28','M265 164 L305 205 L335 265'],
- squat:['Flexionar e estender joelhos e quadris','245 245','0;22;0','M245 245 L220 305 L185 350 M245 245 L280 305 L315 350'],
- legpress:['Empurrar a plataforma e retornar com controle','245 245','22;-18;22','M245 245 L275 295 L315 330'],
- extension:['Estender o joelho','280 300','35;-25;35','M245 245 L280 300 L315 340'],
- curlleg:['Flexionar o joelho trazendo o calcanhar','280 300','8;-52;8','M245 245 L280 300 L315 340'],
- hipthrust:['Elevar e baixar o quadril','245 300','0;-28;0','M245 245 L245 300 L210 350 M245 300 L285 350'],
- abduct:['Afastar as pernas contra a resistência','245 245','-18;12;-18','M245 245 L205 305 L170 350'],
- adduct:['Aproximar as pernas contra a resistência','245 245','12;-18;12','M245 245 L205 305 L170 350'],
- calf:['Elevar e baixar os calcanhares','245 245','0;-12;0','M245 245 L260 305 L260 350'],
- lunge:['Descer em afundo e retornar','245 245','0;18;0','M245 245 L220 305 L180 350 M220 305 L300 340'],
- hinge:['Levar o quadril para trás mantendo a coluna neutra','245 245','0;25;0','M245 245 L220 305 L185 350 M245 245 L280 305 L315 350'],
- pushup:['Flexionar e estender os cotovelos','245 245','-8;8;-8','M245 245 L300 280 L355 300 M300 280 L290 340']
- };
- const d=data[slug]||data.press,vals=d[2].split(';'),path=d[3];
- const isLeg=['squat','legpress','extension','curlleg','hipthrust','abduct','adduct','calf','lunge','hinge','pushup'].includes(slug);
- const pivot=isLeg?d[1]:'265 164';
- const arm=isLeg?'': '<path d="M245 164 L210 205" stroke="#20242b" stroke-width="16" stroke-linecap="round"/>';
- const apparatus=machine?'<g fill="none" stroke="#8d939b" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"><path d="M455 65 V345 M455 345 H575 M455 95 H535 V130 M470 145 H540 M465 300 H540"/><rect x="478" y="155" width="48" height="105" rx="7" fill="#d9dde2"/><path d="M502 165 V250 M488 180 H516 M488 205 H516 M488 230 H516" /><path d="M425 270 H500" stroke="#c92532" stroke-width="7"/></g><rect x="195" y="235" width="110" height="18" rx="8" fill="#c9cbd0"/><path d="M215 250 V320" stroke="#8d939b" stroke-width="12"/>':'<g fill="none" stroke="#a0a6ae" stroke-width="8" stroke-linecap="round"><path d="M75 350 H565 M105 350 V325 M535 350 V325"/></g>';
- const body='<circle cx="245" cy="112" r="27" fill="#d7a77e" stroke="#20242b" stroke-width="5"/><path d="M245 145 L245 245 M245 245 L210 305 L180 350 M245 245 L280 305 L315 350" stroke="#20242b" stroke-width="17" stroke-linecap="round" fill="none"/>'+arm;
- return '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420" viewBox="0 0 640 420"><defs><linearGradient id="bg" x2="0" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#eef0f3"/></linearGradient></defs><rect width="640" height="420" rx="22" fill="url(#bg)"/><text x="28" y="38" font-family="Arial,sans-serif" font-size="18" font-weight="700" fill="#252932">'+label+'</text><text x="28" y="62" font-family="Arial,sans-serif" font-size="11" letter-spacing="1.5" fill="#858b94">'+(machine?'DEMONSTRAÇÃO ANIMADA 2D · MÁQUINA':'DEMONSTRAÇÃO ANIMADA 2D · EM CASA')+'</text>'+apparatus+body+'<g transform-origin="'+pivot+'"><path d="'+path+'" stroke="#c92532" stroke-width="17" stroke-linecap="round" stroke-linejoin="round" fill="none"/><animateTransform attributeName="transform" type="rotate" values="'+vals[0]+' '+pivot+';'+vals[1]+' '+pivot+';'+vals[2]+' '+pivot+'" dur="2.2s" repeatCount="indefinite"/></g><path d="M70 385 H570" stroke="#d6d9de" stroke-width="2"/><text x="320" y="405" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" fill="#858b94">'+d[0]+' · loop · sem áudio</text></svg>';
-}
+
 async function openExerciseVideo(url,title,loop){
   // Links assinados do Storage expiram. Renova o link original no momento da reprodução
   // quando a sessão atual tem permissão (treinador), sem alterar nem substituir o arquivo.
-  if(url && !String(url).startsWith('pp2d://') && currentUser && supabaseClient?.storage){
+  if(url && currentUser && supabaseClient?.storage){
     const storagePath=getAthleteMediaStoragePath(url);
     if(storagePath){
       try{
@@ -4461,9 +4431,8 @@ async function openExerciseVideo(url,title,loop){
   }else{
     let parsed;
     try{parsed=new URL(url,location.href);}catch(e){showToast('Link de mídia inválido.','err');return;}
-    if(!['http:','https:','pp2d:'].includes(parsed.protocol)){showToast('Link de mídia inválido.','err');return;}
-    if(parsed.protocol==='pp2d:'){const kind=parsed.hostname==='machine'?'machine':'home';const slug=parsed.pathname.replace(/^\//,'');const svg=buildExerciseDemoSvg(slug,safeTitle,kind);player.innerHTML='<div class="pp-exercise-gif-wrap"><img class="pp-exercise-gif" src="data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg)+'" alt="Demonstração animada 2D: '+escapeHtml(safeTitle)+'" style="display:block;max-width:100%;max-height:75vh;margin:auto;object-fit:contain"></div>';}
-    else {
+    if(!['http:','https:'].includes(parsed.protocol)){showToast('Link de mídia inválido.','err');return;}
+    {
     const host=parsed.hostname.replace(/^www\./,'').toLowerCase();
     const shouldLoop=!!loop || host.endsWith('r2.dev');
     let videoId='';
@@ -4913,41 +4882,41 @@ const EXTRA_GYM_EXERCISES = [
   {name:'Prancha com toque no ombro',group:'Abdômen / Core',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/plank-shoulder-taps.mp4'},
   {name:'Abdominal canivete',group:'Abdômen / Core',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/v-up.mp4'},
   {name:'Abdominal infra no banco',group:'Abdômen / Core',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/bench-leg-raise.mp4'},
-  {name:"Chest press convergente na máquina",group:"Peito",video:'pp2d://machine/press',videoLoop:true},
-  {name:"Supino articulado inclinado",group:"Peito",video:'pp2d://machine/press',videoLoop:true},
-  {name:"Peck deck (crucifixo máquina)",group:"Peito",video:'pp2d://machine/pecdeck',videoLoop:true},
-  {name:"Remada articulada com apoio no peito",group:"Costas",video:'pp2d://machine/row',videoLoop:true},
-  {name:"Remada baixa articulada",group:"Costas",video:'pp2d://machine/row',videoLoop:true},
-  {name:"Puxada alta articulada pegada neutra",group:"Costas",video:'pp2d://machine/pulldown',videoLoop:true},
-  {name:"Pullover na máquina",group:"Costas",video:'pp2d://machine/pullover',videoLoop:true},
-  {name:"Desenvolvimento de ombros na máquina",group:"Ombro",video:'pp2d://machine/shoulder',videoLoop:true},
-  {name:"Elevação lateral na máquina",group:"Ombro",video:'pp2d://machine/lateral',videoLoop:true},
-  {name:"Crucifixo inverso na máquina",group:"Ombro",video:'pp2d://machine/rear',videoLoop:true},
-  {name:"Rosca bíceps na máquina",group:"Bíceps",video:'pp2d://machine/curl',videoLoop:true},
-  {name:"Tríceps na máquina sentado",group:"Tríceps",video:'pp2d://machine/triceps',videoLoop:true},
-  {name:"Agachamento hack articulado",group:"Pernas — Quadríceps",video:'pp2d://machine/squat',videoLoop:true},
-  {name:"Leg press horizontal",group:"Pernas — Quadríceps",video:'pp2d://machine/legpress',videoLoop:true},
-  {name:"Cadeira extensora unilateral",group:"Pernas — Quadríceps",video:'pp2d://machine/extension',videoLoop:true},
-  {name:"Mesa flexora unilateral",group:"Pernas — Posterior/Glúteo",video:'pp2d://machine/curlleg',videoLoop:true},
-  {name:"Cadeira flexora sentada unilateral",group:"Pernas — Posterior/Glúteo",video:'pp2d://machine/curlleg',videoLoop:true},
-  {name:"Glute drive na máquina",group:"Pernas — Posterior/Glúteo",video:'pp2d://machine/hipthrust',videoLoop:true},
-  {name:"Máquina abdutora (tronco inclinado)",group:"Pernas — Posterior/Glúteo",video:'pp2d://machine/abduct',videoLoop:true},
-  {name:"Máquina adutora",group:"Pernas — Posterior/Glúteo",video:'pp2d://machine/adduct',videoLoop:true},
-  {name:"Panturrilha unilateral no leg press",group:"Panturrilha",video:'pp2d://machine/calf',videoLoop:true},
-  {name:"Agachamento com halteres em casa",group:"Pernas — Quadríceps",video:'pp2d://home/squat',videoLoop:true},
-  {name:"Afundo reverso com halteres em casa",group:"Pernas — Quadríceps",video:'pp2d://home/lunge',videoLoop:true},
-  {name:"Agachamento búlgaro em casa",group:"Pernas — Quadríceps",video:'pp2d://home/lunge',videoLoop:true},
-  {name:"Levantamento terra romeno com halteres",group:"Pernas — Posterior/Glúteo",video:'pp2d://home/hinge',videoLoop:true},
-  {name:"Elevação pélvica no solo",group:"Pernas — Posterior/Glúteo",video:'pp2d://home/hipthrust',videoLoop:true},
-  {name:"Ponte unilateral de glúteos",group:"Pernas — Posterior/Glúteo",video:'pp2d://home/hipthrust',videoLoop:true},
-  {name:"Flexão de braço inclinada em casa",group:"Peito",video:'pp2d://home/pushup',videoLoop:true},
-  {name:"Remada unilateral com halter em casa",group:"Costas",video:'pp2d://home/row',videoLoop:true},
-  {name:"Remada com elástico",group:"Costas",video:'pp2d://home/row',videoLoop:true},
-  {name:"Desenvolvimento com halteres em casa",group:"Ombro",video:'pp2d://home/shoulder',videoLoop:true},
-  {name:"Elevação lateral com halteres em casa",group:"Ombro",video:'pp2d://home/lateral',videoLoop:true},
-  {name:"Rosca direta com halteres em casa",group:"Bíceps",video:'pp2d://home/curl',videoLoop:true},
-  {name:"Tríceps francês com halter em casa",group:"Tríceps",video:'pp2d://home/triceps',videoLoop:true},
-  {name:"Panturrilha em pé em casa",group:"Panturrilha",video:'pp2d://home/calf',videoLoop:true}
+  {name:"Chest press convergente na máquina",group:"Peito",video:''},
+  {name:"Supino articulado inclinado",group:"Peito",video:''},
+  {name:"Peck deck (crucifixo máquina)",group:"Peito",video:''},
+  {name:"Remada articulada com apoio no peito",group:"Costas",video:''},
+  {name:"Remada baixa articulada",group:"Costas",video:''},
+  {name:"Puxada alta articulada pegada neutra",group:"Costas",video:''},
+  {name:"Pullover na máquina",group:"Costas",video:''},
+  {name:"Desenvolvimento de ombros na máquina",group:"Ombro",video:''},
+  {name:"Elevação lateral na máquina",group:"Ombro",video:''},
+  {name:"Crucifixo inverso na máquina",group:"Ombro",video:''},
+  {name:"Rosca bíceps na máquina",group:"Bíceps",video:''},
+  {name:"Tríceps na máquina sentado",group:"Tríceps",video:''},
+  {name:"Agachamento hack articulado",group:"Pernas — Quadríceps",video:''},
+  {name:"Leg press horizontal",group:"Pernas — Quadríceps",video:''},
+  {name:"Cadeira extensora unilateral",group:"Pernas — Quadríceps",video:''},
+  {name:"Mesa flexora unilateral",group:"Pernas — Posterior/Glúteo",video:''},
+  {name:"Cadeira flexora sentada unilateral",group:"Pernas — Posterior/Glúteo",video:''},
+  {name:"Glute drive na máquina",group:"Pernas — Posterior/Glúteo",video:''},
+  {name:"Máquina abdutora (tronco inclinado)",group:"Pernas — Posterior/Glúteo",video:''},
+  {name:"Máquina adutora",group:"Pernas — Posterior/Glúteo",video:''},
+  {name:"Panturrilha unilateral no leg press",group:"Panturrilha",video:''},
+  {name:"Agachamento com halteres em casa",group:"Pernas — Quadríceps",video:''},
+  {name:"Afundo reverso com halteres em casa",group:"Pernas — Quadríceps",video:''},
+  {name:"Agachamento búlgaro em casa",group:"Pernas — Quadríceps",video:''},
+  {name:"Levantamento terra romeno com halteres",group:"Pernas — Posterior/Glúteo",video:''},
+  {name:"Elevação pélvica no solo",group:"Pernas — Posterior/Glúteo",video:''},
+  {name:"Ponte unilateral de glúteos",group:"Pernas — Posterior/Glúteo",video:''},
+  {name:"Flexão de braço inclinada em casa",group:"Peito",video:''},
+  {name:"Remada unilateral com halter em casa",group:"Costas",video:''},
+  {name:"Remada com elástico",group:"Costas",video:''},
+  {name:"Desenvolvimento com halteres em casa",group:"Ombro",video:''},
+  {name:"Elevação lateral com halteres em casa",group:"Ombro",video:''},
+  {name:"Rosca direta com halteres em casa",group:"Bíceps",video:''},
+  {name:"Tríceps francês com halter em casa",group:"Tríceps",video:''},
+  {name:"Panturrilha em pé em casa",group:"Panturrilha",video:''}
 ];
 
 // Biblioteca exclusiva de Treinos Extras: cardio, velocidade e aceleração.
