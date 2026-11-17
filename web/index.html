@@ -3,70 +3,34 @@
 <head>
 <script>
 (function(){
-  var BUILD_VERSION='source-placeholder';
-  var reloading=false, checking=false, registration=null;
-  function athleteHasActiveWorkout(){
-    try{
-      var routePrefix='performance_pro_active_workout_v1:';
-      var sessionPrefix='performance_pro_workout_session_v1:';
-      for(var i=0;i<localStorage.length;i++){
-        var key=localStorage.key(i);
-        if(!key || key.indexOf(routePrefix)!==0) continue;
-        var route=JSON.parse(localStorage.getItem(key)||'null');
-        if(!route || !route.workoutId) continue;
-        var athleteId=key.slice(routePrefix.length);
-        var sessionKey=sessionPrefix+athleteId+':'+route.workoutId+':'+(route.date||'');
-        var session=JSON.parse(localStorage.getItem(sessionKey)||'null');
-        if(session && (session.status==='running'||session.status==='paused')) return true;
-      }
-    }catch(error){console.warn('Não foi possível verificar o treino ativo antes da atualização:',error);}
-    return false;
-  }
-  function reloadForUpdate(){
-    var coachScreen=typeof currentScreen!=='undefined'?currentScreen:'home';
-    var athleteSection=window.__ppAthleteSection||'home';
-    var isInActiveArea=coachScreen!=='home'||athleteSection!=='home';
-    if(reloading || athleteHasActiveWorkout() || isInActiveArea) return;
-    reloading=true;
-    window.location.reload();
-  }
-  async function checkPublishedVersion(){
-    if(checking || reloading || document.visibilityState==='hidden') return;
+  var registration=null, checking=false;
+  async function checkForServiceWorkerUpdate(){
+    if(checking || document.visibilityState==='hidden' || !registration) return;
     checking=true;
     try{
-      var response=await fetch('/version.json?check='+Date.now(),{cache:'no-store',credentials:'same-origin'});
-      if(!response.ok) throw new Error('HTTP '+response.status);
-      var release=await response.json();
-      if(release && release.version && release.version!==BUILD_VERSION){
-        reloadForUpdate();
-        return;
-      }
-      if(registration) await registration.update();
+      await registration.update();
     }catch(error){
-      console.warn('Não foi possível verificar a versão do Performance Pro:',error);
+      console.warn('Não foi possível verificar atualizações do Performance Pro:',error);
     }finally{
       checking=false;
     }
   }
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.addEventListener('controllerchange',reloadForUpdate);
     window.addEventListener('load',function(){
       navigator.serviceWorker.register('/sw.js',{scope:'/',updateViaCache:'none'})
         .then(function(reg){
           registration=reg;
-          reg.update().catch(function(){});
-          if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
-          checkPublishedVersion();
+          checkForServiceWorkerUpdate();
         })
         .catch(function(err){console.warn('Atualização automática indisponível:',err);});
     });
   }
-  window.addEventListener('pageshow',checkPublishedVersion);
-  window.addEventListener('focus',checkPublishedVersion);
+  window.addEventListener('pageshow',checkForServiceWorkerUpdate);
+  window.addEventListener('focus',checkForServiceWorkerUpdate);
   document.addEventListener('visibilitychange',function(){
-    if(document.visibilityState==='visible') checkPublishedVersion();
+    if(document.visibilityState==='visible') checkForServiceWorkerUpdate();
   });
-  window.setInterval(checkPublishedVersion,60000);
+  window.setInterval(checkForServiceWorkerUpdate,300000);
 })();
 </script>
 <link rel="manifest" href="/manifest.webmanifest">
