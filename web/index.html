@@ -1629,10 +1629,10 @@ function restoreCoachRoute(route){
   if(!route||route.role!=='coach')return;
   const id=route.athleteId&&athletes.some(a=>String(a.id)===String(route.athleteId))?route.athleteId:null;
   listMode=route.listMode==='treino'?'treino':'dados';
-  if(route.screen==='detail'&&(id||route.isNew)){
-    if(route.isNew&&route.draft){isNew=true;currentId=null;athleteMode=route.athleteMode||'edit-dados';draft=route.draft;renderDetail();}
-    else if(id){openAthlete(id);athleteMode=['profile','edit-dados','edit-treino'].includes(route.athleteMode)?route.athleteMode:'profile';renderDetail();}
-  }else if(route.screen==='dashboard')renderDashboard();
+  // Na inicialização do treinador, não reabrir automaticamente o perfil
+  // do último atleta visitado. O menu principal é o ponto de entrada seguro.
+  if(route.screen==='detail')renderHome();
+  else if(route.screen==='dashboard')renderDashboard();
   else if(route.screen==='list')renderList('');
   else if(route.screen==='notifications')renderCoachNotifications(false);
   else if(route.screen==='library'){libraryScreenGroupFilter=route.libraryGroup||'';libraryScreenCategoryFilter=route.libraryCategory||'';libraryFilterFavOnly=!!route.libraryFavOnly;renderLibraryScreen(route.libraryFilter||'');}
