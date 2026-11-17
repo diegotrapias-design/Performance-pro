@@ -1944,7 +1944,7 @@ async function renderCoachNotifications(showRead=false){
   app.innerHTML='<div class="loading">Carregando notificações…</div>';
   try{
     const {data,error}=await supabaseClient.from('coach_notifications')
-      .select('id,athlete_id,notification_type,title,body,target_url,read_at,created_at')
+      .select('id,athlete_id,notification_type,event_key,title,body,target_url,read_at,created_at')
       .order('created_at',{ascending:false}).limit(300);
     if(error) throw error;
     const rows=data||[], athleteList=Array.isArray(athletes)?athletes:[];
