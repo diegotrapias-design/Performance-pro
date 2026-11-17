@@ -3,7 +3,7 @@
 <head>
 <script>
 (function(){
-  var BUILD_VERSION='__APP_BUILD_VERSION__';
+  var BUILD_VERSION='source-placeholder';
   var reloading=false, checking=false, registration=null;
   function athleteHasActiveWorkout(){
     try{
@@ -23,7 +23,10 @@
     return false;
   }
   function reloadForUpdate(){
-    if(reloading || athleteHasActiveWorkout()) return;
+    var coachScreen=typeof currentScreen!=='undefined'?currentScreen:'home';
+    var athleteSection=window.__ppAthleteSection||'home';
+    var isInActiveArea=coachScreen!=='home'||athleteSection!=='home';
+    if(reloading || athleteHasActiveWorkout() || isInActiveArea) return;
     reloading=true;
     window.location.reload();
   }
@@ -3023,6 +3026,7 @@ async function deletePhysicalAssessment(id){
 }
 
 function showAthleteSection(section){
+  window.__ppAthleteSection=section;
   const ids=['home','trainings','extras','assessments','progress','invoices','workout-detail'];
   ids.forEach(id=>{const el=document.getElementById('athlete-'+id);if(el)el.hidden=(id!==section);});
   const monitor=document.getElementById('athlete-monitor-form');
