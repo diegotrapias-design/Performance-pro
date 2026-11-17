@@ -1947,7 +1947,19 @@ async function renderCoachNotifications(showRead=false){
       .select('id,athlete_id,notification_type,title,body,target_url,read_at,created_at')
       .order('created_at',{ascending:false}).limit(300);
     if(error) throw error;
-    const rows=data||[], athleteList=Array.isArray(athletes)?athletes:[], pending=rows.filter(n=>!n.read_at), read=rows.filter(n=>!!n.read_at);
+    const rows=data||[], athleteList=Array.isArray(athletes)?athletes:[];
+    const activeRows=rows.filter(n=>{
+      if(n.notification_type!=='birthday') return true;
+      const athlete=athleteList.find(a=>String(a.id)===String(n.athlete_id));
+      const year=Number(String(n.event_key||'').split(':')[2]);
+      if(!athlete?.birthDate || !year) return true;
+      const parts=athlete.birthDate.split('-');
+      if(parts.length!==3) return true;
+      const birthdayDate=new Date(year,Number(parts[1])-1,Number(parts[2]));
+      const today=new Date(); today.setHours(0,0,0,0);
+      return today<=birthdayDate;
+    });
+    const pending=activeRows.filter(n=>!n.read_at), read=activeRows.filter(n=>!!n.read_at);
     coachUnreadNotificationCount=pending.length;
     const visible=showRead?read:pending;
     const q=(document.getElementById('pp-updates-search')?.value||'').trim().toLocaleLowerCase('pt-BR');
