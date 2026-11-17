@@ -1947,18 +1947,18 @@ async function renderCoachNotifications(showRead=false){
       .select('id,athlete_id,notification_type,title,body,target_url,read_at,created_at')
       .order('created_at',{ascending:false}).limit(300);
     if(error) throw error;
-    const rows=data||[], pending=rows.filter(n=>!n.read_at), read=rows.filter(n=>!!n.read_at);
+    const rows=data||[], athleteList=Array.isArray(athletes)?athletes:[], pending=rows.filter(n=>!n.read_at), read=rows.filter(n=>!!n.read_at);
     coachUnreadNotificationCount=pending.length;
     const visible=showRead?read:pending;
     const q=(document.getElementById('pp-updates-search')?.value||'').trim().toLocaleLowerCase('pt-BR');
     const matches=n=>{
-      const athlete=athletes.find(a=>String(a.id)===String(n.athlete_id));
+      const athlete=athleteList.find(a=>String(a.id)===String(n.athlete_id));
       return !q || [n.title,n.body,athlete?.name].some(v=>String(v||'').toLocaleLowerCase('pt-BR').includes(q));
     };
     const birthdays=visible.filter(n=>n.notification_type==='birthday'&&matches(n));
     const trainings=visible.filter(n=>n.notification_type!=='birthday'&&matches(n));
     const ageFor=n=>{
-      const a=athletes.find(x=>String(x.id)===String(n.athlete_id));
+      const a=athleteList.find(x=>String(x.id)===String(n.athlete_id));
       if(!a?.birthDate)return null;
       const birth=new Date(a.birthDate+'T00:00:00');
       if(isNaN(birth))return null;
@@ -1969,7 +1969,7 @@ async function renderCoachNotifications(showRead=false){
       return age>=0?age:null;
     };
     const birthdayDateFor=n=>{
-      const a=athletes.find(x=>String(x.id)===String(n.athlete_id));
+      const a=athleteList.find(x=>String(x.id)===String(n.athlete_id));
       if(!a?.birthDate)return '';
       const p=a.birthDate.split('-');
       return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:'';
@@ -1977,7 +1977,7 @@ async function renderCoachNotifications(showRead=false){
     const dateLabel=value=>new Date(value).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
     const renderCard=n=>{
       const birthday=n.notification_type==='birthday';
-      const athlete=athletes.find(a=>String(a.id)===String(n.athlete_id));
+      const athlete=athleteList.find(a=>String(a.id)===String(n.athlete_id));
       const age=ageFor(n), birthDate=birthdayDateFor(n);
       const title=birthday?(athlete?.name||n.title):n.title;
       return `
@@ -1992,7 +1992,7 @@ async function renderCoachNotifications(showRead=false){
           <div style="font-size:11px;color:var(--gray)">Aviso em ${dateLabel(n.created_at)}</div>
           <div class="actions-row" style="margin-top:0;justify-content:stretch">
             ${n.athlete_id?'<button class="btn btn-primary" onclick="openAthleteFromNotification(\''+n.athlete_id+'\',\''+n.id+'\')">Ir para o aluno</button>':''}
-            ${!n.read_at?'<button class="btn btn-outline" onclick="markCoachNotificationRead(\''+n.id+'\')">Marcar como lida</button>':'<span style="font-size:12px;color:var(--gray);align-self:center">Lida</span>'}
+            ${!n.read_at?'<button class="btn btn-outline" onclick="markCoachNotificationRead(\''+n.id+'\')">Marcar mensagem como lida</button>':'<span style="font-size:12px;color:var(--gray);align-self:center">Lida</span>'}
           </div>
         </article>`;
     };
@@ -2003,7 +2003,6 @@ async function renderCoachNotifications(showRead=false){
         <button class="btn ${showRead?'btn-outline':'btn-primary'}" onclick="renderCoachNotifications(false)">Pendentes (${pending.length})</button>
         <button class="btn ${showRead?'btn-primary':'btn-outline'}" onclick="renderCoachNotifications(true)">Resolvidas (${read.length})</button>
       </div>
-      ${!showRead&&pending.length?'<button class="btn btn-primary" style="width:100%;justify-content:center;margin:0 0 12px" onclick="markAllCoachNotificationsRead()">Marcar todas como lidas</button>':''}
       <div class="toolbar" style="gap:8px">
         <input id="pp-updates-search" type="search" placeholder="Pesquisar aluno" value="${escapeHtml(q)}" oninput="filterCoachUpdates(this.value)" style="flex:1;min-width:0;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:#fff;font:inherit">
       </div>
