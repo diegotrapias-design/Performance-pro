@@ -1906,6 +1906,37 @@ async function refreshCoachNotificationCount(){
   if(error){console.warn('Falha ao consultar notificações pendentes:',error);return;}
   coachUnreadNotificationCount=Number(count||0);
 }
+async function markCoachNotificationRead(notificationId){
+  if(currentProfile?.role!=='coach' || !notificationId) return;
+  try{
+    const {data,error}=await supabaseClient.from('coach_notifications')
+      .update({read_at:new Date().toISOString()})
+      .eq('id',notificationId).is('read_at',null)
+      .select('id').maybeSingle();
+    if(error) throw error;
+    if(!data) throw new Error('A notificação não foi atualizada. Atualize a tela e tente novamente.');
+    await refreshCoachNotificationCount();
+    await renderCoachNotifications(false);
+  }catch(e){
+    console.error('Falha ao marcar notificação como lida:',e);
+    showToast(e.message||'Não foi possível marcar como lida.','err');
+  }
+}
+async function markAllCoachNotificationsRead(){
+  if(currentProfile?.role!=='coach') return;
+  try{
+    const {error}=await supabaseClient.from('coach_notifications')
+      .update({read_at:new Date().toISOString()})
+      .is('read_at',null);
+    if(error) throw error;
+    await refreshCoachNotificationCount();
+    await renderCoachNotifications(false);
+  }catch(e){
+    console.error('Falha ao marcar notificações como lidas:',e);
+    showToast(e.message||'Não foi possível atualizar as notificações.','err');
+  }
+}
+
 async function renderCoachNotifications(showRead=false){
   if(currentProfile?.role!=='coach') return;
   currentScreen='notifications';
@@ -3592,34 +3623,46 @@ function renderHome(){
   `;
 }
 
-function renderDashboard(){
+async function renderDashboard(){
   currentScreen = 'dashboard';
   const app = document.getElementById('app');
   const total = athletes.length;
   const comTreino = athletes.filter(a => a.trainingPlan && a.trainingPlan.days && a.trainingPlan.days.length > 0).length;
   const semTreino = total - comTreino;
-
   const porCategoria = {};
   athletes.forEach(a => {
     const c = a.category || 'Sem categoria';
     porCategoria[c] = (porCategoria[c]||0) + 1;
   });
   const catRows = Object.entries(porCategoria).sort((a,b) => b[1]-a[1]);
-
-  const alerts = buildAlerts();
-
+  let alerts = [];
+  try {
+    await syncDailyCoachAlerts();
+    const {data,error} = await supabaseClient.from('coach_notifications')
+      .select('id,athlete_id,notification_type,title,body,read_at')
+      .is('read_at',null).order('created_at',{ascending:false}).limit(100);
+    if(error) throw error;
+    alerts = data || [];
+  } catch(e) {
+    console.warn('Não foi possível carregar avisos pendentes:',e);
+  }
   app.innerHTML = `
     <div class="back-link" onclick="renderHome()">← Menu principal</div>
     <h2 class="section-title">Dashboard</h2>
     ${alerts.length ? `
       <div class="dashboard-section alerts-section">
-        <div class="dashboard-section-title">⚠️ Avisos</div>
-        ${alerts.map(a => `
-          <div class="alert-row" onclick="listMode='dados'; openAthlete('${a.athleteId}')">
-            <span class="alert-icon">${a.icon}</span>
-            <span class="alert-text">${a.text}</span>
-          </div>
-        `).join('')}
+        <div class="dashboard-section-title">⚠️ Avisos pendentes</div>
+        ${alerts.map(n => {
+          const athlete = athletes.find(a => String(a.id) === String(n.athlete_id));
+          const isBirthday = n.notification_type === 'birthday';
+          const label = isBirthday ? '🎂' : '📅';
+          const title = isBirthday ? 'Aniversário de ' + (athlete?.name || n.title) : (n.body || n.title);
+          return `<div class="alert-row" onclick="renderCoachNotifications(false)">
+            <span class="alert-icon">${label}</span>
+            <span class="alert-text">${escapeHtml(title)}</span>
+          </div>`;
+        }).join('')}
+        <button class="btn btn-outline" style="width:100%;margin-top:10px" onclick="renderCoachNotifications(false)">Abrir notificações</button>
       </div>` : ''}
     <div class="stat-grid">
       <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">Atletas cadastrados</div></div>
