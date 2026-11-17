@@ -31,8 +31,27 @@
     if(document.visibilityState==='visible') checkForServiceWorkerUpdate();
   });
   window.setInterval(checkForServiceWorkerUpdate,300000);
-  window.addEventListener('pagehide',persistCurrentRoute);
-  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')persistCurrentRoute();});
+  try{window.__ppCoachResumeAfterBackground=sessionStorage.getItem('pp_coach_background_resume')==='1';}catch(e){window.__ppCoachResumeAfterBackground=false;}
+  window.addEventListener('pagehide',function(event){
+    persistCurrentRoute();
+    if(!event.persisted){
+      try{sessionStorage.removeItem('pp_coach_background_resume');}catch(e){}
+      window.__ppCoachResumeAfterBackground=false;
+    }
+  });
+  window.addEventListener('beforeunload',function(){
+    try{sessionStorage.removeItem('pp_coach_background_resume');}catch(e){}
+    window.__ppCoachResumeAfterBackground=false;
+  });
+  document.addEventListener('visibilitychange',function(){
+    if(document.visibilityState==='hidden'){
+      if(currentProfile?.role==='coach'){
+        window.__ppCoachResumeAfterBackground=true;
+        try{sessionStorage.setItem('pp_coach_background_resume','1');}catch(e){}
+      }
+      persistCurrentRoute();
+    }
+  });
 })();
 </script>
 <link rel="manifest" href="/manifest.webmanifest">
@@ -1631,7 +1650,17 @@ function restoreCoachRoute(route){
   listMode=route.listMode==='treino'?'treino':'dados';
   // Na inicialização do treinador, não reabrir automaticamente o perfil
   // do último atleta visitado. O menu principal é o ponto de entrada seguro.
-  if(route.screen==='detail')renderHome();
+  if(route.screen==='detail'){
+    const savedAthlete=route.athleteId&&athletes.find(a=>String(a.id)===String(route.athleteId));
+    isNew=!!route.isNew;
+    currentId=route.athleteId||route.draft?.id||null;
+    athleteMode=route.athleteMode==='edit-treino'?'edit-treino':route.athleteMode==='edit-dados'?'edit-dados':'profile';
+    draft=route.draft?JSON.parse(JSON.stringify(route.draft)):(savedAthlete?JSON.parse(JSON.stringify(savedAthlete)):null);
+    if(draft){
+      if(!draft.trainingPlan)draft.trainingPlan={days:[]};
+      renderDetail();
+    }else renderHome();
+  }
   else if(route.screen==='dashboard')renderDashboard();
   else if(route.screen==='list')renderList('');
   else if(route.screen==='notifications')renderCoachNotifications(false);
@@ -1859,6 +1888,7 @@ async function onAuthChange(user){
     loginScreen.style.display='none'; appShell.style.display=''; sharedRoot.style.display='none';
     if(profile.role === 'coach'){
       if(!profile.team_id) throw new Error('A conta do treinador está sem equipe vinculada.');
+      const resumeAfterBackground=!!window.__ppCoachResumeAfterBackground;
       const savedRoute=readSavedRoute();
       await loadAthletes();
       setupCoachPushNotifications();
@@ -1892,8 +1922,10 @@ async function onAuthChange(user){
       }else if(showNotifications){
         renderCoachNotifications(false);
         history.replaceState({},'',location.pathname);
-      }else{
+      }else if(resumeAfterBackground){
         restoreCoachRoute(savedRoute);
+      }else{
+        renderHome();
       }
     }else if(profile.role === 'athlete'){
       await loadAthletePortal();
