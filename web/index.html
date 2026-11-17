@@ -31,6 +31,8 @@
     if(document.visibilityState==='visible') checkForServiceWorkerUpdate();
   });
   window.setInterval(checkForServiceWorkerUpdate,300000);
+  window.addEventListener('pagehide',persistCurrentRoute);
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')persistCurrentRoute();});
 })();
 </script>
 <link rel="manifest" href="/manifest.webmanifest">
@@ -1588,6 +1590,58 @@ let athleteMode = 'profile'; // 'profile' | 'edit-dados' | 'edit-treino'
 let isNew = false;
 let draft = null;       // working copy of athlete while editing
 let currentScreen = 'home'; // 'home' | 'dashboard' | 'list' | 'detail'
+
+const PP_ROUTE_STORAGE_PREFIX='performance_pro_route_v1:';
+function ppRouteStorageKey(){return PP_ROUTE_STORAGE_PREFIX+(currentUser?.id||'');}
+function persistCurrentRoute(){
+  if(!currentUser?.id||!currentProfile?.role)return;
+  try{
+    const route={role:currentProfile.role,scrollY:window.scrollY||0,savedAt:Date.now()};
+    if(currentProfile.role==='coach'){
+      route.screen=currentScreen||'home';
+      route.athleteId=currentId||null;
+      route.athleteMode=athleteMode||'profile';
+      route.listMode=listMode||'dados';
+      route.isNew=!!isNew;
+      if(draft)route.draft=draft;
+      route.libraryFilter=document.getElementById('lib-screen-search')?.value||'';
+      route.libraryGroup=libraryScreenGroupFilter||'';
+      route.libraryCategory=libraryScreenCategoryFilter||'';
+      route.libraryFavOnly=!!libraryFilterFavOnly;
+    }else{
+      route.section=window.__ppAthleteSection||'home';
+      route.workoutId=window.__activeAthleteWorkoutId||null;
+      route.workoutTab=window.__ppAthleteWorkoutTab||'routines';
+    }
+    localStorage.setItem(ppRouteStorageKey(),JSON.stringify(route));
+  }catch(e){console.warn('Não foi possível preservar a tela atual:',e);}
+}
+function readSavedRoute(){
+  try{
+    const raw=localStorage.getItem(ppRouteStorageKey());
+    if(!raw)return null;
+    const route=JSON.parse(raw);
+    if(!route||route.role!==currentProfile?.role||Date.now()-Number(route.savedAt||0)>7*86400000)return null;
+    return route;
+  }catch(e){return null;}
+}
+function restoreCoachRoute(route){
+  if(!route||route.role!=='coach')return;
+  const id=route.athleteId&&athletes.some(a=>String(a.id)===String(route.athleteId))?route.athleteId:null;
+  listMode=route.listMode==='treino'?'treino':'dados';
+  if(route.screen==='detail'&&(id||route.isNew)){
+    if(route.isNew&&route.draft){isNew=true;currentId=null;athleteMode=route.athleteMode||'edit-dados';draft=route.draft;renderDetail();}
+    else if(id){openAthlete(id);athleteMode=['profile','edit-dados','edit-treino'].includes(route.athleteMode)?route.athleteMode:'profile';renderDetail();}
+  }else if(route.screen==='dashboard')renderDashboard();
+  else if(route.screen==='list')renderList('');
+  else if(route.screen==='notifications')renderCoachNotifications(false);
+  else if(route.screen==='library'){libraryScreenGroupFilter=route.libraryGroup||'';libraryScreenCategoryFilter=route.libraryCategory||'';libraryFilterFavOnly=!!route.libraryFavOnly;renderLibraryScreen(route.libraryFilter||'');}
+  else if(route.screen==='invoices-management')renderInvoiceManagement();
+  else if(route.screen==='physical-assessments')renderPhysicalAssessments();
+  else renderHome();
+  requestAnimationFrame(()=>window.scrollTo(0,Math.max(0,Number(route.scrollY)||0)));
+}
+
 let listMode = 'dados';     // 'dados' | 'treino' — define o contexto da lista
 let libraryTargetDayId = null;
 let libraryReplaceExId = null;
@@ -1805,6 +1859,7 @@ async function onAuthChange(user){
     loginScreen.style.display='none'; appShell.style.display=''; sharedRoot.style.display='none';
     if(profile.role === 'coach'){
       if(!profile.team_id) throw new Error('A conta do treinador está sem equipe vinculada.');
+      const savedRoute=readSavedRoute();
       await loadAthletes();
       setupCoachPushNotifications();
       syncDailyCoachAlerts();
@@ -1837,6 +1892,8 @@ async function onAuthChange(user){
       }else if(showNotifications){
         renderCoachNotifications(false);
         history.replaceState({},'',location.pathname);
+      }else{
+        restoreCoachRoute(savedRoute);
       }
     }else if(profile.role === 'athlete'){
       await loadAthletePortal();
@@ -2447,6 +2504,7 @@ async function completeAthleteWorkoutSession(){
 }
 
 async function loadAthletePortal(){
+  const savedRoute=readSavedRoute();
   const brandImage=document.querySelector('#app-shell > header > img');
   if(brandImage){brandImage.style.cursor='pointer';brandImage.onclick=()=>showAthleteSection('home');}
   const app=document.getElementById('app');
@@ -2665,8 +2723,16 @@ async function loadAthletePortal(){
       const savedSession=readAthleteWorkoutSession();
       shouldRestoreWorkout=!!savedSession&&['running','paused'].includes(savedSession.status);
     }
-    if(shouldRestoreWorkout)showAthleteWorkout(savedWorkoutRoute.workoutId);
+    if(savedRoute?.role==='athlete'&&savedRoute.section&&savedRoute.section!=='home'){
+      if(savedRoute.section==='workout-detail'&&savedRoute.workoutId&&allWorkouts.some(w=>String(w.id)===String(savedRoute.workoutId))){
+        showAthleteWorkout(savedRoute.workoutId);
+      }else{
+        showAthleteSection(savedRoute.section);
+        if(savedRoute.section==='trainings')setAthleteWorkoutTab(savedRoute.workoutTab||'routines');
+      }
+    }else if(shouldRestoreWorkout)showAthleteWorkout(savedWorkoutRoute.workoutId);
     else{clearAthleteActiveWorkoutRoute();showAthleteSection('home');}
+    requestAnimationFrame(()=>window.scrollTo(0,Math.max(0,Number(savedRoute?.scrollY)||0)));
     // Carga aguda, monotonia e strain são exibidos exclusivamente no painel do treinador.
 
   }catch(e){
@@ -2991,6 +3057,8 @@ async function deletePhysicalAssessment(id){
 
 function showAthleteSection(section){
   window.__ppAthleteSection=section;
+  if(section!=='workout-detail')window.__activeAthleteWorkoutId=null;
+  persistCurrentRoute();
   const ids=['home','trainings','extras','assessments','progress','invoices','workout-detail'];
   ids.forEach(id=>{const el=document.getElementById('athlete-'+id);if(el)el.hidden=(id!==section);});
   const monitor=document.getElementById('athlete-monitor-form');
@@ -3002,6 +3070,8 @@ function showAthleteSection(section){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function setAthleteWorkoutTab(tab){
+  window.__ppAthleteWorkoutTab=tab;
+  persistCurrentRoute();
   const routines=document.getElementById('athlete-routines-list');
   const aerobic=document.getElementById('athlete-aerobic-list');
   const a=document.getElementById('athlete-tab-routines');
@@ -3030,6 +3100,7 @@ function showAthleteWorkout(workoutId){
   if(!content||!html)return;
   content.innerHTML=html;
   window.__activeAthleteWorkoutId=workoutId;
+  persistCurrentRoute();
   const monitor=document.getElementById('athlete-monitor-form');
   const slot=document.getElementById('athlete-monitor-form-slot');
   if(monitor && slot) slot.appendChild(monitor);
@@ -3833,6 +3904,7 @@ function openAthlete(id){
   if(!a) return;
   isNew = false;
   currentId = id;
+  currentScreen='detail';
   athleteMode = 'profile';
   draft = JSON.parse(JSON.stringify(a)); // working copy
   if(!draft.trainingPlan) draft.trainingPlan = { days: [] };
@@ -3860,6 +3932,7 @@ function backFromDetail(){
 
 function updateDraftField(field, value){
   draft[field] = value;
+  persistCurrentRoute();
 }
 
 function refreshMaturityCard(){
@@ -3873,6 +3946,8 @@ function refreshCardHeader(){
 }
 
 function renderDetail(){
+  currentScreen='detail';
+  persistCurrentRoute();
   const app = document.getElementById('app');
   const backLabel = athleteMode === 'profile'
     ? '← Voltar para ' + (listMode === 'treino' ? 'Treinos' : 'Atletas')
@@ -3891,6 +3966,7 @@ function renderDetail(){
 
 function setAthleteMode(mode){
   athleteMode = mode;
+  persistCurrentRoute();
   renderDetail();
 }
 
