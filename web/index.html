@@ -1941,7 +1941,7 @@ async function renderCoachNotifications(showRead=false){
   if(currentProfile?.role!=='coach') return;
   currentScreen='notifications';
   const app=document.getElementById('app');
-  app.innerHTML='<div class="loading">Carregando atualizações…</div>';
+  app.innerHTML='<div class="loading">Carregando notificações…</div>';
   try{
     const {data,error}=await supabaseClient.from('coach_notifications')
       .select('id,athlete_id,notification_type,title,body,target_url,read_at,created_at')
@@ -1998,7 +1998,7 @@ async function renderCoachNotifications(showRead=false){
     };
     app.innerHTML=`
       <div class="back-link" onclick="renderHome()">← Menu principal</div>
-      <h2 class="section-title">Atualizações</h2>
+      <h2 class="section-title">Notificações</h2>
       <div class="toolbar" style="gap:8px;align-items:stretch">
         <button class="btn ${showRead?'btn-outline':'btn-primary'}" onclick="renderCoachNotifications(false)">Pendentes (${pending.length})</button>
         <button class="btn ${showRead?'btn-primary':'btn-outline'}" onclick="renderCoachNotifications(true)">Resolvidas (${read.length})</button>
@@ -2015,12 +2015,12 @@ async function renderCoachNotifications(showRead=false){
         ${trainings.length?trainings.map(renderCard).join(''):'<div class="empty-state" style="padding:22px 12px">Nenhuma atualização de treino '+(showRead?'resolvida':'pendente')+'.</div>'}
       </section>`;
   }catch(e){
-    console.error('Falha ao carregar atualizações:',e);
-    app.innerHTML='<div class="back-link" onclick="renderHome()">← Menu principal</div><div class="empty-state">Não foi possível carregar as atualizações.</div>';
+    console.error('Falha ao carregar notificações:',e);
+    app.innerHTML='<div class="back-link" onclick="renderHome()">← Menu principal</div><div class="empty-state">Não foi possível carregar as notificações.</div>';
   }
 }
 function filterCoachUpdates(value){
-  const active=document.querySelector('#app .section-title')?.textContent==='Atualizações';
+  const active=document.querySelector('#app .section-title')?.textContent==='Notificações';
   if(!active)return;
   const input=document.getElementById('pp-updates-search');
   if(input)input.value=value;
