@@ -2742,7 +2742,6 @@ async function loadAthletePortal(){
       </section>
       <section id="athlete-progress" hidden>${backButton}<section class="panel" style="padding:18px;margin-top:8px">${buildMonitoringCharts((monitoring||[]).slice().reverse(),true)}</section></section>
       <section id="athlete-invoices" hidden>${backButton}<h2>Faturas</h2><div id="athlete-invoices-content"><div class="loading">Carregando faturas…</div></div></section>
-      <section id="athlete-settings" hidden>${backButton}<div class="panel" style="padding:18px;margin-top:8px"><h2>Configurações</h2><p class="muted">Altere sua senha de acesso. Seu login permanece bloqueado para edição.</p><button type="button" class="btn btn-primary" onclick="renderAccountSettings()">Alterar senha</button></div></section>
 `;
     window.__athleteWorkouts=allWorkouts;
     window.__athleteWorkoutHtmlById=Object.fromEntries(allWorkouts.map(w=>[w.id,workoutDetails(w)]));
@@ -3093,6 +3092,7 @@ function showAthleteSection(section){
   window.__ppAthleteSection=section;
   if(section!=='workout-detail')window.__activeAthleteWorkoutId=null;
   persistCurrentRoute();
+  if(section==='settings'){renderAccountSettings();return;}
   const ids=['home','trainings','extras','assessments','progress','invoices','settings','workout-detail'];
   ids.forEach(id=>{const el=document.getElementById('athlete-'+id);if(el)el.hidden=(id!==section);});
   const monitor=document.getElementById('athlete-monitor-form');
