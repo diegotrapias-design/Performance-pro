@@ -2343,7 +2343,7 @@ async function syncCoachDataToRelational(){
   }
 }
 
-async function persist(showMsg){
+async async function persist(showMsg){
   try{
     if(!currentUser) throw new Error('Sessão não autenticada.');
     if(!athleteDataReady) throw new Error('Dados dos atletas ainda não foram carregados; salvamento bloqueado para proteger os cadastros.');
@@ -2367,7 +2367,7 @@ async function persist(showMsg){
   }catch(e){ console.error(e); showToast('Erro ao salvar na nuvem. Verifique sua conexão.', 'err'); return false; }
 }
 
-async function persistExerciseLibrary(){
+async async function persistExerciseLibrary(){
   try{
     if(!currentUser) throw new Error('Sessão não autenticada.');
     if(!athleteDataReady) throw new Error('Dados dos atletas ainda não foram carregados; salvamento bloqueado para proteger os cadastros.');
