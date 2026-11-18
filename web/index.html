@@ -4134,7 +4134,20 @@ function toggleCoachMonitoring(athleteId){
       #pp-monitoring-page th{color:#d7d7de}
       #pp-monitoring-page .empty-state,#pp-monitoring-page .loading{color:#d6d6dc;background:#1b1b22;border-radius:12px;padding:16px}
       @media(min-width:700px){#pp-monitoring-page .stat-grid{grid-template-columns:repeat(3,minmax(0,1fr))}#pp-monitoring-page .pp-monitoring-body{padding:20px}}
-    </style>
+    
+  /* Controles de rolagem exclusivos da Biblioteca */
+  .library-scroll-control{
+    position:fixed;right:14px;z-index:1200;width:44px;height:44px;
+    display:flex;align-items:center;justify-content:center;
+    border:1px solid #c92532;border-radius:50%;
+    background:#1c1c21;color:#fff;font-size:25px;font-weight:700;
+    line-height:1;box-shadow:0 3px 12px rgba(0,0,0,.28);
+    cursor:pointer;touch-action:manipulation;
+  }
+  .library-scroll-control:active{background:#c92532;}
+  .library-scroll-top{bottom:94px;}
+  .library-scroll-bottom{bottom:40px;}
+</style>
     <header class="pp-monitoring-head">
       <button type="button" class="pp-monitoring-back" onclick="document.getElementById('pp-monitoring-page')?.remove()">← Voltar</button>
       <div class="pp-monitoring-title"><strong>MONITORAMENTO</strong><span>${escapeHtml(athlete.full_name||athlete.name||'Atleta')}</span></div>
@@ -5665,6 +5678,9 @@ function setLibraryScreenCategoryFilter(value){
   renderLibraryScreen(document.getElementById('lib-screen-search') ? document.getElementById('lib-screen-search').value : '');
 }
 
+function scrollLibraryToTop(){window.scrollTo({top:0,behavior:'smooth'});}
+function scrollLibraryToBottom(){window.scrollTo({top:document.documentElement.scrollHeight,behavior:'smooth'});}
+
 function renderLibraryScreen(filter){
   currentScreen = 'library';
   const app = document.getElementById('app');
@@ -5731,6 +5747,8 @@ function renderLibraryScreen(filter){
         </select>
       </div>
       <div id="lib-screen-results">${resultsHtml}</div>
+      <button type="button" class="library-scroll-control library-scroll-top" onclick="scrollLibraryToTop()" aria-label="Rolar para o topo da biblioteca" title="Ir para o topo">↑</button>
+      <button type="button" class="library-scroll-control library-scroll-bottom" onclick="scrollLibraryToBottom()" aria-label="Rolar para o final da biblioteca" title="Ir para o final">↓</button>
     `;
   }else{
     results.innerHTML = resultsHtml;
