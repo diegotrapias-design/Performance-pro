@@ -2703,6 +2703,7 @@ async function loadAthletePortal(){
           ${tile('⚡','Treinos extras','extras','Cardio e velocidade')}
           ${tile('＄','Faturas','invoices',(window.__athletePendingInvoices||[]).length ? '<span style="color:#ff525d;font-weight:800">1 pagamento pendente</span>'.replace('1 pagamento pendente',window.__athletePendingInvoices.length===1?'1 pagamento pendente':window.__athletePendingInvoices.length+' pagamentos pendentes') : 'Informações financeiras')}
           ${tile('📈','Meu Progresso','progress','Gráficos de evolução')}
+          ${tile('⚙️','Configurações','settings','Alterar senha de acesso')}
         </div>
         <footer class="athlete-menu-manifesto" aria-label="Princípios da alta performance">
           <div class="athlete-manifesto-line"><span class="athlete-manifesto-arrow">↗</span><strong>Constância constrói.</strong></div>
@@ -2741,6 +2742,7 @@ async function loadAthletePortal(){
       </section>
       <section id="athlete-progress" hidden>${backButton}<section class="panel" style="padding:18px;margin-top:8px">${buildMonitoringCharts((monitoring||[]).slice().reverse(),true)}</section></section>
       <section id="athlete-invoices" hidden>${backButton}<h2>Faturas</h2><div id="athlete-invoices-content"><div class="loading">Carregando faturas…</div></div></section>
+      <section id="athlete-settings" hidden>${backButton}<div class="panel" style="padding:18px;margin-top:8px"><h2>Configurações</h2><p class="muted">Altere sua senha de acesso. Seu login permanece bloqueado para edição.</p><button type="button" class="btn btn-primary" onclick="renderAccountSettings()">Alterar senha</button></div></section>
 `;
     window.__athleteWorkouts=allWorkouts;
     window.__athleteWorkoutHtmlById=Object.fromEntries(allWorkouts.map(w=>[w.id,workoutDetails(w)]));
@@ -3091,7 +3093,7 @@ function showAthleteSection(section){
   window.__ppAthleteSection=section;
   if(section!=='workout-detail')window.__activeAthleteWorkoutId=null;
   persistCurrentRoute();
-  const ids=['home','trainings','extras','assessments','progress','invoices','workout-detail'];
+  const ids=['home','trainings','extras','assessments','progress','invoices','settings','workout-detail'];
   ids.forEach(id=>{const el=document.getElementById('athlete-'+id);if(el)el.hidden=(id!==section);});
   const monitor=document.getElementById('athlete-monitor-form');
   const homeSlot=document.getElementById('athlete-assessment-form-slot');
@@ -3652,6 +3654,73 @@ function escapeHtml(s){
 
 /* ---------------- HOME / MENU ---------------- */
 
+function renderAccountSettings(){
+  if(!currentUser || !currentProfile || !['coach','athlete'].includes(currentProfile.role))return;
+  currentScreen='account-settings';
+  const isAthlete=currentProfile.role==='athlete';
+  const backAction=isAthlete?"showAthleteSection('home')":"renderHome()";
+  const app=document.getElementById('app');
+  const email=escapeHtml(currentUser.email||'');
+  app.innerHTML=`
+    <div class="back-link" onclick="${backAction}">← Voltar ao menu</div>
+    <h2 class="section-title">Configurações</h2>
+    <section class="panel" style="padding:18px;margin-top:12px">
+      <h3 style="margin:0 0 14px">Dados de acesso</h3>
+      <div class="field" style="margin-bottom:16px">
+        <label for="account-login">Login (somente leitura)</label>
+        <input id="account-login" type="email" value="${email}" readonly aria-readonly="true" autocomplete="username" style="background:#f3f4f6;color:#6b7280;cursor:not-allowed">
+        <small style="color:var(--gray)">O login não pode ser alterado nesta área.</small>
+      </div>
+      <h3 style="margin:8px 0 12px">Alterar senha</h3>
+      <form id="account-password-form" onsubmit="updateAccountPassword(event)">
+        <div class="field" style="margin-bottom:12px">
+          <label for="account-current-password">Senha atual</label>
+          <input id="account-current-password" type="password" autocomplete="current-password" required>
+        </div>
+        <div class="field" style="margin-bottom:12px">
+          <label for="account-new-password">Nova senha</label>
+          <input id="account-new-password" type="password" minlength="8" autocomplete="new-password" required>
+        </div>
+        <div class="field" style="margin-bottom:14px">
+          <label for="account-confirm-password">Confirmar nova senha</label>
+          <input id="account-confirm-password" type="password" minlength="8" autocomplete="new-password" required>
+        </div>
+        <p id="account-password-message" class="muted" role="status" style="font-size:13px;min-height:18px"></p>
+        <div class="actions-row" style="margin-top:8px">
+          <button type="submit" class="btn btn-primary" id="account-password-submit">Salvar nova senha</button>
+        </div>
+      </form>
+    </section>`;
+}
+async function updateAccountPassword(event){
+  if(event)event.preventDefault();
+  if(!currentUser||!currentProfile||!['coach','athlete'].includes(currentProfile.role))return;
+  const currentPassword=document.getElementById('account-current-password')?.value||'';
+  const newPassword=document.getElementById('account-new-password')?.value||'';
+  const confirmation=document.getElementById('account-confirm-password')?.value||'';
+  const message=document.getElementById('account-password-message');
+  const button=document.getElementById('account-password-submit');
+  if(message)message.textContent='';
+  if(!currentPassword||!newPassword||!confirmation){if(message)message.textContent='Preencha os três campos de senha.';return;}
+  if(newPassword.length<8){if(message)message.textContent='A nova senha deve ter pelo menos 8 caracteres.';return;}
+  if(newPassword!==confirmation){if(message)message.textContent='A confirmação não corresponde à nova senha.';return;}
+  if(newPassword===currentPassword){if(message)message.textContent='Escolha uma senha diferente da atual.';return;}
+  if(button){button.disabled=true;button.textContent='SALVANDO…';}
+  try{
+    const {error}=await supabaseClient.auth.updateUser({password:newPassword,currentPassword});
+    if(error)throw error;
+    const form=document.getElementById('account-password-form');
+    if(form)form.reset();
+    if(message)message.textContent='Senha alterada com sucesso.';
+    showToast('Senha alterada com sucesso.','ok');
+  }catch(e){
+    console.error('Falha ao alterar senha:',e);
+    if(message)message.textContent=/password/i.test(e?.message||'')?'Não foi possível confirmar a senha atual ou atualizar a nova senha. Confira a senha atual e tente novamente.':(e?.message||'Não foi possível alterar a senha. Tente novamente.');
+  }finally{
+    if(button){button.disabled=false;button.textContent='Salvar nova senha';}
+  }
+}
+
 function renderHome(){
   currentScreen = 'home';
   const app = document.getElementById('app');
@@ -3700,6 +3769,11 @@ function renderHome(){
         <div class="home-card-icon">📄</div>
         <div class="home-card-title">Avaliações físicas</div>
         <div class="home-card-desc">Importar PDF ou HTML por atleta</div>
+      </div>
+      <div class="home-card" onclick="renderAccountSettings()">
+        <div class="home-card-icon">⚙️</div>
+        <div class="home-card-title">Configurações</div>
+        <div class="home-card-desc">Alterar senha de acesso</div>
       </div>
     </div>
   `;
