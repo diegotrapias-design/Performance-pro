@@ -2228,8 +2228,14 @@ async function loadAthletes(){
       });
     });
   });
+  // Remove somente placeholders sem mídia da seleção de seed; preserva itens com vídeo e exercícios próprios.
+  const noVideoSeedNames=new Set(EXTRA_GYM_EXERCISES.filter(item=>!item.video).map(item=>exerciseNameKey(item.name)));
+  const beforeNoVideoSeedCleanup=exerciseLibrary.length;
+  exerciseLibrary=exerciseLibrary.filter(ex=>!noVideoSeedNames.has(exerciseNameKey(ex.name))||!!ex.video);
+  if(exerciseLibrary.length!==beforeNoVideoSeedCleanup) needsSave=true;
   // Acrescenta a nova seleção sem duplicar itens nem sobrescrever vídeos já cadastrados pelo treinador.
   EXTRA_GYM_EXERCISES.forEach(item=>{
+    if(!item.video)return;
     const key=item.name.trim().toLocaleLowerCase('pt-BR');
     if(deletedKeys.has(libraryExerciseKey(item.name)))return;
     const existing=exerciseLibrary.find(ex=>(ex.name||'').trim().toLocaleLowerCase('pt-BR')===key);
@@ -4875,12 +4881,12 @@ function toggleTrainingDayCollapsed(dayId){window.__ppCollapsedTrainingDays[dayI
 function setAllTrainingDaysCollapsed(collapsed){(draft?.trainingPlan?.days||[]).forEach(day=>{window.__ppCollapsedTrainingDays[day.id]=!!collapsed;});renderTreinoEditPanel();}
 function addExtraWorkout(category){if(!draft.trainingPlan.extraWorkouts)draft.trainingPlan.extraWorkouts=[];draft.trainingPlan.extraWorkouts.push({id:uid(),category,title:category==='speed'?'Velocidade / aceleração':category==='core'?'Core / Abdômen':'Cardio',exercises:[]});renderTreinoEditPanel();}
 function extraWorkoutLabel(category){return category==='speed'?'Velocidade / aceleração':category==='core'?'Core / Abdômen':'Cardio';}
-function extraWorkoutExercises(category){if(category==='speed')return [...EXTRA_CARDIO_SPEED_LIBRARY.filter(x=>x.group==='Velocidade'),...exerciseLibrary.filter(x=>/veloc|sprint|acelera|corrida|tiro|agilidade|mudan[cç]a de dire[cç][aã]o/i.test((x.name||'')+' '+(x.group||'')))];if(category==='core')return exerciseLibrary.filter(x=>/abd[oô]men|core/i.test((x.group||'')+' '+(x.name||'')));return [...EXTRA_CARDIO_SPEED_LIBRARY.filter(x=>x.group==='Cardio'),...exerciseLibrary.filter(x=>/cardio|corrida|bike|bicicleta|esteira|aer[oó]b|resist[eê]ncia/i.test((x.name||'')+' '+(x.group||'')))];}
+function extraWorkoutExercises(category){if(category==='speed')return [...EXTRA_CARDIO_SPEED_LIBRARY.filter(x=>x.group==='Velocidade'&&x.video),...exerciseLibrary.filter(x=>x.video&&/veloc|sprint|acelera|corrida|tiro|agilidade|mudan[cç]a de dire[cç][aã]o/i.test((x.name||'')+' '+(x.group||'')))];if(category==='core')return exerciseLibrary.filter(x=>x.video&&/abd[oô]men|core/i.test((x.group||'')+' '+(x.name||'')));return [...EXTRA_CARDIO_SPEED_LIBRARY.filter(x=>x.group==='Cardio'&&x.video),...exerciseLibrary.filter(x=>x.video&&/cardio|corrida|bike|bicicleta|esteira|aer[oó]b|resist[eê]ncia/i.test((x.name||'')+' '+(x.group||'')))];}
 function updateExtraWorkout(i,k,v){const w=draft?.trainingPlan?.extraWorkouts?.[i];if(w)w[k]=v;}
 function addExtraExercise(i){const w=draft?.trainingPlan?.extraWorkouts?.[i];if(!w)return;w.exercises.push({id:uid(),name:'',series:'',reps:'',descanso:'',obs:'',video:''});renderTreinoEditPanel();}
 function updateExtraExercise(wi,ei,k,v){const e=draft?.trainingPlan?.extraWorkouts?.[wi]?.exercises?.[ei];if(e)e[k]=v;}
 function findExtraLibraryExercise(id){return EXTRA_CARDIO_SPEED_LIBRARY.find(x=>String(x.id)===String(id))||exerciseLibrary.find(x=>String(x.id||x.name)===String(id));}
-function previewExtraLibraryExercise(id){const x=findExtraLibraryExercise(id);if(!x)return;openExerciseVideo(x.video||'',x.name||'Demonstração do exercício');}
+function previewExtraLibraryExercise(id){const x=findExtraLibraryExercise(id);if(!x)return;openExerciseVideo(x.video||'',x.name||'Demonstração do exercício',!!x.videoLoop);}
 function selectExtraLibraryExercise(wi,ei,id){const e=draft?.trainingPlan?.extraWorkouts?.[wi]?.exercises?.[ei];const x=findExtraLibraryExercise(id);if(!e||!x)return;e.name=x.name||'';e.video=x.video||'';e.obs=x.description||e.obs||'';renderTreinoEditPanel();}
 function removeExtraExercise(wi,ei){draft?.trainingPlan?.extraWorkouts?.[wi]?.exercises?.splice(ei,1);renderTreinoEditPanel();}
 function removeExtraWorkout(i){if(!confirm('Remover este treino extra?'))return;draft?.trainingPlan?.extraWorkouts?.splice(i,1);renderTreinoEditPanel();}
@@ -5411,7 +5417,7 @@ const EXTRA_CARDIO_SPEED_LIBRARY = [
   {id:'extra-speed-flying',name:'Flying sprint (corrida lançada)',group:'Velocidade',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/running.mp4'},
   {id:'extra-speed-bskip',name:'B-skip (coordenação e mecânica)',group:'Velocidade',video:''},
   {id:'extra-speed-shuffle',name:'Deslocamento lateral rápido (shuffle)',group:'Velocidade',video:''},
-  {id:'extra-speed-shuttle',name:'Shuttle run 5-10-5 (mudança de direção)',group:'Velocidade',video:''},
+  {id:'extra-speed-shuttle',name:'Shuttle run 5-10-5 (mudança de direção)',group:'Velocidade',video:'https://footballreach.com/assets/drills/change-direction-then-react/video.mp4?v=8a060ac2',videoLoop:true},
   {id:'extra-speed-bounds',name:'Saltos horizontais / bounds',group:'Velocidade',video:'https://lran.org.uk/wp-content/uploads/2017/09/Hurdle-bounds-1.mp4'},
   {id:'extra-cardio-hiit',name:'Cardio HIIT (intervalado)',group:'Cardio',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cardio-exercises.mp4'},
   {id:'extra-cardio-runinterval',name:'Corrida intervalada (tiros + recuperação)',group:'Cardio',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/running.mp4'},
@@ -5421,23 +5427,31 @@ const EXTRA_CARDIO_SPEED_LIBRARY = [
   {id:'extra-cardio-bikehiit',name:'Bike — HIIT / spinning intervalado',group:'Cardio',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/stationary-bike.mp4'},
   {id:'extra-cardio-elliptical',name:'Elíptico — contínuo ou intervalado',group:'Cardio',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/elliptical.mp4'},
   {id:'extra-cardio-rope',name:'Pular corda — intervalado',group:'Cardio',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/jump-rope.mp4'},
-  {id:'extra-cardio-row',name:'Remo ergômetro — intervalado',group:'Cardio',video:''},
+  {id:'extra-cardio-row',name:'Remo ergômetro — intervalado',group:'Cardio',video:'https://kznra.org/wp-content/uploads/2017/02/IMGA0001-The-full-rowing-stroke.mp4',videoLoop:true},
   {id:'extra-cardio-stairs',name:'Simulador de escada — contínuo',group:'Cardio',video:''},
   {id:'extra-cardio-outdoor',name:'Corrida ao ar livre — ritmo contínuo',group:'Cardio',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/running.mp4'},
   {id:'extra-cardio-fartlek',name:'Fartlek — variação de ritmo',group:'Cardio',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/running.mp4'},
   {id:'extra-speed-carioca',name:'Carioca / deslocamento cruzado',group:'Velocidade',video:''},
   {id:'extra-speed-straightleg',name:'Corrida com pernas estendidas (straight-leg run)',group:'Velocidade',video:''},
-  {id:'extra-speed-accelstart',name:'Saídas de aceleração (variações de posição)',group:'Velocidade',video:''},
+  {id:'extra-speed-accelstart',name:'Saídas de aceleração (variações de posição)',group:'Velocidade',video:'https://footballreach.com/assets/drills/the-sprint-session/video.mp4?v=15954c32',videoLoop:true},
   {id:'extra-cardio-machines',name:'Cardio intervalado em máquinas (bike, esteira, remo ou elíptico)',group:'Cardio',video:'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cardio-exercises-machines.mp4'},
-  {id:'extra-cardio-rowtech',name:'Remo ergômetro — técnica e sequência',group:'Cardio',video:''},
-  {id:'extra-cardio-rowinterval',name:'Remo ergômetro — intervalado',group:'Cardio',video:''},
+  {id:'extra-cardio-rowtech',name:'Remo ergômetro — técnica e sequência',group:'Cardio',video:'https://kznra.org/wp-content/uploads/2017/02/IMGA0001-The-full-rowing-stroke.mp4',videoLoop:true},
+  {id:'extra-cardio-rowinterval',name:'Remo ergômetro — intervalado',group:'Cardio',video:'https://kznra.org/wp-content/uploads/2017/02/IMGA0001-The-full-rowing-stroke.mp4',videoLoop:true},
   {"id":"extra-cardio-burpee-db","name":"Burpee","group":"Cardio","video":"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/burpee.mp4"},
   {"id":"extra-cardio-jumping-jack-db","name":"Polichinelo (Jumping Jack)","group":"Cardio","video":"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/jumping-jack.mp4"},
   {"id":"extra-cardio-machines-db","name":"Cardio em máquinas","group":"Cardio","video":"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cardio-exercises-machines.mp4"},
   {"id":"extra-speed-running-db","name":"Sprint / corrida em velocidade","group":"Velocidade","video":"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/running.mp4"},
   {"id":"extra-speed-treadmill-db","name":"Corrida de velocidade na esteira","group":"Velocidade","video":"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/treadmill-running.mp4"},
   {"id":"extra-speed-stepup-db","name":"Subida no banco com salto","group":"Velocidade","video":"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/jump-step-up.mp4"},
-  {"id":"extra-speed-rope-db","name":"Pular corda em velocidade","group":"Velocidade","video":"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/jump-rope.mp4"}
+  {"id":"extra-speed-rope-db","name":"Pular corda em velocidade","group":"Velocidade","video":"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/jump-rope.mp4"},
+  {id:'extra-speed-askip-kick-1',name:'A-Skip com chute — variação 1',group:'Velocidade',video:'https://lran.org.uk/wp-content/uploads/2017/09/AK1.mp4',videoLoop:true},
+  {id:'extra-speed-askip-kick-2',name:'A-Skip com chute — variação 2',group:'Velocidade',video:'https://lran.org.uk/wp-content/uploads/2017/09/AK2.mp4',videoLoop:true},
+  {id:'extra-speed-askip-double',name:'A-Skip em ritmo duplo',group:'Velocidade',video:'https://lran.org.uk/wp-content/uploads/2017/09/A123.mp4',videoLoop:true},
+  {id:'extra-speed-powerup',name:'Drill Power-Up',group:'Velocidade',video:'https://lran.org.uk/wp-content/uploads/2017/09/Power-up.mp4',videoLoop:true},
+  {id:'extra-speed-123',name:'Drill 1-2-3',group:'Velocidade',video:'https://lran.org.uk/wp-content/uploads/2017/09/123-Hold.mp4',videoLoop:true},
+  {id:'extra-speed-highstep',name:'High Step com Power Drive',group:'Velocidade',video:'https://lran.org.uk/wp-content/uploads/2016/01/high_step.mp4',videoLoop:true},
+  {id:'extra-speed-sprint-session',name:'Sprint de aceleração — 20 m',group:'Velocidade',video:'https://footballreach.com/assets/drills/the-sprint-session/video.mp4?v=15954c32',videoLoop:true},
+  {id:'extra-speed-shuttle20',name:'Shuttle run — 20 m',group:'Velocidade',video:'https://footballreach.com/assets/drills/build-up-to-the-bleep-test/video.mp4?v=dd3e77d0',videoLoop:true}
 
 ];
 
