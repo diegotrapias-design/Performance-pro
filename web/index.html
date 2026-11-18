@@ -4951,11 +4951,11 @@ function renderTreinoEditPanel(){
 
   const extraWorkouts=draft.trainingPlan.extraWorkouts||(draft.trainingPlan.extraWorkouts=[]);
   const extraHtml=extraWorkouts.map((w,wi)=>`
-    <div class="day-block" style="border-color:#c92532"><div class="day-head"><b>${extraWorkoutLabel(w.category)} · ${escapeHtml(w.title||'Treino extra')}</b><button class="btn btn-danger btn-sm" onclick="removeExtraWorkout(${wi})">Remover</button></div><div class="day-body">
+    <div class="day-block" style="border-color:#c92532"><div class="day-head"><b>${w.category==='speed'?'Velocidade / aceleração':'Cardio'} · ${escapeHtml(w.title||'Treino extra')}</b><button class="btn btn-danger btn-sm" onclick="removeExtraWorkout(${wi})">Remover</button></div><div class="day-body">
       <input style="width:100%;padding:10px;margin-bottom:10px" value="${escapeHtml(w.title||'')}" placeholder="Nome do treino" oninput="updateExtraWorkout(${wi},'title',this.value)">
       ${(w.exercises||[]).map((e,ei)=>`<div class="ex-card">
-        <select id="extra-lib-${wi}-${ei}" style="width:100%;padding:9px;margin-bottom:8px" onchange="previewExtraLibraryExercise(this.value)"><option value="">Biblioteca de ${w.category==='core'?'core / abdômen':w.category==='speed'?'velocidade':'cardio'} — visualizar antes de adicionar</option>
-          ${extraWorkoutExercises(w.category).map(x=>`<option value="${escapeHtml(x.id||x.name)}" ${e.name===x.name?'selected':''}>${escapeHtml(x.name)}</option>`).join('')}
+        <select id="extra-lib-${wi}-${ei}" style="width:100%;padding:9px;margin-bottom:8px" onchange="previewExtraLibraryExercise(this.value)"><option value="">Biblioteca de ${w.category==='speed'?'velocidade':'cardio'} — visualizar antes de adicionar</option>
+          ${[...EXTRA_CARDIO_SPEED_LIBRARY.filter(x=>w.category==='speed'?x.group==='Velocidade':x.group==='Cardio'),...exerciseLibrary.filter(x=>w.category==='speed'?/veloc|sprint|acelera|corrida|tiro|agilidade|mudan[cç]a de dire[cç][aã]o/i.test((x.name||'')+' '+(x.group||'')):/cardio|corrida|bike|bicicleta|esteira|aer[oó]b|resist[eê]ncia/i.test((x.name||'')+' '+(x.group||'')))].map(x=>`<option value="${escapeHtml(x.id||x.name)}" ${e.name===x.name?'selected':''}>${escapeHtml(x.name)}</option>`).join('')}
         </select><div style="display:flex;gap:7px;flex-wrap:wrap;margin:0 0 8px"><button type="button" class="btn btn-outline btn-sm" onclick="previewExtraLibraryExercise(document.getElementById('extra-lib-${wi}-${ei}').value)">▶ Visualizar vídeo</button><button type="button" class="btn btn-primary btn-sm" onclick="selectExtraLibraryExercise(${wi},${ei},document.getElementById('extra-lib-${wi}-${ei}').value)">＋ Adicionar exercício</button></div><input style="width:100%;padding:9px;margin-bottom:8px" value="${escapeHtml(e.name||'')}" placeholder="Exercício / variação" oninput="updateExtraExercise(${wi},${ei},'name',this.value)">
         <div class="ex-card-grid"><div><label>Séries</label><input value="${escapeHtml(e.series||'')}" oninput="updateExtraExercise(${wi},${ei},'series',this.value)"></div><div><label>Reps / distância / tempo</label><input value="${escapeHtml(e.reps||'')}" oninput="updateExtraExercise(${wi},${ei},'reps',this.value)"></div><div><label>Descanso</label><input value="${escapeHtml(e.descanso||'')}" oninput="updateExtraExercise(${wi},${ei},'descanso',this.value)"></div></div>
         <input style="width:100%;padding:9px;margin-top:8px" value="${escapeHtml(e.obs||'')}" placeholder="Intensidade / observações" oninput="updateExtraExercise(${wi},${ei},'obs',this.value)">
@@ -5247,51 +5247,6 @@ const EXTRA_CARDIO_SPEED_LIBRARY = [
   {id:'extra-cardio-rowtech',name:'Remo ergômetro — técnica e sequência',group:'Cardio',video:''},
   {id:'extra-cardio-rowinterval',name:'Remo ergômetro — intervalado',group:'Cardio',video:''}
 
-
-  {name:"Abdominal em pé com elástico",group:"Abdômen / Core",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/band-standing-crunch.mp4"},
-  {name:"Elevação diagonal em pé com elástico",group:"Abdômen / Core",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/band-standing-lift.mp4"},
-  {name:"Abdominal em pé na polia",group:"Abdômen / Core",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-standing-crunch.mp4"},
-  {name:"Elevação diagonal na polia",group:"Abdômen / Core",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-standing-lift.mp4"},
-  {name:"Rotação diagonal de tronco na polia",group:"Abdômen / Core",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-twist-up-down.mp4"},
-  {name:"Flexão lateral de tronco com halter",group:"Abdômen / Core",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-side-bend.mp4"},
-  {name:"Abdominal na bola suíça",group:"Abdômen / Core",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/sit-up-on-exercise-ball.mp4"},
-  {name:"Elevação de quadril suspenso",group:"Abdômen / Core",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/hanging-leg-hip-raise.mp4"},
-  {name:"Elevação de pernas estendidas suspenso",group:"Abdômen / Core",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/hanging-straight-leg-raise.mp4"},
-  {name:"Elevação de quadril no banco inclinado",group:"Abdômen / Core",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/incline-leg-hip-raise.mp4"},
-  {name:"Abdominal sentado na máquina",group:"Abdômen / Core",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/lever-seated-crunch-1.mp4"},
-  {name:"Elevação de pernas deitado",group:"Abdômen / Core",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/lying-floor-leg-raise.mp4"},
-  {name:"Elevação de pernas estendidas deitado",group:"Abdômen / Core",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/lying-straight-leg-raise.mp4"},
-  {name:"Abdominal Otis-Up com carga",group:"Abdômen / Core",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/otis-ups.mp4"},
-  {name:"Prancha lateral",group:"Abdômen / Core",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/side-bridge-side-plank.mp4"},
-  {name:"Abdominal completo",group:"Abdômen / Core",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/sit-ups.mp4"},
-  {name:"Rotação de tronco com halteres",group:"Abdômen / Core",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/spell-caster.mp4"},
-  {name:"Abdominal oblíquo com rotação",group:"Abdômen / Core",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/twisting-crunch.mp4"},
-  {name:"Abdominal canivete (V-Up)",group:"Abdômen / Core",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/v-up.mp4"},
-  {name:"Elevação de pernas nas paralelas",group:"Abdômen / Core",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/vertical-leg-raise-on-parallel-bars.mp4"},
-  {name:"Abdominal com extensão de pernas e carga",group:"Abdômen / Core",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/weighted-leg-extension-crunch.mp4"},
-  {name:"Barra fixa assistida com elástico",group:"Costas",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/band-assisted-pull-up.mp4"},
-  {name:"Crucifixo inverso inclinado com elástico",group:"Ombro",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/band-bent-over-rear-lateral-raise.mp4"},
-  {name:"Remada sentada com elástico",group:"Costas",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/band-seated-row.mp4"},
-  {name:"Remada para deltoide posterior com elástico",group:"Ombro",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/band-standing-rear-delt-row.mp4"},
-  {name:"Rosca direta com barra",group:"Bíceps",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/barbell-curl.mp4"},
-  {name:"Agachamento frontal com barra",group:"Pernas — Quadríceps",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/barbell-front-chest-squat.mp4"},
-  {name:"Rosca unilateral na polia",group:"Bíceps",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-one-arm-curl.mp4"},
-  {name:"Puxada unilateral na polia",group:"Costas",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-one-arm-lateral-pulldown.mp4"},
-  {name:"Remada sentada unilateral com rotação",group:"Costas",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-one-arm-twisting-seated-row.mp4"},
-  {name:"Tríceps na polia acima da cabeça com corda",group:"Tríceps",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-rope-high-pulley-overhead-triceps-extension.mp4"},
-  {name:"Remada alta sentada com pegador V",group:"Costas",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/cable-seated-high-row-v-bar.mp4"},
-  {name:"Desenvolvimento alternado com halteres",group:"Ombro",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-alternate-shoulder-press.mp4"},
-  {name:"Desenvolvimento Arnold com halteres",group:"Ombro",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-arnold-press.mp4"},
-  {name:"Remada curvada com halteres",group:"Costas",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-bent-over-row.mp4"},
-  {name:"Rosca bíceps com halteres",group:"Bíceps",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-biceps-curl.mp4"},
-  {name:"Agachamento goblet com halter",group:"Pernas — Quadríceps",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-goblet-squat.mp4"},
-  {name:"Remada inclinada com halteres",group:"Costas",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-incline-row.mp4"},
-  {name:"Extensão de tríceps inclinada com halteres",group:"Tríceps",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-incline-triceps-extension.mp4"},
-  {name:"Tríceps testa com halteres deitado",group:"Tríceps",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-lying-triceps-extension.mp4"},
-  {name:"Panturrilha sentada com halteres",group:"Panturrilha",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-seated-calf-raise.mp4"},
-  {name:"Stiff com halteres",group:"Pernas — Posterior/Glúteo",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-stiff-leg-deadlift.mp4"},
-  {name:"Remada alta com halteres",group:"Ombro",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/dumbbell-upright-row.mp4"},
-  {name:"Tríceps testa com barra EZ",group:"Tríceps",video:"https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev/exercise-videos/male/ez-barbell-lying-triceps-extension.mp4"},
 ];
 
 
