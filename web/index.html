@@ -2234,9 +2234,10 @@ async function loadAthletes(){
     if(deletedKeys.has(libraryExerciseKey(item.name)))return;
     const existing=exerciseLibrary.find(ex=>(ex.name||'').trim().toLocaleLowerCase('pt-BR')===key);
     if(existing){
-      // Remove somente as animações esquemáticas desta leva; preserva vídeos próprios já cadastrados.
+      // Substitui somente animações esquemáticas por demonstrações MP4 correspondentes;
+      // preserva vídeos próprios já cadastrados.
       if(String(existing.video||'').startsWith('pp2d://')){existing.video='';needsSave=true;}
-      else if(!existing.video && item.video){existing.video=item.video;needsSave=true;}
+      if(!existing.video && item.video){existing.video=item.video;needsSave=true;}
       return;
     }
     // Não cadastra uma variação diferente reutilizando a mídia de outro exercício.
