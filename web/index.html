@@ -2359,8 +2359,9 @@ async function syncCoachDataToRelational(){
     }
     for(const extra of (a.trainingPlan?.extraWorkouts||[])){
       const exs=extra.exercises||[];if(!exs.length)continue;
-      workoutRows.push({id:extra.id,team_id:teamId,athlete_id:a.id,title:'[EXTRA] '+(extra.title||'Treino extra'),routine_type:'extra_'+(extra.category||'cardio'),sort_order:1000+(a.trainingPlan.extraWorkouts||[]).indexOf(extra),created_by:currentUser.id});
-      exs.forEach((e,index)=>itemRows.push({id:e.id,workout_id:extra.id,exercise_name:e.name||'',sets:e.series?parseInt(e.series,10)||null:null,reps:e.reps||null,load_text:null,rest_seconds:e.descanso?parseInt(e.descanso,10)||null:null,notes:e.obs||'',video_url:e.video||null,sort_order:index}));
+      const extraIndex=(a.trainingPlan.extraWorkouts||[]).indexOf(extra);
+      workoutRows.push({id:extra.id,team_id:teamId,athlete_id:a.id,title:'[EXTRA] '+extraWorkoutDisplayTitle(extra,extraIndex),routine_type:'extra_'+(extra.category||'cardio'),sort_order:1000+extraIndex,created_by:currentUser.id});
+      exs.forEach((e,index)=>itemRows.push({id:e.id,workout_id:extra.id,exercise_name:e.name||'',sets:e.series?parseInt(e.series,10)||null:null,reps:e.reps||null,load_text:e.carga||null,rest_seconds:e.descanso?parseInt(e.descanso,10)||null:null,notes:(e.comboId?'[[PP_COMBO:'+e.comboId+'|'+(e.comboType||'Bi-set')+']] ':'')+(e.obs||''),video_url:e.video||null,sort_order:index}));
     }
   }
   if(workoutRows.length){
@@ -6303,19 +6304,27 @@ async function editSeriesPreset(presetId){
   if(descanso===null || !descanso.trim()) return;
   const before={...preset};
   Object.assign(preset,{label:label.trim(),series:series.trim(),reps:reps.trim(),descanso:descanso.trim()});
-  const saved=await persist(false);
+  const saved=await persistPresetsWithoutRelationalSync();
   if(!saved){Object.assign(preset,before);showToast('Não foi possível salvar a edição do preset.','err');return;}
   renderPresetList();
   showToast('Preset atualizado.','ok');
 }
 async function applySeriesPreset(presetId){
   const preset=seriesPresets.find(x=>String(x.id)===String(presetId));
-  if(!preset || !presetTarget || !draft?.trainingPlan?.days) return;
-  const day=draft.trainingPlan.days.find(x=>x.id===presetTarget.dayId);
-  if(!day) return;
-  const ids=presetTarget.exIds||[];
-  const targets=day.exercises.filter(x=>ids.includes(x.id));
-  if(!targets.length) return;
+  if(!preset || !presetTarget || !draft?.trainingPlan) return;
+  let targets=[];
+  if(presetTarget.kind==='extra'){
+    const workout=draft.trainingPlan.extraWorkouts?.find(x=>String(x.id)===String(presetTarget.workoutId));
+    if(!workout)return;
+    const ids=(presetTarget.exIds||[]).map(String);
+    targets=(workout.exercises||[]).filter(x=>ids.includes(String(x.id)));
+  }else{
+    const day=draft.trainingPlan.days?.find(x=>String(x.id)===String(presetTarget.dayId));
+    if(!day)return;
+    const ids=(presetTarget.exIds||[]).map(String);
+    targets=(day.exercises||[]).filter(x=>ids.includes(String(x.id)));
+  }
+  if(!targets.length)return;
   targets.forEach(ex=>{
     ex.series=String(preset.series??'');
     ex.reps=String(preset.reps??'');
@@ -6335,14 +6344,29 @@ async function duplicateSeriesPreset(presetId){
   if(!label||!label.trim()) return;
   const copy={...original,id:uid(),label:label.trim()};
   seriesPresets.push(copy);
-  const saved=await persist(false);
+  const saved=await persistPresetsWithoutRelationalSync();
   if(!saved){seriesPresets=seriesPresets.filter(x=>x.id!==copy.id);return;}
   renderPresetList();
   showToast('Preset duplicado e salvo.','ok');
 }
+async function persistPresetsWithoutRelationalSync(){
+  try{
+    if(!currentUser||!athleteDataReady||!supabaseClient)throw new Error('Sessão ou dados ainda não estão prontos.');
+    const payload={athletes,library:exerciseLibrary,deletedLibraryExerciseKeys,seriesPresets,updatedAt:new Date().toISOString()};
+    const {error}=await supabaseClient.from(DATA_COLLECTION).upsert({user_id:currentUser.id,payload,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+    if(error)throw error;
+    return true;
+  }catch(error){console.error('Falha ao salvar presets sem sincronização relacional:',error);return false;}
+}
 async function saveCurrentAsPreset(){
-  const d=presetTarget && draft.trainingPlan.days.find(x=>x.id===presetTarget.dayId);
-  const ex=d && d.exercises.find(e=>e.id===(presetTarget.exIds||[])[0]);
+  let ex=null;
+  if(presetTarget?.kind==='extra'){
+    const workout=draft.trainingPlan.extraWorkouts?.find(x=>String(x.id)===String(presetTarget.workoutId));
+    ex=workout?.exercises?.find(e=>String(e.id)===String((presetTarget.exIds||[])[0]));
+  }else{
+    const d=presetTarget&&draft.trainingPlan.days.find(x=>String(x.id)===String(presetTarget.dayId));
+    ex=d&&d.exercises.find(e=>String(e.id)===String((presetTarget.exIds||[])[0]));
+  }
   const label=prompt('Nome do preset:',ex?`${ex.series||''}x${ex.reps||''}`:'Novo preset');
   if(label===null || !label.trim()) return;
   const series=prompt('Quantidade de séries:',String(ex?.series??'3'));
@@ -6353,14 +6377,16 @@ async function saveCurrentAsPreset(){
   if(descanso===null || !descanso.trim()) return;
   const preset={id:uid(),label:label.trim(),series:series.trim(),reps:reps.trim(),carga:ex?.carga||'',descanso:descanso.trim(),obs:ex?.obs||''};
   seriesPresets.push(preset);
-  const saved=await persist(false);
+  const saved=await persistPresetsWithoutRelationalSync();
   if(!saved){seriesPresets=seriesPresets.filter(x=>x.id!==preset.id);showToast('Não foi possível salvar o preset na nuvem.','err');return;}
   renderPresetList();
   showToast('Preset salvo com séries, repetições e descanso.','ok');
 }
 async function deleteSeriesPreset(presetId){
+  const previous=seriesPresets.slice();
   seriesPresets = seriesPresets.filter(p => p.id !== presetId);
-  await persist(false);
+  const saved=await persistPresetsWithoutRelationalSync();
+  if(!saved){seriesPresets=previous;showToast('Não foi possível salvar a remoção do preset.','err');return;}
   renderPresetList();
 }
 
