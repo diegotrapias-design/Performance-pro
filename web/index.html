@@ -5193,14 +5193,29 @@ function extraWorkoutDisplayTitle(workout,index){
   if(workout?.labelMode==='weekday')return (workout.day||'Dia da semana')+(title?' — '+title:'');
   return title;
 }
-function extraWorkoutExercises(category){
+function extraWorkoutExercises(category,search){
   const regular=[...exerciseLibrary,...EXTRA_GYM_EXERCISES].filter(x=>x&&x.name);
   const extras=EXTRA_CARDIO_SPEED_LIBRARY.filter(x=>x&&x.name);
   let matches=[];
   if(category==='core')matches=regular.filter(x=>/abd[oô]men|core/i.test(x.group||''));
-  else if(category==='cardio')matches=[...extras.filter(x=>/cardio/i.test(x.group||'')),...regular.filter(x=>/funcional\s*\/\s*cardio/i.test(x.group||''))];
-  else if(category==='speed')matches=[...extras.filter(x=>/velocidade/i.test(x.group||'')),...regular.filter(x=>/funcional\s*[—-]\s*alta performance/i.test(x.group||''))];
-  return matches.filter((x,i,arr)=>arr.findIndex(y=>String(y.id||y.name)===String(x.id||x.name))===i).sort((a,b)=>(a.name||'').localeCompare(b.name||'','pt-BR'));
+  else if(category==='cardio')matches=[...extras.filter(x=>/cardio/i.test(x.group||'')),...regular.filter(x=>/funcional\\s*\\/\\s*cardio/i.test(x.group||''))];
+  else if(category==='speed')matches=[...extras.filter(x=>/velocidade/i.test(x.group||'')),...regular.filter(x=>/funcional\\s*[—-]\\s*alta performance/i.test(x.group||''))];
+  // Core e favoritos da biblioteca normal ficam disponíveis em qualquer categoria de treino extra.
+  matches=[...matches,...regular.filter(x=>/abd[oô]men|core/i.test(x.group||'')),...exerciseLibrary.filter(x=>x&&x.name&&x.favorite)];
+  const seen=new Set();
+  matches=matches.filter(x=>{const key=String(x.id||x.name);if(seen.has(key))return false;seen.add(key);return true;});
+  const q=(search||'').trim().toLocaleLowerCase('pt-BR');
+  if(q)matches=matches.filter(x=>[x.name,...(x.aliases||[])].some(n=>(n||'').toLocaleLowerCase('pt-BR').includes(q)));
+  return matches.sort((x,y)=>(x.name||'').localeCompare(y.name||'','pt-BR'));
+}
+function filterExtraLibraryOptions(wi,ei,query){
+  const workout=draft?.trainingPlan?.extraWorkouts?.[wi];
+  const select=document.getElementById('extra-lib-'+wi+'-'+ei);
+  if(!workout||!select)return;
+  const selected=select.value;
+  const options=extraWorkoutExercises(workout.category,query);
+  select.innerHTML='<option value="">Buscar / selecionar exercício...</option>'+options.map(x=>'<option value="'+escapeHtml(x.id||x.name)+'">'+(x.favorite?'⭐ ':'')+escapeHtml(x.name)+'</option>').join('');
+  if(options.some(x=>String(x.id||x.name)===String(selected)))select.value=selected;
 }
 function updateExtraWorkout(i,k,v){const w=draft?.trainingPlan?.extraWorkouts?.[i];if(w)w[k]=v;}
 function moveExtraWorkout(index,direction){
@@ -5347,8 +5362,9 @@ function renderTreinoEditPanel(){
             '<button type="button" class="rm-btn" onclick="removeExtraExercise('+wi+','+ei+')" title="Excluir exercício">🗑</button>'+
           '</div>'+
         '</div>'+
+        '<input type="search" style="width:100%;padding:9px;margin:0 0 6px" placeholder="Buscar exercício pelo nome..." oninput="filterExtraLibraryOptions('+wi+','+ei+',this.value)">'+
         '<select id="extra-lib-'+wi+'-'+ei+'" style="width:100%;padding:9px;margin-bottom:8px" onchange="selectExtraLibraryExercise('+wi+','+ei+',this.value)">'+
-          '<option value="">Biblioteca de '+escapeHtml(extraWorkoutLabel(w.category).toLowerCase())+' — selecionar exercício</option>'+optionHtml+
+          '<option value="">Biblioteca — core, favoritos e categoria do treino</option>'+optionHtml+
         '</select>'+
         '<div style="display:flex;gap:7px;flex-wrap:wrap;margin:0 0 8px"><button type="button" class="btn btn-outline btn-sm" onclick="previewExtraLibraryExercise(document.getElementById(\'extra-lib-'+wi+'-'+ei+'\').value,\''+w.category+'\')">▶ Visualizar vídeo</button></div>'+
         '<div class="ex-card-grid">'+
