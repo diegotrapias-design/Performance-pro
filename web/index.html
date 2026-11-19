@@ -1289,7 +1289,7 @@ window.handleLogin = async function(event){
   .combine-select{display:flex;align-items:center;gap:3px;font-size:10px;color:#1769aa;white-space:nowrap}
   .combo-status{display:inline-block;background:#e8f3fb;color:#1769aa;border-radius:6px;padding:5px 8px;font-size:11px;font-weight:700}
 
-  .dt-sticker{position:relative;isolation:isolate;overflow:hidden;box-sizing:border-box;width:100%;margin:12px 0;padding:10px;border:3px solid #c7c9ce;border-radius:20px;background:linear-gradient(135deg,#08090d 0%,#171920 55%,#08090d 100%);color:#f8f8f8;box-shadow:0 7px 20px #0003}
+  .dt-sticker-motto{position:relative;z-index:1;display:block;box-sizing:border-box;width:100%;margin:0 0 8px;padding:8px 10px;border:2px solid #c92532;border-radius:10px;background:linear-gradient(100deg,#dedfe2,#fff,#dedfe2);color:#101116;text-align:center;font-size:clamp(11px,2.4vw,16px);font-weight:950;line-height:1.15;letter-spacing:-.2px;overflow-wrap:normal;word-break:normal}\n  .dt-sticker-motto em{color:#c92532;font-style:normal}\n  .dt-sticker.compact .dt-sticker-motto{margin-bottom:6px;padding:6px 7px;border-width:1.5px;border-radius:8px;font-size:clamp(9px,2vw,13px);line-height:1.12}\n  @media(max-width:380px){.dt-sticker.compact .dt-sticker-motto{font-size:9px;padding:5px 6px}}\n  .dt-sticker{position:relative;isolation:isolate;overflow:hidden;box-sizing:border-box;width:100%;margin:12px 0;padding:10px;border:3px solid #c7c9ce;border-radius:20px;background:linear-gradient(135deg,#08090d 0%,#171920 55%,#08090d 100%);color:#f8f8f8;box-shadow:0 7px 20px #0003}
   .dt-sticker:before{content:"";position:absolute;z-index:-1;inset:3px;border:2px solid #c92532;border-radius:14px;pointer-events:none}
   .dt-sticker-top{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.72fr) minmax(0,.82fr);gap:9px;align-items:stretch;min-height:210px}
   .dt-sticker-left{display:flex;flex-direction:column;justify-content:space-between;gap:8px;min-width:0;padding:4px 0}
@@ -4390,6 +4390,7 @@ function buildAthleteStickerHtml(a,compact=false){
   const photo=a.profilePhoto||'';
   const stats=[['ALTURA',a.height?(a.height+' cm'):'—'],['PESO',a.weight?(a.weight+' kg'):'—'],['IDADE',age!==null?(age+' anos'):'—'],['POSIÇÃO',a.position||'—']];
   return `<div class="dt-sticker${compact?' compact':''}">
+    <div class="dt-sticker-motto">Seja o <em>adversário</em> que você temeria enfrentar.</div>
     <div class="dt-sticker-top">
       <div class="dt-sticker-left">
         <div class="dt-sticker-brand"><img class="dt-sticker-logo" src="data:image/png;base64,${ICON_B64}" alt="Diego Trapiá Alta Performance"></div>
