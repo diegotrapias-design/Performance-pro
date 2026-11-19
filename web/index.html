@@ -4179,17 +4179,72 @@ function changeAthleteSport(sport){
   persistCurrentRoute();
 }
 let athletePhotoCropState=null;
+let athleteSegmentationPromise=null;
+function loadAthleteSegmentation(){
+  if(athleteSegmentationPromise)return athleteSegmentationPromise;
+  athleteSegmentationPromise=new Promise((resolve,reject)=>{
+    if(window.SelfieSegmentation){resolve();return;}
+    const script=document.createElement('script');
+    script.src='https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js';
+    script.crossOrigin='anonymous';
+    script.onload=()=>window.SelfieSegmentation?resolve():reject(new Error('Segmentação indisponível'));
+    script.onerror=()=>reject(new Error('Não foi possível carregar o recorte automático'));
+    document.head.appendChild(script);
+  });
+  return athleteSegmentationPromise;
+}
+async function removeAthletePhotoBackground(img){
+  await loadAthleteSegmentation();
+  const maxSide=1500,ratio=Math.min(1,maxSide/Math.max(img.naturalWidth||img.width,img.naturalHeight||img.height));
+  const width=Math.max(1,Math.round((img.naturalWidth||img.width)*ratio));
+  const height=Math.max(1,Math.round((img.naturalHeight||img.height)*ratio));
+  const source=document.createElement('canvas');source.width=width;source.height=height;
+  source.getContext('2d').drawImage(img,0,0,width,height);
+  const segmenter=new SelfieSegmentation({locateFile:file=>'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/'+file});
+  segmenter.setOptions({modelSelection:0});
+  const mask=await new Promise((resolve,reject)=>{
+    let finished=false;
+    segmenter.onResults(results=>{if(finished)return;finished=true;resolve(results.segmentationMask);});
+    segmenter.send({image:source}).catch(reject);
+  });
+  const output=document.createElement('canvas');output.width=width;output.height=height;
+  const ctx=output.getContext('2d');
+  ctx.drawImage(source,0,0);
+  ctx.globalCompositeOperation='destination-in';
+  ctx.drawImage(mask,0,0,width,height);
+  ctx.globalCompositeOperation='source-over';
+  segmenter.close();
+  return await new Promise((resolve,reject)=>output.toBlob(blob=>blob?resolve(blob):reject(new Error('Falha ao gerar PNG')),'image/png'));
+}
 function handleAthleteProfilePhoto(input){
   const file=input?.files?.[0];if(!file)return;
   if(!file.type.startsWith('image/')){showToast('Selecione um arquivo de imagem.','err');input.value='';return;}
   if(file.size>12*1024*1024){showToast('A foto deve ter no máximo 12 MB.','err');input.value='';return;}
   const reader=new FileReader();
-  reader.onload=()=>{const img=new Image();img.onload=()=>openAthletePhotoCrop(img);img.onerror=()=>showToast('Não foi possível abrir esta imagem.','err');img.src=reader.result;};
+  reader.onload=async()=>{
+    const img=new Image();
+    img.onload=async()=>{
+      showToast('Removendo o fundo da foto… aguarde.','info');
+      try{
+        const cutout=await removeAthletePhotoBackground(img);
+        const url=URL.createObjectURL(cutout),cutoutImage=new Image();
+        cutoutImage.onload=()=>{openAthletePhotoCrop(cutoutImage,true);URL.revokeObjectURL(url);};
+        cutoutImage.onerror=()=>{URL.revokeObjectURL(url);openAthletePhotoCrop(img,false);showToast('Não foi possível concluir o recorte. A foto original foi mantida.','err');};
+        cutoutImage.src=url;
+      }catch(error){
+        console.warn('Recorte automático indisponível:',error);
+        openAthletePhotoCrop(img,false);
+        showToast('Recorte automático indisponível neste aparelho. Você ainda pode enquadrar a foto original.','err');
+      }
+    };
+    img.onerror=()=>showToast('Não foi possível abrir esta imagem.','err');
+    img.src=reader.result;
+  };
   reader.onerror=()=>showToast('Não foi possível ler a foto.','err');
   reader.readAsDataURL(file);
 }
-function openAthletePhotoCrop(img){
-  athletePhotoCropState={img,zoom:1,x:0,y:0};
+function openAthletePhotoCrop(img,backgroundRemoved=false){
+  athletePhotoCropState={img,zoom:1,x:0,y:0,backgroundRemoved};
   let modal=document.getElementById('athlete-photo-crop-modal');
   if(!modal){modal=document.createElement('div');modal.id='athlete-photo-crop-modal';document.body.appendChild(modal);}
   modal.innerHTML=`
@@ -4209,14 +4264,14 @@ function drawAthletePhotoCrop(){
   const st=athletePhotoCropState,canvas=document.getElementById('athlete-photo-crop-canvas');if(!st||!canvas)return;
   const ctx=canvas.getContext('2d'),size=canvas.width,img=st.img,scale=Math.max(size/img.width,size/img.height)*st.zoom,w=img.width*scale,h=img.height*scale;
   const maxX=Math.max(0,(w-size)/2),maxY=Math.max(0,(h-size)/2),cx=(size-w)/2+(st.x/100)*maxX,cy=(size-h)/2+(st.y/100)*maxY;
-  ctx.clearRect(0,0,size,size);ctx.fillStyle='#bfc1c6';ctx.fillRect(0,0,size,size);ctx.drawImage(img,cx,cy,w,h);
+  ctx.clearRect(0,0,size,size);if(!st.backgroundRemoved){ctx.fillStyle='#bfc1c6';ctx.fillRect(0,0,size,size);}ctx.drawImage(img,cx,cy,w,h);
 }
 function updateAthletePhotoCrop(key,value){if(!athletePhotoCropState)return;athletePhotoCropState[key]=Number(value);drawAthletePhotoCrop();}
 function closeAthletePhotoCrop(){const modal=document.getElementById('athlete-photo-crop-modal');if(modal)modal.remove();athletePhotoCropState=null;}
 function applyAthletePhotoCrop(){
   const canvas=document.getElementById('athlete-photo-crop-canvas');if(!canvas||!athletePhotoCropState)return;
   const output=document.createElement('canvas');output.width=520;output.height=520;output.getContext('2d').drawImage(canvas,0,0,520,520);
-  draft.profilePhoto=output.toDataURL('image/jpeg',0.82);
+  draft.profilePhoto=athletePhotoCropState.backgroundRemoved?output.toDataURL('image/png'):output.toDataURL('image/jpeg',0.82);
   const preview=document.getElementById('athlete-photo-preview');if(preview)preview.innerHTML='<img src="'+draft.profilePhoto+'" alt="Foto do atleta" style="width:112px;height:112px;object-fit:cover;border-radius:12px;border:3px solid #c7c9ce">';
   persistCurrentRoute();closeAthletePhotoCrop();showToast('Enquadramento aplicado. Salve as alterações para gravar no perfil.','ok');
 }
