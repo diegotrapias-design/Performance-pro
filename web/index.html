@@ -1295,7 +1295,7 @@ window.handleLogin = async function(event){
   .dt-sticker-left{display:flex;flex-direction:column;justify-content:space-between;gap:8px;min-width:0;padding:4px 0}
   .dt-sticker-brand{display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;min-width:0;font-size:10px;letter-spacing:.7px;font-weight:900;line-height:1.15;color:#f5f5f5}
   .dt-sticker-brand strong{display:block;margin:0;font-size:24px;line-height:1;color:#fff;font-style:italic}
-  .dt-sticker-brand span{display:block;width:100%;max-width:100%;color:#e13a43;font-size:clamp(7px,2vw,10px);letter-spacing:.25px;line-height:1.15;overflow-wrap:anywhere;word-break:normal}
+  .dt-sticker-brand span{display:block;width:100%;max-width:100%;color:#e13a43;font-size:clamp(6px,1.6vw,8px);letter-spacing:0;line-height:1.15;white-space:nowrap;overflow-wrap:normal;word-break:keep-all}
   .dt-sticker-sport,.dt-sticker-team{border-left:2px solid #c92532;padding:5px 0 5px 7px;min-width:0;overflow:hidden}
   .dt-sticker-sport span{display:block;font-size:8px;color:#c6c8cf;letter-spacing:.8px;line-height:1.2}
   .dt-sticker-sport b,.dt-sticker-team b{display:block;font-size:clamp(10px,2.7vw,14px);line-height:1.2;overflow-wrap:anywhere;word-break:normal;color:#fff}
@@ -1314,7 +1314,7 @@ window.handleLogin = async function(event){
   .dt-sticker.compact .dt-sticker-photo{min-height:0}
   .dt-sticker.compact .dt-sticker-brand strong{font-size:17px}
   .dt-sticker.compact .dt-sticker-brand{font-size:8px;letter-spacing:.45px}
-  .dt-sticker.compact .dt-sticker-brand span{font-size:7px;letter-spacing:.2px;display:block}
+  .dt-sticker.compact .dt-sticker-brand span{font-size:6px;letter-spacing:0;display:block;white-space:nowrap;overflow-wrap:normal;word-break:keep-all}
   .dt-sticker.compact .dt-sticker-sport b,.dt-sticker.compact .dt-sticker-team b{font-size:9px}
   .dt-sticker.compact .dt-sticker-stat{padding:4px;font-size:7px}
   .dt-sticker.compact .dt-sticker-stat b{font-size:9px}
@@ -4371,7 +4371,7 @@ function buildAthleteStickerHtml(a,compact=false){
       <div class="dt-sticker-left">
         <div class="dt-sticker-brand"><strong>DT</strong><span>PERFORMANCE</span></div>
         <div class="dt-sticker-sport"><span>ESPORTE</span><b>${escapeHtml(a.sport||'—')}</b></div>
-        <div class="dt-sticker-team">${(a.sportType||inferAthleteSportType(a.sport))==='coletivo'?'CLUBE':'EQUIPE'}<br><b>${escapeHtml((a.sportType||inferAthleteSportType(a.sport))==='coletivo'?(a.club||'—'):'DT PERFORMANCE')}</b></div>
+        <div class="dt-sticker-team">${(a.sportType||inferAthleteSportType(a.sport))==='coletivo'?'CLUBE':'EQUIPE'}<br><b>${escapeHtml(a.club||'—')}</b></div>
       </div>
       <div class="dt-sticker-portrait"><img class="dt-sticker-photo" src="${photo}" alt="Foto de ${escapeHtml(a.name||'atleta')}"></div>
       <div class="dt-sticker-stats">${stats.map(([label,value])=>`<div class="dt-sticker-stat"><span>${label}</span><b>${escapeHtml(String(value))}</b></div>`).join('')}</div>
