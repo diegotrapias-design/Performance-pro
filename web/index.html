@@ -2756,7 +2756,7 @@ async function loadAthletePortal(){
     const workoutCards=(list,empty)=>list.length?list.map(w=>`<button type="button" class="panel" onclick="showAthleteWorkout('${w.id}')" style="display:block;width:100%;text-align:left;margin:10px 0;padding:16px;border:1px solid var(--border,#ddd);color:inherit;background:var(--panel,#fff);cursor:pointer"><b>${safe(w.title)}</b><div class="muted" style="margin-top:6px">${w.scheduled_for?'Data: '+safe(w.scheduled_for):'Treino atribuído'} · ${items.filter(i=>i.workout_id===w.id).length} exercícios</div><div style="text-align:right;color:var(--red,#c92532);font-weight:700;margin-top:8px">Ver treino →</div></button>`).join(''): `<div class="empty-state">${empty}</div>`;
     const tile=(icon,label,section,sub='')=>`<button type="button" class="athlete-menu-tile athlete-menu-tile-${section}" onclick="showAthleteSection('${section}')" style="min-height:92px;border:1px solid rgba(255,255,255,.12);border-radius:10px;background:linear-gradient(145deg,#29292f,#19191d);color:#fff;padding:14px 10px;text-align:left;display:flex;align-items:center;gap:12px"><span style="width:42px;height:42px;flex:0 0 42px;border-radius:50%;background:#c92532;display:grid;place-items:center;font-size:20px">${icon}</span><span><b style="display:block;font-size:14px">${label}</b><small style="color:#c9cbd0">${sub}</small></span></button>`;
     const backButton='<button type="button" class="btn btn-outline btn-sm" onclick="showAthleteSection(\'home\')" style="margin:8px 0 16px">← Voltar ao menu</button>';
-    app.innerHTML=`<div class="home-hero">${athlete.profile_photo_data?buildAthleteStickerHtml({name:athlete.full_name,profilePhoto:athlete.profile_photo_data,sport:athlete.sport,position:athlete.position,height:athlete.height_cm,weight:athlete.body_mass_kg,birthDate:athlete.birth_date},false):''}<div class="home-hero-title">Olá, ${safe(athlete.full_name)}</div><div class="home-hero-sub">${safe(athlete.sport)} ${athlete.category?'· '+safe(athlete.category):''} · Sua área individual</div></div>
+    app.innerHTML=`<div class="home-hero">${athlete.profile_photo_data?buildAthleteStickerHtml({name:athlete.full_name,profilePhoto:athlete.profile_photo_data,sport:athlete.sport,position:athlete.position,height:athlete.height_cm,weight:athlete.body_mass_kg,birthDate:athlete.birth_date},true):''}<div class="home-hero-title">Olá, ${safe(athlete.full_name)}</div><div class="home-hero-sub">${safe(athlete.sport)} ${athlete.category?'· '+safe(athlete.category):''} · Sua área individual</div></div>
       ${(window.__athletePendingInvoices||[]).length?`<button type="button" onclick="showAthleteSection('invoices')" aria-label="Abrir pagamento pendente" style="position:fixed;z-index:999;left:14px;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));width:calc(100% - 28px);max-width:520px;margin:0 auto;padding:14px 16px;border:1px solid #ff8b91;border-left:5px solid #c92532;border-radius:12px;background:#fff;color:#a5121d;box-shadow:0 8px 28px rgba(0,0,0,.28);font-weight:800;text-align:left;cursor:pointer">🔔 ${(window.__athletePendingInvoices||[]).length===1?'1 pagamento pendente':(window.__athletePendingInvoices||[]).length+' pagamentos pendentes'} · Toque para visualizar</button>`:''}
       <section id="athlete-home" style="padding:8px 0 24px">
         <div class="panel" style="padding:16px;margin:12px 0"><div style="font-weight:700">Bem-vindo à sua área de atleta</div><div class="muted" style="margin-top:4px">Acesse seus treinos e acompanhe sua evolução.</div></div>
@@ -5063,6 +5063,33 @@ function renderCopyTrainingDays(){
 function selectAllCopyTrainingDays(checked){
   document.querySelectorAll('input[name="copy-training-day"]').forEach(el=>el.checked=!!checked);
 }
+function renderCopyExtraWorkouts(){
+  const host=document.getElementById('copy-extra-workouts');
+  const source=athletes.find(a=>String(a.id)===String(document.getElementById('copy-extra-athlete')?.value));
+  if(!host)return;
+  const extras=source?.trainingPlan?.extraWorkouts||[];
+  host.innerHTML=extras.length?extras.map((workout,i)=>'<label style="display:flex;align-items:center;gap:9px;padding:9px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:13px"><input type="checkbox" name="copy-extra-workout" value="'+escapeHtml(workout.id||String(i))+'" checked><span><b>'+escapeHtml(workout.title||extraWorkoutLabel(workout.category))+'</b><small style="display:block;color:var(--gray)">'+(workout.exercises||[]).length+' exercício(s)</small></span></label>').join(''):'<small style="color:var(--gray)">Este atleta não possui treinos extras cadastrados.</small>';
+}
+function selectAllCopyExtraWorkouts(checked){
+  document.querySelectorAll('input[name="copy-extra-workout"]').forEach(el=>el.checked=!!checked);
+}
+function copyExtraWorkoutsFromAthlete(){
+  const source=athletes.find(a=>String(a.id)===String(document.getElementById('copy-extra-athlete')?.value));
+  const sourceExtras=source?.trainingPlan?.extraWorkouts||[];
+  if(!source||!sourceExtras.length){showToast('Selecione um atleta com treinos extras cadastrados.','err');return;}
+  const selectedIds=Array.from(document.querySelectorAll('input[name="copy-extra-workout"]:checked')).map(el=>String(el.value));
+  if(!selectedIds.length){showToast('Selecione pelo menos um treino extra para copiar.','err');return;}
+  const copied=sourceExtras.filter((workout,i)=>selectedIds.includes(String(workout.id||i))).map(workout=>{
+    const clone=JSON.parse(JSON.stringify(workout));
+    clone.id=uid();
+    clone.exercises=(clone.exercises||[]).map(ex=>({...ex,id:uid()}));
+    return clone;
+  });
+  draft.trainingPlan=draft.trainingPlan||{days:[]};
+  draft.trainingPlan.extraWorkouts=[...(draft.trainingPlan.extraWorkouts||[]),...copied];
+  renderTreinoEditPanel();
+  showToast(copied.length+' treino(s) extra(s) copiado(s) de '+source.name+'. Os treinos existentes foram preservados.','ok');
+}
 function copyTrainingFromAthlete(){
   const source=athletes.find(a=>a.id===document.getElementById('copy-training-athlete')?.value);
   const sourceDays=source?.trainingPlan?.days||[];
@@ -5200,6 +5227,20 @@ function renderTreinoEditPanel(){
         <button type="button" class="btn btn-primary btn-sm" onclick="copyTrainingFromAthlete()">Copiar dias selecionados</button>
       </div>
       <small style="display:block;margin-top:7px;color:var(--muted)">Os dias escolhidos serão adicionados ao treino atual. Nada que já existe no atleta de destino será apagado.</small>
+    </div>
+    <div class="panel" style="margin-bottom:14px;padding:14px">
+      <div style="font-weight:700;margin-bottom:8px">⚡ Copiar treinos extras de outro atleta</div>
+      <select id="copy-extra-athlete" onchange="renderCopyExtraWorkouts()" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text)">
+        <option value="">Selecione um atleta...</option>
+        ${athletes.filter(a=>a.id!==draft.id&&(a.trainingPlan?.extraWorkouts||[]).length).sort((a,b)=>(a.name||'').localeCompare(b.name||'')).map(a=>`<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`).join('')}
+      </select>
+      <div id="copy-extra-workouts" style="display:grid;gap:7px;margin-top:10px"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:9px">
+        <button type="button" class="btn btn-outline btn-sm" onclick="selectAllCopyExtraWorkouts(true)">Selecionar todos</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="selectAllCopyExtraWorkouts(false)">Limpar seleção</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="copyExtraWorkoutsFromAthlete()">Copiar treinos extras selecionados</button>
+      </div>
+      <small style="display:block;margin-top:7px;color:var(--muted)">Os treinos extras escolhidos serão adicionados ao atleta atual. Nada que já existe será apagado.</small>
     </div>
     <div class="cycle-field-row">
       <div class="field">
