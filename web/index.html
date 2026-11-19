@@ -3557,13 +3557,18 @@ function calcAge(birthDate){
   return age;
 }
 
-function calcDecimalAge(birthDate){
+function calcDecimalAge(birthDate, assessmentDate){
   if(!birthDate) return null;
-  const b = new Date(birthDate);
-  if(isNaN(b)) return null;
-  const diffMs = new Date() - b;
-  if(diffMs < 0) return null;
-  return diffMs / (1000*60*60*24*365.25);
+  const parseLocalDate = value => {
+    const parts=String(value||'').split('-').map(Number);
+    if(parts.length!==3||parts.some(x=>!x))return null;
+    const d=new Date(parts[0],parts[1]-1,parts[2]);
+    return isNaN(d)?null:d;
+  };
+  const b=parseLocalDate(birthDate);
+  const t=parseLocalDate(assessmentDate)||new Date();
+  if(!b||t<b) return null;
+  return (t-b)/(1000*60*60*24*365.25);
 }
 
 /* Maturity offset — Mirwald et al. (2002), "An assessment of maturity from
@@ -3571,18 +3576,21 @@ function calcDecimalAge(birthDate){
    Requires: decimal age (years), leg length (cm), sitting height (cm),
    weight (kg), height (cm), biological sex. Equations differ by sex. */
 function calcMaturity(a){
-  const age = calcDecimalAge(a.birthDate);
+  const age = calcDecimalAge(a.birthDate,a.assessmentDate);
   const height = parseFloat(a.height);
   const weight = parseFloat(a.weight);
-  const sittingHeight = parseFloat(a.sittingHeight);
+  const measuredSittingHeight = parseFloat(a.sittingHeight);
+  const benchHeight = a.benchHeight===''||a.benchHeight==null?0:parseFloat(a.benchHeight);
   const missing = [];
-  if(age === null) missing.push('data de nascimento');
-  if(!height || isNaN(height)) missing.push('altura');
-  if(!weight || isNaN(weight)) missing.push('peso');
-  if(!sittingHeight || isNaN(sittingHeight)) missing.push('altura sentado');
+  if(age === null) missing.push('data de nascimento ou data da avaliação válida');
+  if(!height || !isFinite(height) || height<=0) missing.push('altura');
+  if(!weight || !isFinite(weight) || weight<=0) missing.push('peso');
+  if(!measuredSittingHeight || !isFinite(measuredSittingHeight) || measuredSittingHeight<=0) missing.push('altura sentado');
+  if(!isFinite(benchHeight) || benchHeight<0) missing.push('altura do banco válida');
   if(!a.sex) missing.push('sexo biológico');
   if(missing.length) return { missing };
-
+  const sittingHeight=measuredSittingHeight-benchHeight;
+  if(sittingHeight<=0 || sittingHeight>=height) return {missing:['altura sentado e altura do banco coerentes']};
   const legLength = height - sittingHeight;
   let offset;
   if(a.sex === 'M'){
@@ -3605,10 +3613,10 @@ function calcMaturity(a){
   else if(offset >= 1){ classification = 'Pós-púbere'; classClass = 'post'; }
   else{ classification = 'Púbere (Circa-PHV)'; classClass = 'circa'; }
 
-  const phvDate = new Date();
+  const phvDate = a.assessmentDate ? new Date(a.assessmentDate+'T12:00:00') : new Date();
   phvDate.setDate(phvDate.getDate() + Math.round(-offset * 365.25));
 
-  return { age, legLength, offset, classification, classClass, phvDate, sex: a.sex };
+  return { age, sittingHeight, benchHeight, legLength, offset, classification, classClass, phvDate, sex: a.sex };
 }
 
 function maturityCurveSvg(offset){
@@ -3660,8 +3668,9 @@ function renderMaturityCard(a){
         <div class="maturity-badge ${r.classClass}">${r.classification}</div>
       </div>
       <div class="maturity-grid">
-        <div><span>Idade decimal</span><b>${r.age.toFixed(2)} anos</b></div>
-        <div><span>Comprimento de perna</span><b>${r.legLength.toFixed(1)} cm</b></div>
+        <div><span>Idade decimal na avaliação</span><b>${r.age.toFixed(2)} anos</b></div>
+        <div><span>Altura do tronco (corrigida)</span><b>${r.sittingHeight.toFixed(1)} cm</b></div>
+        <div><span>Comprimento de MI</span><b>${r.legLength.toFixed(1)} cm</b></div>
         <div><span>${whenLabel}</span><b>${phvStr}</b></div>
       </div>
       ${maturityCurveSvg(r.offset)}
@@ -4020,7 +4029,7 @@ function newAthlete(){
   currentId = null;
   athleteMode = 'edit-dados';
   draft = {
-    id: uid(), name:'', sport:'', category:'', sex:'', birthDate:'', height:'', weight:'', sittingHeight:'', phone:'', email:'', notes:'',
+    id: uid(), name:'', sport:'', category:'', sex:'', birthDate:'', assessmentDate:new Date().toISOString().slice(0,10), height:'', weight:'', sittingHeight:'', benchHeight:'', phone:'', email:'', notes:'',
     createdAt: new Date().toISOString(),
     trainingPlan: { days: [], routineType: '' }
   };
@@ -4040,6 +4049,8 @@ function openAthlete(id){
   if(draft.category === undefined) draft.category = '';
   if(draft.sex === undefined) draft.sex = '';
   if(draft.sittingHeight === undefined) draft.sittingHeight = '';
+  if(draft.benchHeight === undefined) draft.benchHeight = '';
+  if(draft.assessmentDate === undefined) draft.assessmentDate = new Date().toISOString().slice(0,10);
   renderDetail();
 }
 
@@ -4366,6 +4377,10 @@ function renderDadosEditPanel(){
         <input type="date" value="${draft.birthDate||''}" oninput="updateDraftField('birthDate', this.value); refreshMaturityCard();">
       </div>
       <div class="field">
+        <label>Data da avaliação</label>
+        <input type="date" value="${draft.assessmentDate||new Date().toISOString().slice(0,10)}" oninput="updateDraftField('assessmentDate', this.value); refreshMaturityCard();">
+      </div>
+      <div class="field">
         <label>Altura (cm)</label>
         <input type="number" value="${draft.height||''}" oninput="updateDraftField('height', this.value); refreshMaturityCard();" placeholder="Ex: 178">
       </div>
@@ -4374,8 +4389,12 @@ function renderDadosEditPanel(){
         <input type="number" step="0.1" value="${draft.weight||''}" oninput="updateDraftField('weight', this.value); refreshMaturityCard();" placeholder="Ex: 74.5">
       </div>
       <div class="field">
-        <label>Altura sentado / tronco-cefálica (cm)</label>
-        <input type="number" step="0.1" value="${draft.sittingHeight||''}" oninput="updateDraftField('sittingHeight', this.value); refreshMaturityCard();" placeholder="Ex: 91.5">
+        <label>Altura sentado medida do chão (cm)</label>
+        <input type="number" step="0.1" value="${draft.sittingHeight||''}" oninput="updateDraftField('sittingHeight', this.value); refreshMaturityCard();" placeholder="Ex: 133">
+      </div>
+      <div class="field">
+        <label>Altura do banco (cm)</label>
+        <input type="number" step="0.1" min="0" value="${draft.benchHeight??''}" oninput="updateDraftField('benchHeight', this.value); refreshMaturityCard();" placeholder="Ex: 40">
       </div>
       <div class="field">
         <label>Telefone</label>
