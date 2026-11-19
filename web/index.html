@@ -1288,6 +1288,27 @@ window.handleLogin = async function(event){
   .view-athlete-no-video{font-size:11px;color:#888;margin-top:8px}
   .combine-select{display:flex;align-items:center;gap:3px;font-size:10px;color:#1769aa;white-space:nowrap}
   .combo-status{display:inline-block;background:#e8f3fb;color:#1769aa;border-radius:6px;padding:5px 8px;font-size:11px;font-weight:700}
+
+  .dt-sticker{display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:12px;position:relative;overflow:hidden;background:linear-gradient(145deg,#08090d 0%,#171920 70%,#090a0e 100%);border:3px solid #c7c9ce;border-radius:18px;padding:12px;color:#f8f8f8;box-shadow:0 5px 16px #0003;margin:12px 0}
+  .dt-sticker:before{content:"";position:absolute;inset:0;border:2px solid #c92532;border-radius:13px;pointer-events:none}
+  .dt-sticker-main{min-width:0;position:relative;z-index:1}
+  .dt-sticker-brand{font-size:11px;font-weight:900;letter-spacing:2px;color:#f1f1f1;margin:0 0 9px}
+  .dt-sticker-brand span{color:#e13a43}
+  .dt-sticker-photo{width:100%;aspect-ratio:1/1;object-fit:cover;object-position:center;border:3px solid #c7c9ce;border-radius:12px;background:linear-gradient(135deg,#d6d7da,#aeb1b7);display:block}
+  .dt-sticker-name{margin-top:9px;background:linear-gradient(100deg,#aeb1b7,#f4f4f4,#aeb1b7);color:#101116;border-radius:6px;padding:8px 9px;font-size:clamp(12px,3vw,17px);font-weight:950;line-height:1.15;text-align:center;overflow-wrap:anywhere}
+  .dt-sticker-role{background:#b91f2b;color:#fff;text-align:center;font-weight:900;font-size:10px;letter-spacing:2px;padding:5px;border-radius:0 0 7px 7px}
+  .dt-sticker-stats{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:center;gap:0;min-width:0}
+  .dt-sticker-stat{border-bottom:1px solid #a92a34;padding:8px 2px;font-size:10px;line-height:1.2;color:#bfc2ca;overflow-wrap:anywhere}
+  .dt-sticker-stat b{display:block;color:#fff;font-size:clamp(11px,2.8vw,15px);margin-top:3px}
+  .dt-sticker.compact{grid-template-columns:76px minmax(0,1fr);padding:8px;gap:9px;border-radius:12px}
+  .dt-sticker.compact .dt-sticker-photo{border-radius:8px}
+  .dt-sticker.compact .dt-sticker-brand{font-size:9px;margin-bottom:5px}
+  .dt-sticker.compact .dt-sticker-name{font-size:12px;margin-top:0}
+  .dt-sticker.compact .dt-sticker-stats{grid-column:2;display:flex;flex-direction:row;flex-wrap:wrap;gap:4px}
+  .dt-sticker.compact .dt-sticker-stat{border:0;padding:3px 5px;background:#252831;border-radius:4px;font-size:9px}
+  .dt-sticker.compact .dt-sticker-stat b{display:inline;font-size:10px;margin-left:3px}
+  @media(max-width:380px){.dt-sticker{grid-template-columns:minmax(0,1fr) 94px;padding:9px;gap:8px}.dt-sticker-stat{font-size:9px}.dt-sticker-stat b{font-size:11px}}
+
 </style>
 </head>
 <body>
@@ -3988,7 +4009,7 @@ function renderList(filter){
         : `<button class="btn btn-outline btn-sm" onclick="downloadAthletePdf('${a.id}')">Dados (PDF)</button>`;
       return `
         <div class="card training-athlete-card">
-          ${a.profilePhoto?'<div style="margin:0 0 12px"><img src="'+a.profilePhoto+'" alt="Foto de '+escapeHtml(a.name||'atleta')+'" style="width:76px;height:76px;object-fit:cover;border-radius:50%;border:3px solid #c92532"></div>':''}
+          ${a.profilePhoto?buildAthleteStickerHtml(a,true):''}
           <div class="tag">${escapeHtml(a.sport || 'Atleta')}${a.category ? ' · ' + escapeHtml(a.category) : ''}</div>
           <div class="name">${escapeHtml(a.name)}</div>
           <div class="meta">${age !== null ? `<span>${age} anos${a.sex ? ' · ' + (a.sex==='M'?'Masculino':'Feminino') : ''}</span>` : ''}<span>${days.length} dia(s) · ${exerciseCount} exercício(s)</span></div>
@@ -4163,7 +4184,7 @@ function openAthletePhotoCrop(img){
     <div style="position:fixed;inset:0;z-index:10020;background:#080a10ed;display:flex;align-items:center;justify-content:center;padding:18px;overflow:auto">
       <div style="width:min(100%,430px);background:var(--panel,#1c1c21);color:var(--text,#f8f8f8);border:1px solid #454550;border-radius:18px;padding:20px;max-height:94vh;overflow:auto">
         <h3 style="margin:0 0 8px">Enquadrar foto do atleta</h3><p style="color:var(--muted,#b7b7bd);margin:0 0 14px">Ajuste o zoom e a posição até o enquadramento ficar como deseja.</p>
-        <canvas id="athlete-photo-crop-canvas" width="320" height="320" style="display:block;width:min(100%,320px);aspect-ratio:1;margin:0 auto 18px;border-radius:50%;border:3px solid #c92532;background:#111"></canvas>
+        <canvas id="athlete-photo-crop-canvas" width="320" height="320" style="display:block;width:min(100%,320px);aspect-ratio:1;margin:0 auto 18px;border-radius:12px;border:3px solid #c7c9ce;background:#bfc1c6"></canvas>
         <label style="display:block;margin:12px 0 5px">Zoom</label><input type="range" min="0.75" max="3" step="0.01" value="1" style="width:100%" oninput="updateAthletePhotoCrop('zoom',this.value)">
         <label style="display:block;margin:12px 0 5px">Mover para esquerda / direita</label><input type="range" min="-100" max="100" step="1" value="0" style="width:100%" oninput="updateAthletePhotoCrop('x',this.value)">
         <label style="display:block;margin:12px 0 5px">Mover para cima / baixo</label><input type="range" min="-100" max="100" step="1" value="0" style="width:100%" oninput="updateAthletePhotoCrop('y',this.value)">
@@ -4176,7 +4197,7 @@ function drawAthletePhotoCrop(){
   const st=athletePhotoCropState,canvas=document.getElementById('athlete-photo-crop-canvas');if(!st||!canvas)return;
   const ctx=canvas.getContext('2d'),size=canvas.width,img=st.img,scale=Math.max(size/img.width,size/img.height)*st.zoom,w=img.width*scale,h=img.height*scale;
   const maxX=Math.max(0,(w-size)/2),maxY=Math.max(0,(h-size)/2),cx=(size-w)/2+(st.x/100)*maxX,cy=(size-h)/2+(st.y/100)*maxY;
-  ctx.clearRect(0,0,size,size);ctx.fillStyle='#111';ctx.fillRect(0,0,size,size);ctx.save();ctx.beginPath();ctx.arc(size/2,size/2,size/2,0,Math.PI*2);ctx.clip();ctx.drawImage(img,cx,cy,w,h);ctx.restore();
+  ctx.clearRect(0,0,size,size);ctx.fillStyle='#bfc1c6';ctx.fillRect(0,0,size,size);ctx.drawImage(img,cx,cy,w,h);
 }
 function updateAthletePhotoCrop(key,value){if(!athletePhotoCropState)return;athletePhotoCropState[key]=Number(value);drawAthletePhotoCrop();}
 function closeAthletePhotoCrop(){const modal=document.getElementById('athlete-photo-crop-modal');if(modal)modal.remove();athletePhotoCropState=null;}
@@ -4184,7 +4205,7 @@ function applyAthletePhotoCrop(){
   const canvas=document.getElementById('athlete-photo-crop-canvas');if(!canvas||!athletePhotoCropState)return;
   const output=document.createElement('canvas');output.width=520;output.height=520;output.getContext('2d').drawImage(canvas,0,0,520,520);
   draft.profilePhoto=output.toDataURL('image/jpeg',0.82);
-  const preview=document.getElementById('athlete-photo-preview');if(preview)preview.innerHTML='<img src="'+draft.profilePhoto+'" alt="Foto do atleta" style="width:112px;height:112px;object-fit:cover;border-radius:50%;border:3px solid #c92532">';
+  const preview=document.getElementById('athlete-photo-preview');if(preview)preview.innerHTML='<img src="'+draft.profilePhoto+'" alt="Foto do atleta" style="width:112px;height:112px;object-fit:cover;border-radius:12px;border:3px solid #c7c9ce">';
   persistCurrentRoute();closeAthletePhotoCrop();showToast('Enquadramento aplicado. Salve as alterações para gravar no perfil.','ok');
 }
 
@@ -4293,6 +4314,18 @@ function openAthletePreview(){
  h.innerHTML='<div style="position:fixed;inset:0;z-index:9999;background:#000b;overflow:auto;padding:16px"><div style="max-width:560px;margin:20px auto;background:#f3f3f4;border-radius:16px;padding:16px"><button onclick="closeAthletePreview()">Fechar ×</button><h2>Visão do atleta: '+escapeHtml(a.name||'Atleta')+'</h2>'+buildDayCardsHtml(days)+'<small>Prévia demonstrativa — não altera dados.</small></div></div>';
 }
 function closeAthletePreview(){const h=document.getElementById('athlete-preview-host');if(h)h.innerHTML='';}
+function buildAthleteStickerHtml(a,compact=false){
+  const age=calcAge(a.birthDate);
+  const photo=a.profilePhoto||'';
+  const stats=[['Esporte',a.sport||'—'],['Posição',a.position||'—'],['Altura',a.height?(a.height+' cm'):'—'],['Peso',a.weight?(a.weight+' kg'):'—'],['Idade',age!==null?(age+' anos'):'—']];
+  return `<div class="dt-sticker${compact?' compact':''}">
+    <div class="dt-sticker-main"><div class="dt-sticker-brand">DT <span>PERFORMANCE</span> · ALTA PERFORMANCE</div>
+      <img class="dt-sticker-photo" src="${photo}" alt="Foto original de ${escapeHtml(a.name||'atleta')}">
+      <div class="dt-sticker-name">${escapeHtml(a.name||'ATLETA')}</div><div class="dt-sticker-role">ATLETA DT</div>
+    </div><div class="dt-sticker-stats">${stats.map(([label,value])=>`<div class="dt-sticker-stat">${label}<b>${escapeHtml(String(value))}</b></div>`).join('')}</div>
+  </div>`;
+}
+
 function renderProfileView(){
   const p = document.getElementById('panel-athlete');
   if(!p) return;
@@ -4318,7 +4351,7 @@ function renderProfileView(){
 
     <div class="profile-section-title">Dados pessoais</div>
     <div class="profile-card">
-      ${a.profilePhoto?'<div style="display:flex;justify-content:center;margin:0 0 16px"><img src="'+a.profilePhoto+'" alt="Foto de '+escapeHtml(a.name||'atleta')+'" style="width:124px;height:124px;object-fit:cover;border-radius:50%;border:3px solid #c92532"></div>':''}
+      ${a.profilePhoto?buildAthleteStickerHtml(a,false):''}
       <div class="profile-grid">
         <div><span>Esporte</span><b>${escapeHtml(a.sport) || '—'}</b></div>
         <div><span>Categoria</span><b>${escapeHtml(a.category) || '—'}</b></div>
