@@ -1294,6 +1294,8 @@ window.handleLogin = async function(event){
   .dt-sticker-top{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.72fr) minmax(0,.82fr);gap:9px;align-items:stretch;min-height:210px}
   .dt-sticker-left{display:flex;flex-direction:column;justify-content:space-between;gap:8px;min-width:0;padding:4px 0}
   .dt-sticker-brand{display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;min-width:0;font-size:10px;letter-spacing:.7px;font-weight:900;line-height:1.15;color:#f5f5f5}
+  .dt-sticker-brand .dt-sticker-logo{display:block;width:min(100%,96px);max-height:48px;height:auto;object-fit:contain;object-position:left center}
+  .dt-sticker.compact .dt-sticker-brand .dt-sticker-logo{width:min(100%,76px);max-height:38px}
   .dt-sticker-brand strong{display:block;margin:0;font-size:24px;line-height:1;color:#fff;font-style:italic}
   .dt-sticker-brand span{display:block;width:100%;max-width:100%;color:#e13a43;font-size:clamp(6px,1.6vw,8px);letter-spacing:0;line-height:1.15;white-space:nowrap;overflow-wrap:normal;word-break:keep-all}
   .dt-sticker-sport,.dt-sticker-team{border-left:2px solid #c92532;padding:5px 0 5px 7px;min-width:0;overflow:hidden}
@@ -4357,9 +4359,30 @@ function toggleCoachMonitoring(athleteId){
 }
 
 function openAthletePreview(){
- const a=draft||{};const days=a.trainingPlan?.days||[];let h=document.getElementById('athlete-preview-host');
+ let h=document.getElementById('athlete-preview-host');
  if(!h){h=document.createElement('div');h.id='athlete-preview-host';document.body.appendChild(h);}
- h.innerHTML='<div style="position:fixed;inset:0;z-index:9999;background:#000b;overflow:auto;padding:16px"><div style="max-width:560px;margin:20px auto;background:#f3f3f4;border-radius:16px;padding:16px"><button onclick="closeAthletePreview()">Fechar ×</button><h2>Visão do atleta: '+escapeHtml(a.name||'Atleta')+'</h2>'+buildDayCardsHtml(days)+'<small>Prévia demonstrativa — não altera dados.</small></div></div>';
+ window.__ppAthletePreviewExtraIndex=null;
+ renderAthletePreviewTab('routines');
+}
+function renderAthletePreviewTab(tab){
+ const a=draft||{},days=a.trainingPlan?.days||[],extras=a.trainingPlan?.extraWorkouts||[];
+ const h=document.getElementById('athlete-preview-host');if(!h)return;
+ window.__ppAthletePreviewTab=tab;
+ const safe=x=>escapeHtml(x==null?'':String(x));
+ const nav='<div style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0"><button type="button" class="btn '+(tab==='routines'?'btn-primary':'btn-outline')+'" onclick="renderAthletePreviewTab(\'routines\')">Treinos</button><button type="button" class="btn '+(tab==='extras'?'btn-primary':'btn-outline')+'" onclick="renderAthletePreviewTab(\'extras\')">Treinos extras</button></div>';
+ let content='';
+ if(tab==='routines'){
+   content=days.length?buildDayCardsHtml(days):'<div class="empty-state">Nenhum treino cadastrado.</div>';
+ }else if(window.__ppAthletePreviewExtraIndex!==null&&window.__ppAthletePreviewExtraIndex!==undefined){
+   const w=extras[window.__ppAthletePreviewExtraIndex];
+   if(w){
+     content='<button type="button" class="btn btn-outline btn-sm" onclick="window.__ppAthletePreviewExtraIndex=null;renderAthletePreviewTab(\'extras\')">← Voltar aos treinos extras</button><article class="profile-card" style="margin-top:12px"><h3>'+safe(w.title||extraWorkoutLabel(w.category)||'Treino extra')+'</h3><div class="muted">'+safe(extraWorkoutLabel(w.category))+'</div><div style="display:grid;gap:9px;margin-top:12px">'+(w.exercises||[]).map(ex=>'<div class="athlete-exercise-tile" style="min-height:0;flex:auto"><b>'+safe(ex.name||'Exercício')+'</b><div class="athlete-tile-details"><span>Séries: '+safe(ex.series||'—')+'</span><span>Repetições / tempo: '+safe(ex.reps||'—')+'</span><span>Carga: '+safe(ex.carga||'—')+'</span><span>Descanso: '+safe(ex.descanso||'—')+'</span></div>'+(ex.obs?'<p class="view-ex-obs">'+safe(ex.obs)+'</p>':'')+(ex.video?'<button type="button" class="btn btn-outline btn-sm" onclick="openExerciseVideo(\''+safe(ex.video)+'\',\''+safe(ex.name||'Exercício')+'\')">▶ Ver vídeo</button>':'')+'</div>').join('')+'</div></article>';
+   }else window.__ppAthletePreviewExtraIndex=null;
+ }
+ if(tab==='extras'&&(window.__ppAthletePreviewExtraIndex===null||window.__ppAthletePreviewExtraIndex===undefined)){
+   content=extras.length?extras.map((w,i)=>'<button type="button" class="panel" onclick="window.__ppAthletePreviewExtraIndex='+i+';renderAthletePreviewTab(\'extras\')" style="display:block;width:100%;text-align:left;margin:10px 0;padding:16px;border:1px solid var(--border,#ddd);color:inherit;background:var(--panel,#fff);cursor:pointer"><b>'+safe(w.title||extraWorkoutLabel(w.category)||'Treino extra')+'</b><div class="muted" style="margin-top:6px">'+safe(extraWorkoutLabel(w.category))+' · '+(w.exercises||[]).length+' exercícios</div><div style="text-align:right;color:var(--red,#c92532);font-weight:700;margin-top:8px">Ver treino →</div></button>').join(''):'<div class="empty-state">Nenhum treino extra cadastrado.</div>';
+ }
+ h.innerHTML='<div style="position:fixed;inset:0;z-index:9999;background:#000b;overflow:auto;padding:16px"><div style="max-width:560px;margin:20px auto;background:#f3f3f4;border-radius:16px;padding:16px"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><h2 style="margin:0">Visão do atleta: '+safe(a.name||'Atleta')+'</h2><button type="button" class="btn btn-outline btn-sm" onclick="closeAthletePreview()">Fechar ×</button></div>'+nav+content+'<small style="display:block;margin-top:14px">Prévia visual — não inicia nem altera treinos.</small></div></div>';
 }
 function closeAthletePreview(){const h=document.getElementById('athlete-preview-host');if(h)h.innerHTML='';}
 function buildAthleteStickerHtml(a,compact=false){
@@ -4369,7 +4392,7 @@ function buildAthleteStickerHtml(a,compact=false){
   return `<div class="dt-sticker${compact?' compact':''}">
     <div class="dt-sticker-top">
       <div class="dt-sticker-left">
-        <div class="dt-sticker-brand"><strong>DT</strong><span>PERFORMANCE</span></div>
+        <div class="dt-sticker-brand"><img class="dt-sticker-logo" src="data:image/png;base64,${ICON_B64}" alt="Diego Trapiá Alta Performance"></div>
         <div class="dt-sticker-sport"><span>ESPORTE</span><b>${escapeHtml(a.sport||'—')}</b></div>
         <div class="dt-sticker-team">${(a.sportType||inferAthleteSportType(a.sport))==='coletivo'?'CLUBE':'EQUIPE'}<br><b>${escapeHtml(a.club||'—')}</b></div>
       </div>
