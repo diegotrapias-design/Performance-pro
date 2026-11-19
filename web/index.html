@@ -4034,7 +4034,6 @@ function renderList(filter){
         : `<button class="btn btn-outline btn-sm" onclick="downloadAthletePdf('${a.id}')">Dados (PDF)</button>`;
       return `
         <div class="card training-athlete-card">
-          ${a.profilePhoto?buildAthleteStickerHtml(a,true):''}
           <div class="tag">${escapeHtml(a.sport || 'Atleta')}${a.category ? ' · ' + escapeHtml(a.category) : ''}</div>
           <div class="name">${escapeHtml(a.name)}</div>
           <div class="meta">${age !== null ? `<span>${age} anos${a.sex ? ' · ' + (a.sex==='M'?'Masculino':'Feminino') : ''}</span>` : ''}<span>${days.length} dia(s) · ${exerciseCount} exercício(s)</span></div>
@@ -4403,7 +4402,6 @@ function renderProfileView(){
 
     <div class="profile-section-title">Dados pessoais</div>
     <div class="profile-card">
-      ${a.profilePhoto?buildAthleteStickerHtml(a,false):''}
       <div class="profile-grid">
         <div><span>Esporte</span><b>${escapeHtml(a.sport) || '—'}</b></div>
         <div><span>Categoria</span><b>${escapeHtml(a.category) || '—'}</b></div>
