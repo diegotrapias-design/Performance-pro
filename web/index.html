@@ -1291,7 +1291,7 @@ window.handleLogin = async function(event){
 
   .dt-sticker{position:relative;overflow:hidden;margin:12px 0;padding:10px;border:3px solid #c7c9ce;border-radius:20px;background:linear-gradient(135deg,#08090d 0%,#171920 55%,#08090d 100%);color:#f8f8f8;box-shadow:0 7px 20px #0003}
   .dt-sticker:before{content:"";position:absolute;inset:3px;border:2px solid #c92532;border-radius:14px;pointer-events:none}
-  .dt-sticker-top{position:relative;z-index:1;display:grid;grid-template-columns:minmax(74px,.72fr) minmax(0,1.55fr) minmax(92px,.78fr);gap:9px;align-items:stretch;min-height:190px}
+  .dt-sticker-top{position:relative;z-index:1;display:grid;grid-template-columns:minmax(68px,.62fr) minmax(0,1.85fr) minmax(90px,.78fr);gap:9px;align-items:stretch;min-height:210px}
   .dt-sticker-left{display:flex;flex-direction:column;justify-content:space-between;gap:8px;min-width:0;padding:5px 1px}
   .dt-sticker-brand{display:flex;flex-direction:column;gap:2px;font-size:10px;letter-spacing:1.3px;font-weight:900;line-height:1.15;color:#f5f5f5}
   .dt-sticker-brand strong{font-size:24px;line-height:1;color:#fff;font-style:italic}
@@ -1301,16 +1301,16 @@ window.handleLogin = async function(event){
   .dt-sticker-sport span{display:block;font-size:8px;color:#c6c8cf;letter-spacing:1px}
   .dt-sticker-sport b,.dt-sticker-team b{display:block;font-size:clamp(10px,2.7vw,14px);line-height:1.15;overflow-wrap:anywhere;color:#fff}
   .dt-sticker-team{font-size:8px;color:#c6c8cf;letter-spacing:1px}
-  .dt-sticker-portrait{position:relative;min-width:0;min-height:190px;display:flex;align-items:center;justify-content:center;overflow:hidden;border:3px solid #c92532;border-radius:22px;background:linear-gradient(145deg,#f0f0f1,#bfc1c6 55%,#8f9299);box-shadow:inset 0 0 0 2px #e5e6e8}
-  .dt-sticker-photo{width:100%;height:100%;min-height:190px;object-fit:contain;object-position:center bottom;display:block}
+  .dt-sticker-portrait{position:relative;min-width:0;min-height:210px;display:flex;align-items:center;justify-content:center;overflow:hidden;border:3px solid #c92532;border-radius:22px;background:linear-gradient(145deg,#f0f0f1,#bfc1c6 55%,#8f9299);box-shadow:inset 0 0 0 2px #e5e6e8}
+  .dt-sticker-photo{width:100%;height:100%;min-height:210px;object-fit:contain;object-position:center center;display:block;transform:scale(1.08);transform-origin:center 42%}
   .dt-sticker-stats{display:flex;flex-direction:column;justify-content:space-around;gap:5px;min-width:0;padding:3px 0}
   .dt-sticker-stat{min-width:0;padding:6px 6px;border:1px solid #71313a;border-radius:8px;background:#22252d;font-size:8px;line-height:1.15;color:#c6c8cf;overflow-wrap:anywhere}
   .dt-sticker-stat b{display:block;margin-top:3px;color:#fff;font-size:clamp(10px,2.7vw,14px);line-height:1.12}
   .dt-sticker-name{position:relative;z-index:1;margin:9px 2px 0;padding:9px 10px;background:linear-gradient(100deg,#92969e,#f0f0f0,#aeb2ba);color:#101116;border:1px solid #f7f7f7;border-radius:7px;text-align:center;font-size:clamp(14px,4vw,20px);font-weight:950;line-height:1.12;letter-spacing:.4px;overflow-wrap:anywhere}
   .dt-sticker-role{position:relative;z-index:1;width:58%;margin:0 auto;background:linear-gradient(90deg,#8f1721,#c92532,#8f1721);border:1px solid #d5d6d9;border-top:0;color:#fff;text-align:center;font-size:10px;font-weight:900;letter-spacing:2px;padding:6px;border-radius:0 0 9px 9px}
   .dt-sticker.compact{padding:7px;border-radius:15px;margin:0 0 12px}
-  .dt-sticker.compact .dt-sticker-top{grid-template-columns:minmax(52px,.72fr) minmax(0,1.5fr) minmax(72px,.82fr);gap:6px;min-height:128px}
-  .dt-sticker.compact .dt-sticker-portrait,.dt-sticker.compact .dt-sticker-photo{min-height:128px}
+  .dt-sticker.compact .dt-sticker-top{grid-template-columns:minmax(48px,.62fr) minmax(0,1.8fr) minmax(70px,.82fr);gap:6px;min-height:138px}
+  .dt-sticker.compact .dt-sticker-portrait,.dt-sticker.compact .dt-sticker-photo{min-height:138px}
   .dt-sticker.compact .dt-sticker-brand strong{font-size:17px}
   .dt-sticker.compact .dt-sticker-brand{font-size:8px;letter-spacing:.7px}
   .dt-sticker.compact .dt-sticker-brand small{font-size:6px}
@@ -4388,9 +4388,9 @@ function buildAthleteStickerHtml(a,compact=false){
   return `<div class="dt-sticker${compact?' compact':''}">
     <div class="dt-sticker-top">
       <div class="dt-sticker-left">
-        <div class="dt-sticker-brand"><strong>DT</strong><span>DT PERFORMANCE</span><small>ALTA PERFORMANCE</small></div>
+        <div class="dt-sticker-brand"><strong>DT</strong><span>PERFORMANCE</span><small>ALTA PERFORMANCE</small></div>
         <div class="dt-sticker-sport"><span>ESPORTE</span><b>${escapeHtml(a.sport||'—')}</b></div>
-        <div class="dt-sticker-team">TIME<br><b>DT PERFORMANCE</b></div>
+        <div class="dt-sticker-team">${(a.sportType||inferAthleteSportType(a.sport))==='coletivo'?'CLUBE':'EQUIPE'}<br><b>${escapeHtml((a.sportType||inferAthleteSportType(a.sport))==='coletivo'?(a.club||'—'):'DT PERFORMANCE')}</b></div>
       </div>
       <div class="dt-sticker-portrait"><img class="dt-sticker-photo" src="${photo}" alt="Foto de ${escapeHtml(a.name||'atleta')}"></div>
       <div class="dt-sticker-stats">${stats.map(([label,value])=>`<div class="dt-sticker-stat"><span>${label}</span><b>${escapeHtml(String(value))}</b></div>`).join('')}</div>
@@ -4588,6 +4588,7 @@ function renderDadosEditPanel(){
         <div class="field full"><label>Nome completo *</label><input type="text" value="${escapeHtml(draft.name)}" oninput="updateDraftField('name', this.value); refreshCardHeader();" placeholder="Ex: João Silva"></div>
         <div class="field"><label>Tipo de esporte</label><select id="athlete-sport-type" onchange="changeAthleteSportType(this.value)"><option value="">Selecione…</option><option value="coletivo" ${draft.sportType==='coletivo'?'selected':''}>Esporte coletivo — alto rendimento / profissional</option><option value="individual" ${draft.sportType==='individual'?'selected':''}>Esporte individual — alto rendimento / profissional</option></select></div>
         <div class="field"><label>Esporte / modalidade</label><select id="athlete-sport" onchange="changeAthleteSport(this.value)"><option value="">Selecione o esporte…</option>${athleteSportOptionsHtml()}</select></div>
+        ${(draft.sportType||inferAthleteSportType(draft.sport))==='coletivo'?`<div class="field full"><label>Clube / equipe do atleta</label><input type="text" value="${escapeHtml(draft.club||'')}" oninput="updateDraftField(\'club\', this.value)" placeholder="Digite o nome do clube"></div>`:'' }
         <div class="field"><label>Posição / prova / especialidade</label><select id="athlete-position" onchange="updateDraftField('position',this.value)"><option value="">Selecione…</option>${athletePositionOptionsHtml()}</select></div>
         <div class="field"><label>Categoria</label><select onchange="updateDraftField('category', this.value); refreshMaturityCard();"><option value="">Selecione…</option>${['Sub-9','Sub-11','Sub-13','Sub-15','Sub-17','Sub-20','Adulto / Profissional'].map(c => `<option value="${c}" ${draft.category===c?'selected':''}>${c}</option>`).join('')}</select></div>
         <div class="field"><label>Sexo biológico</label><select onchange="updateDraftField('sex', this.value); refreshMaturityCard();"><option value="">Selecione…</option><option value="M" ${draft.sex==='M'?'selected':''}>Masculino</option><option value="F" ${draft.sex==='F'?'selected':''}>Feminino</option></select></div>
