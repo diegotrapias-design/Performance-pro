@@ -4051,6 +4051,7 @@ function openAthlete(id){
   if(draft.sittingHeight === undefined) draft.sittingHeight = '';
   if(draft.benchHeight === undefined) draft.benchHeight = '';
   if(draft.assessmentDate === undefined) draft.assessmentDate = new Date().toISOString().slice(0,10);
+  if(!draft.sportType) draft.sportType=inferAthleteSportType(draft.sport);
   renderDetail();
 }
 
@@ -4112,12 +4113,16 @@ const ATHLETE_SPORTS={
     'Pentatlo moderno':['Esgrima','Natação','Hipismo','Laser-run']
   }
 };
+function inferAthleteSportType(sport){
+  for(const type of Object.keys(ATHLETE_SPORTS))if(Object.prototype.hasOwnProperty.call(ATHLETE_SPORTS[type],sport))return type;
+  return '';
+}
 function athleteSportOptionsHtml(){
-  const list=ATHLETE_SPORTS[draft.sportType]||{};
+  const list=ATHLETE_SPORTS[draft.sportType||inferAthleteSportType(draft.sport)]||{};
   return Object.keys(list).sort((a,b)=>a.localeCompare(b,'pt-BR')).map(name=>'<option value="'+escapeHtml(name)+'" '+(draft.sport===name?'selected':'')+'>'+escapeHtml(name)+'</option>').join('');
 }
 function athletePositionOptionsHtml(){
-  const options=(ATHLETE_SPORTS[draft.sportType]||{})[draft.sport]||[];
+  const options=(ATHLETE_SPORTS[draft.sportType||inferAthleteSportType(draft.sport)]||{})[draft.sport]||[];
   return options.map(name=>'<option value="'+escapeHtml(name)+'" '+(draft.position===name?'selected':'')+'>'+escapeHtml(name)+'</option>').join('');
 }
 function changeAthleteSportType(type){
