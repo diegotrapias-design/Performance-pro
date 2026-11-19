@@ -1289,50 +1289,50 @@ window.handleLogin = async function(event){
   .combine-select{display:flex;align-items:center;gap:3px;font-size:10px;color:#1769aa;white-space:nowrap}
   .combo-status{display:inline-block;background:#e8f3fb;color:#1769aa;border-radius:6px;padding:5px 8px;font-size:11px;font-weight:700}
 
-  .dt-sticker{position:relative;overflow:hidden;margin:12px 0;padding:10px;border:3px solid #c7c9ce;border-radius:20px;background:linear-gradient(135deg,#08090d 0%,#171920 55%,#08090d 100%);color:#f8f8f8;box-shadow:0 7px 20px #0003}
-  .dt-sticker:before{content:"";position:absolute;inset:3px;border:2px solid #c92532;border-radius:14px;pointer-events:none}
-  .dt-sticker-top{position:relative;z-index:1;display:grid;grid-template-columns:minmax(82px,.78fr) minmax(0,1.72fr) minmax(88px,.82fr);gap:9px;align-items:stretch;min-height:210px}
-  .dt-sticker-left{display:flex;flex-direction:column;justify-content:space-between;gap:8px;min-width:0;padding:5px 1px}
-  .dt-sticker-brand{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;min-width:0;font-size:10px;letter-spacing:1px;font-weight:900;line-height:1.15;color:#f5f5f5}
-  .dt-sticker-brand strong{font-size:24px;line-height:1;color:#fff;font-style:italic}
-  .dt-sticker-brand span{display:block;max-width:100%;color:#e13a43;font-size:clamp(7px,2vw,10px);letter-spacing:.35px;line-height:1.1;overflow-wrap:anywhere}
-  .dt-sticker-sport,.dt-sticker-team{border-left:2px solid #c92532;padding:5px 0 5px 6px;min-width:0}
-  .dt-sticker-sport span{display:block;font-size:8px;color:#c6c8cf;letter-spacing:1px}
-  .dt-sticker-sport b,.dt-sticker-team b{display:block;font-size:clamp(10px,2.7vw,14px);line-height:1.15;overflow-wrap:anywhere;color:#fff}
-  .dt-sticker-team{font-size:8px;color:#c6c8cf;letter-spacing:1px}
-  .dt-sticker-portrait{position:relative;min-width:0;height:100%;min-height:210px;display:block;overflow:hidden;border:3px solid #c92532;border-radius:22px;background:#08090d;box-shadow:inset 0 0 0 2px #e5e6e8}
-  .dt-sticker-photo{position:absolute;inset:0;width:100%;height:100%;min-width:100%;min-height:100%;object-fit:cover;object-position:center 42%;display:block;transform:scale(1.08);transform-origin:center}
-
+  .dt-sticker{position:relative;isolation:isolate;overflow:hidden;box-sizing:border-box;width:100%;margin:12px 0;padding:10px;border:3px solid #c7c9ce;border-radius:20px;background:linear-gradient(135deg,#08090d 0%,#171920 55%,#08090d 100%);color:#f8f8f8;box-shadow:0 7px 20px #0003}
+  .dt-sticker:before{content:"";position:absolute;z-index:-1;inset:3px;border:2px solid #c92532;border-radius:14px;pointer-events:none}
+  .dt-sticker-top{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.72fr) minmax(0,.82fr);gap:9px;align-items:stretch;min-height:210px}
+  .dt-sticker-left{display:flex;flex-direction:column;justify-content:space-between;gap:8px;min-width:0;padding:4px 0}
+  .dt-sticker-brand{display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;min-width:0;font-size:10px;letter-spacing:.7px;font-weight:900;line-height:1.15;color:#f5f5f5}
+  .dt-sticker-brand strong{display:block;margin:0;font-size:24px;line-height:1;color:#fff;font-style:italic}
+  .dt-sticker-brand span{display:block;width:100%;max-width:100%;color:#e13a43;font-size:clamp(7px,2vw,10px);letter-spacing:.25px;line-height:1.15;overflow-wrap:anywhere;word-break:normal}
+  .dt-sticker-sport,.dt-sticker-team{border-left:2px solid #c92532;padding:5px 0 5px 7px;min-width:0;overflow:hidden}
+  .dt-sticker-sport span{display:block;font-size:8px;color:#c6c8cf;letter-spacing:.8px;line-height:1.2}
+  .dt-sticker-sport b,.dt-sticker-team b{display:block;font-size:clamp(10px,2.7vw,14px);line-height:1.2;overflow-wrap:anywhere;word-break:normal;color:#fff}
+  .dt-sticker-team{font-size:8px;color:#c6c8cf;letter-spacing:.8px;line-height:1.2}
+  .dt-sticker-portrait{position:relative;min-width:0;width:100%;height:100%;min-height:210px;display:block;overflow:hidden;border:3px solid #c92532;border-radius:22px;background:#08090d;box-shadow:inset 0 0 0 2px #e5e6e8}
+  .dt-sticker-photo{position:absolute;inset:0;width:100%;height:100%;min-width:0;min-height:0;object-fit:cover;object-position:center 42%;display:block}
   .dt-sticker-stats{display:flex;flex-direction:column;justify-content:space-around;gap:5px;min-width:0;padding:3px 0}
-  .dt-sticker-stat{min-width:0;padding:6px 6px;border:1px solid #71313a;border-radius:8px;background:#22252d;font-size:8px;line-height:1.15;color:#c6c8cf;overflow-wrap:anywhere}
-  .dt-sticker-stat b{display:block;margin-top:3px;color:#fff;font-size:clamp(10px,2.7vw,14px);line-height:1.12}
-  .dt-sticker-name{position:relative;z-index:1;margin:9px 2px 0;padding:9px 10px;background:linear-gradient(100deg,#92969e,#f0f0f0,#aeb2ba);color:#101116;border:1px solid #f7f7f7;border-radius:7px;text-align:center;font-size:clamp(14px,4vw,20px);font-weight:950;line-height:1.12;letter-spacing:.4px;overflow-wrap:anywhere}
-  .dt-sticker-role{position:relative;z-index:1;width:58%;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:2px;background:linear-gradient(90deg,#8f1721,#c92532,#8f1721);border:1px solid #d5d6d9;border-top:0;color:#fff;text-align:center;font-size:10px;font-weight:900;letter-spacing:2px;padding:6px;border-radius:0 0 9px 9px}
-  .dt-sticker-role small{font-size:8px;font-weight:800;letter-spacing:2.2px;line-height:1.1}
+  .dt-sticker-stat{min-width:0;padding:6px;border:1px solid #71313a;border-radius:8px;background:#22252d;font-size:8px;line-height:1.2;color:#c6c8cf;overflow-wrap:anywhere;word-break:normal}
+  .dt-sticker-stat b{display:block;margin-top:3px;color:#fff;font-size:clamp(10px,2.7vw,14px);line-height:1.2;overflow-wrap:anywhere}
+  .dt-sticker-name{position:relative;z-index:1;min-width:0;margin:9px 0 0;padding:9px 10px;background:linear-gradient(100deg,#92969e,#f0f0f0,#aeb2ba);color:#101116;border:1px solid #f7f7f7;border-radius:7px;text-align:center;font-size:clamp(14px,4vw,20px);font-weight:950;line-height:1.2;letter-spacing:.25px;overflow-wrap:anywhere;word-break:normal}
+  .dt-sticker-role{position:relative;z-index:1;width:min(58%,280px);min-width:0;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:3px;background:linear-gradient(90deg,#8f1721,#c92532,#8f1721);border:1px solid #d5d6d9;border-top:0;color:#fff;text-align:center;font-size:10px;font-weight:900;letter-spacing:1.5px;padding:6px;border-radius:0 0 9px 9px}
+  .dt-sticker-role small{font-size:8px;font-weight:800;letter-spacing:1.6px;line-height:1.2}
   .dt-sticker.compact{padding:7px;border-radius:15px;margin:0 0 12px}
-  .home-hero .dt-sticker.compact{width:min(100%,210px);margin:0 auto 8px;padding:3px;border-radius:8px;transform:scale(1.15);transform-origin:top center}
-  .home-hero .dt-sticker.compact .dt-sticker-top{grid-template-columns:minmax(36px,.78fr) minmax(0,1.72fr) minmax(34px,.82fr);gap:2px;min-height:68px}
-  .home-hero .dt-sticker.compact .dt-sticker-portrait{min-height:68px}
-  .home-hero .dt-sticker.compact .dt-sticker-brand strong{font-size:9px}
-  .home-hero .dt-sticker.compact .dt-sticker-brand{font-size:5px;letter-spacing:.2px}
-  .home-hero .dt-sticker.compact .dt-sticker-brand span{font-size:4px;letter-spacing:0}
-  .home-hero .dt-sticker.compact .dt-sticker-sport b,.home-hero .dt-sticker.compact .dt-sticker-team b{font-size:5px}
-  .home-hero .dt-sticker.compact .dt-sticker-stat{padding:1px;font-size:5px}
-  .home-hero .dt-sticker.compact .dt-sticker-stat b{font-size:5px}
-  .home-hero .dt-sticker.compact .dt-sticker-name{font-size:7px;padding:2px;margin-top:2px}
-  .home-hero .dt-sticker.compact .dt-sticker-role{font-size:5px;padding:2px}
-  .dt-sticker.compact .dt-sticker-top{grid-template-columns:minmax(76px,.78fr) minmax(0,1.72fr) minmax(72px,.82fr);gap:6px;min-height:138px}
+  .dt-sticker.compact .dt-sticker-top{grid-template-columns:minmax(0,.78fr) minmax(0,1.72fr) minmax(0,.82fr);gap:6px;min-height:138px}
   .dt-sticker.compact .dt-sticker-portrait{height:100%;min-height:138px}
   .dt-sticker.compact .dt-sticker-photo{min-height:0}
   .dt-sticker.compact .dt-sticker-brand strong{font-size:17px}
-  .dt-sticker.compact .dt-sticker-brand{font-size:8px;letter-spacing:.7px}
-  .dt-sticker.compact .dt-sticker-brand span{font-size:7px;letter-spacing:.35px;display:block}
+  .dt-sticker.compact .dt-sticker-brand{font-size:8px;letter-spacing:.45px}
+  .dt-sticker.compact .dt-sticker-brand span{font-size:7px;letter-spacing:.2px;display:block}
   .dt-sticker.compact .dt-sticker-sport b,.dt-sticker.compact .dt-sticker-team b{font-size:9px}
   .dt-sticker.compact .dt-sticker-stat{padding:4px;font-size:7px}
   .dt-sticker.compact .dt-sticker-stat b{font-size:9px}
   .dt-sticker.compact .dt-sticker-name{font-size:13px;padding:6px;margin-top:6px}
   .dt-sticker.compact .dt-sticker-role{font-size:8px;padding:4px}
-  @media(max-width:380px){.dt-sticker{padding:7px}.dt-sticker-top{grid-template-columns:minmax(72px,.78fr) minmax(0,1.45fr) minmax(72px,.82fr);gap:6px;min-height:164px}.dt-sticker-portrait{min-height:164px}.dt-sticker-photo{min-height:0}.dt-sticker-brand{font-size:8px}.dt-sticker-brand strong{font-size:20px}.dt-sticker-stat{padding:5px 4px}.dt-sticker-stat b{font-size:10px}}
+  .home-hero .dt-sticker.compact{width:min(100%,520px);margin:0 auto 12px;padding:8px;border-radius:14px;transform:none}
+  .home-hero .dt-sticker.compact .dt-sticker-top{grid-template-columns:minmax(0,.78fr) minmax(0,1.72fr) minmax(0,.82fr);gap:clamp(4px,1.5vw,9px);min-height:clamp(150px,28vw,210px)}
+  .home-hero .dt-sticker.compact .dt-sticker-portrait{min-height:clamp(150px,28vw,210px)}
+  .home-hero .dt-sticker.compact .dt-sticker-brand strong{font-size:clamp(17px,4vw,23px)}
+  .home-hero .dt-sticker.compact .dt-sticker-brand{font-size:clamp(7px,1.8vw,10px);letter-spacing:.4px}
+  .home-hero .dt-sticker.compact .dt-sticker-brand span{font-size:clamp(6px,1.5vw,9px);letter-spacing:.15px}
+  .home-hero .dt-sticker.compact .dt-sticker-sport b,.home-hero .dt-sticker.compact .dt-sticker-team b{font-size:clamp(9px,2vw,13px)}
+  .home-hero .dt-sticker.compact .dt-sticker-stat{padding:clamp(3px,.8vw,6px);font-size:clamp(6px,1.4vw,8px)}
+  .home-hero .dt-sticker.compact .dt-sticker-stat b{font-size:clamp(8px,2vw,12px)}
+  .home-hero .dt-sticker.compact .dt-sticker-name{font-size:clamp(12px,3vw,18px);padding:7px;margin-top:7px}
+  .home-hero .dt-sticker.compact .dt-sticker-role{font-size:clamp(7px,1.7vw,9px);padding:5px}
+  .training-athlete-card .dt-sticker.compact{width:min(100%,520px);margin:0 auto 10px;transform:none}
+  @media(max-width:380px){.dt-sticker{padding:7px}.dt-sticker-top{grid-template-columns:minmax(0,.82fr) minmax(0,1.45fr) minmax(0,.82fr);gap:5px;min-height:164px}.dt-sticker-portrait{min-height:164px}.dt-sticker-brand{font-size:8px}.dt-sticker-brand strong{font-size:20px}.dt-sticker-stat{padding:5px 4px}.dt-sticker-stat b{font-size:10px}.dt-sticker-name{font-size:14px;padding:7px 5px}.dt-sticker-role{letter-spacing:1px}}
 
 </style>
 </head>
@@ -4037,6 +4037,7 @@ function renderList(filter){
         : `<button class="btn btn-outline btn-sm" onclick="downloadAthletePdf('${a.id}')">Dados (PDF)</button>`;
       return `
         <div class="card training-athlete-card">
+          ${a.profilePhoto ? buildAthleteStickerHtml(a,true) : ''}
           <div class="tag">${escapeHtml(a.sport || 'Atleta')}${a.category ? ' · ' + escapeHtml(a.category) : ''}</div>
           <div class="name">${escapeHtml(a.name)}</div>
           <div class="meta">${age !== null ? `<span>${age} anos${a.sex ? ' · ' + (a.sex==='M'?'Masculino':'Feminino') : ''}</span>` : ''}<span>${days.length} dia(s) · ${exerciseCount} exercício(s)</span></div>
@@ -4402,7 +4403,6 @@ function renderProfileView(){
     </article>`).join('') : '<div class="empty-state" style="padding:14px">Nenhum treino extra cadastrado para este atleta.</div>';
 
   p.innerHTML = `
-    ${a.profilePhoto ? buildAthleteStickerHtml(a) : ''}
     <div class="profile-actions">
       <button class="btn btn-dark btn-sm" onclick="setAthleteMode('edit-dados')">✏️ Editar dados pessoais</button>
       <button class="btn btn-dark btn-sm" onclick="setAthleteMode('edit-treino')">✏️ Editar treino</button>
