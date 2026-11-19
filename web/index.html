@@ -5178,17 +5178,89 @@ function copyTrainingFromAthlete(){
 window.__ppCollapsedTrainingDays=window.__ppCollapsedTrainingDays||{};
 function toggleTrainingDayCollapsed(dayId){window.__ppCollapsedTrainingDays[dayId]=!window.__ppCollapsedTrainingDays[dayId];renderTreinoEditPanel();}
 function setAllTrainingDaysCollapsed(collapsed){(draft?.trainingPlan?.days||[]).forEach(day=>{window.__ppCollapsedTrainingDays[day.id]=!!collapsed;});renderTreinoEditPanel();}
-function addExtraWorkout(category){if(!draft.trainingPlan.extraWorkouts)draft.trainingPlan.extraWorkouts=[];draft.trainingPlan.extraWorkouts.push({id:uid(),category,title:category==='speed'?'Velocidade / aceleração':category==='core'?'Core / Abdômen':'Cardio',exercises:[]});renderTreinoEditPanel();}
+function addExtraWorkout(category){
+  if(!draft.trainingPlan.extraWorkouts)draft.trainingPlan.extraWorkouts=[];
+  const weekdays=['Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado','Domingo'];
+  const index=draft.trainingPlan.extraWorkouts.length;
+  draft.trainingPlan.extraWorkouts.push({id:uid(),category,labelMode:'name',day:weekdays[index%7],title:category==='speed'?'Velocidade / aceleração':category==='core'?'Core / Abdômen':'Cardio',exercises:[]});
+  renderTreinoEditPanel();
+}
 function extraWorkoutLabel(category){return category==='speed'?'Velocidade / aceleração':category==='core'?'Core / Abdômen':'Cardio';}
-function extraWorkoutExercises(category){const all=[...exerciseLibrary,...EXTRA_CARDIO_SPEED_LIBRARY];return all.filter((x,i)=>x&&x.name&&all.findIndex(y=>String(y.id||y.name)===String(x.id||x.name))===i).sort((a,b)=>(a.name||'').localeCompare(b.name||'','pt-BR'));}
+function extraWorkoutDisplayTitle(workout,index){
+  const title=String(workout?.title||extraWorkoutLabel(workout?.category)||'Treino extra');
+  if(workout?.labelMode==='number')return 'Treino '+(index+1)+(title?' — '+title:'');
+  if(workout?.labelMode==='weekday')return (workout.day||'Dia da semana')+(title?' — '+title:'');
+  return title;
+}
+function extraWorkoutExercises(category){
+  const regular=[...exerciseLibrary,...EXTRA_GYM_EXERCISES].filter(x=>x&&x.name);
+  const extras=EXTRA_CARDIO_SPEED_LIBRARY.filter(x=>x&&x.name);
+  let matches=[];
+  if(category==='core')matches=regular.filter(x=>/abd[oô]men|core/i.test(x.group||''));
+  else if(category==='cardio')matches=[...extras.filter(x=>/cardio/i.test(x.group||'')),...regular.filter(x=>/funcional\s*\/\s*cardio/i.test(x.group||''))];
+  else if(category==='speed')matches=[...extras.filter(x=>/velocidade/i.test(x.group||'')),...regular.filter(x=>/funcional\s*[—-]\s*alta performance/i.test(x.group||''))];
+  return matches.filter((x,i,arr)=>arr.findIndex(y=>String(y.id||y.name)===String(x.id||x.name))===i).sort((a,b)=>(a.name||'').localeCompare(b.name||'','pt-BR'));
+}
 function updateExtraWorkout(i,k,v){const w=draft?.trainingPlan?.extraWorkouts?.[i];if(w)w[k]=v;}
-function addExtraExercise(i){const w=draft?.trainingPlan?.extraWorkouts?.[i];if(!w)return;w.exercises.push({id:uid(),name:'',series:'',reps:'',descanso:'',obs:'',video:''});renderTreinoEditPanel();}
+function moveExtraWorkout(index,direction){
+  const list=draft?.trainingPlan?.extraWorkouts;if(!list)return;
+  const target=index+direction;if(index<0||target<0||target>=list.length)return;
+  const [item]=list.splice(index,1);list.splice(target,0,item);renderTreinoEditPanel();
+}
+function addExtraExercise(i){
+  const w=draft?.trainingPlan?.extraWorkouts?.[i];if(!w)return;
+  w.exercises.push({id:uid(),name:'',series:'',reps:'',descanso:'',obs:'',video:''});renderTreinoEditPanel();
+}
 function updateExtraExercise(wi,ei,k,v){const e=draft?.trainingPlan?.extraWorkouts?.[wi]?.exercises?.[ei];if(e)e[k]=v;}
-function findExtraLibraryExercise(id){return EXTRA_CARDIO_SPEED_LIBRARY.find(x=>String(x.id)===String(id))||exerciseLibrary.find(x=>String(x.id||x.name)===String(id));}
-function previewExtraLibraryExercise(id){const x=findExtraLibraryExercise(id);if(!x)return;openExerciseVideo(x.video||'',x.name||'Demonstração do exercício',!!x.videoLoop);}
-function selectExtraLibraryExercise(wi,ei,id){const e=draft?.trainingPlan?.extraWorkouts?.[wi]?.exercises?.[ei];const x=findExtraLibraryExercise(id);if(!e||!x)return;e.name=x.name||'';e.video=x.video||'';e.obs=x.description||e.obs||'';renderTreinoEditPanel();}
-function removeExtraExercise(wi,ei){draft?.trainingPlan?.extraWorkouts?.[wi]?.exercises?.splice(ei,1);renderTreinoEditPanel();}
-function removeExtraWorkout(i){if(!confirm('Remover este treino extra?'))return;draft?.trainingPlan?.extraWorkouts?.splice(i,1);renderTreinoEditPanel();}
+function moveExtraExercise(wi,ei,direction){
+  const list=draft?.trainingPlan?.extraWorkouts?.[wi]?.exercises;if(!list)return;
+  const target=ei+direction;if(ei<0||target<0||target>=list.length)return;
+  const [item]=list.splice(ei,1);list.splice(target,0,item);renderTreinoEditPanel();
+}
+function combineSelectedExtraExercises(wi){
+  const workout=draft?.trainingPlan?.extraWorkouts?.[wi];if(!workout)return;
+  const selected=[...document.querySelectorAll('[data-combine-extra="'+wi+'"]:checked')].map(x=>x.value);
+  if(selected.length<2){showToast('Selecione pelo menos dois exercícios para combinar.','err');return;}
+  const comboId=uid();(workout.exercises||[]).forEach(ex=>{if(selected.includes(String(ex.id))){ex.comboId=comboId;ex.comboType='Bi-set';}});
+  renderTreinoEditPanel();showToast(selected.length+' exercícios combinados.','ok');
+}
+function uncombineExtraExercises(wi,comboId){
+  const workout=draft?.trainingPlan?.extraWorkouts?.[wi];if(!workout)return;
+  (workout.exercises||[]).forEach(ex=>{if(String(ex.comboId)===String(comboId)){delete ex.comboId;delete ex.comboType;}});
+  renderTreinoEditPanel();
+}
+function findExtraLibraryExercise(id,category){
+  const options=category?extraWorkoutExercises(category):[...exerciseLibrary,...EXTRA_GYM_EXERCISES,...EXTRA_CARDIO_SPEED_LIBRARY];
+  return options.find(x=>String(x.id||x.name)===String(id))||null;
+}
+function previewExtraLibraryExercise(id,category){
+  const x=findExtraLibraryExercise(id,category);if(!x)return;
+  openExerciseVideo(x.video||'',x.name||'Demonstração do exercício',!!x.videoLoop);
+}
+function selectExtraLibraryExercise(wi,ei,id){
+  const e=draft?.trainingPlan?.extraWorkouts?.[wi]?.exercises?.[ei];
+  const category=draft?.trainingPlan?.extraWorkouts?.[wi]?.category;
+  const x=findExtraLibraryExercise(id,category);if(!e||!x)return;
+  e.name=x.name||'';e.video=x.video||'';e.obs=x.description||e.obs||'';renderTreinoEditPanel();
+}
+function openExtraPresetPicker(wi,mode,exerciseId){
+  const workout=draft?.trainingPlan?.extraWorkouts?.[wi];if(!workout)return;
+  let ids=[];
+  if(mode==='all')ids=(workout.exercises||[]).map(ex=>ex.id);
+  else if(mode==='one')ids=[exerciseId];
+  else if(mode==='selected')ids=[...document.querySelectorAll('[data-preset-extra="'+wi+'"]:checked')].map(el=>el.value);
+  if(!ids.length){showToast(mode==='all'?'Adicione exercícios antes de aplicar o preset.':'Selecione ao menos um exercício para aplicar o preset.','err');return;}
+  presetTarget={kind:'extra',workoutId:workout.id,exIds:ids};
+  renderPresetList();document.getElementById('preset-modal').style.display='flex';
+}
+function removeExtraExercise(wi,ei){
+  const workout=draft?.trainingPlan?.extraWorkouts?.[wi];if(!workout)return;
+  workout.exercises.splice(ei,1);renderTreinoEditPanel();
+}
+function removeExtraWorkout(i){
+  if(!confirm('Remover este treino extra?'))return;
+  draft?.trainingPlan?.extraWorkouts?.splice(i,1);renderTreinoEditPanel();
+}
 function renderTreinoEditPanel(){
   const p = document.getElementById('panel-athlete');
   if(!p) return;
@@ -5256,18 +5328,52 @@ function renderTreinoEditPanel(){
   `).join('');
 
   const extraWorkouts=draft.trainingPlan.extraWorkouts||(draft.trainingPlan.extraWorkouts=[]);
-  const extraHtml=extraWorkouts.map((w,wi)=>`
-    <div class="day-block" style="border-color:#c92532"><div class="day-head"><b>${extraWorkoutLabel(w.category)} · ${escapeHtml(w.title||'Treino extra')}</b><button class="btn btn-danger btn-sm" onclick="removeExtraWorkout(${wi})">Remover</button></div><div class="day-body">
-      <input style="width:100%;padding:10px;margin-bottom:10px" value="${escapeHtml(w.title||'')}" placeholder="Nome do treino" oninput="updateExtraWorkout(${wi},'title',this.value)">
-      ${(w.exercises||[]).map((e,ei)=>`<div class="ex-card">
-        <select id="extra-lib-${wi}-${ei}" style="width:100%;padding:9px;margin-bottom:8px" onchange="previewExtraLibraryExercise(this.value)"><option value="">Biblioteca de ${extraWorkoutLabel(w.category).toLowerCase()} — visualizar antes de adicionar</option>
-          ${extraWorkoutExercises(w.category).map(x=>`<option value="${escapeHtml(x.id||x.name)}" ${e.name===x.name?'selected':''}>${escapeHtml(x.name)}</option>`).join('')}
-        </select><div style="display:flex;gap:7px;flex-wrap:wrap;margin:0 0 8px"><button type="button" class="btn btn-outline btn-sm" onclick="previewExtraLibraryExercise(document.getElementById('extra-lib-${wi}-${ei}').value)">▶ Visualizar vídeo</button><button type="button" class="btn btn-primary btn-sm" onclick="selectExtraLibraryExercise(${wi},${ei},document.getElementById('extra-lib-${wi}-${ei}').value)">＋ Adicionar exercício</button></div><input style="width:100%;padding:9px;margin-bottom:8px" value="${escapeHtml(e.name||'')}" placeholder="Exercício / variação" oninput="updateExtraExercise(${wi},${ei},'name',this.value)">
-        <div class="ex-card-grid"><div><label>Séries</label><input value="${escapeHtml(e.series||'')}" oninput="updateExtraExercise(${wi},${ei},'series',this.value)"></div><div><label>Reps / distância / tempo</label><input value="${escapeHtml(e.reps||'')}" oninput="updateExtraExercise(${wi},${ei},'reps',this.value)"></div><div><label>Descanso</label><input value="${escapeHtml(e.descanso||'')}" oninput="updateExtraExercise(${wi},${ei},'descanso',this.value)"></div></div>
-        <input style="width:100%;padding:9px;margin-top:8px" value="${escapeHtml(e.obs||'')}" placeholder="Intensidade / observações" oninput="updateExtraExercise(${wi},${ei},'obs',this.value)">
-        ${e.video?`<button class="btn btn-outline btn-sm" style="margin-top:8px" onclick="openExerciseVideo('${escapeHtml(e.video)}','${escapeHtml(e.name)}')">▶ Ver vídeo</button>`:'<small style="color:#a33">Sem vídeo cadastrado</small>'}
-        <button class="btn btn-danger btn-sm" style="margin:8px" onclick="removeExtraExercise(${wi},${ei})">Excluir exercício</button></div>`).join('')}
-      <button class="btn btn-outline btn-sm" onclick="addExtraExercise(${wi})">+ Exercício / variação</button></div></div>`).join('');
+  const extraHtml=extraWorkouts.map((w,wi)=>{
+    const options=extraWorkoutExercises(w.category);
+    const exercises=(w.exercises||[]).map((e,ei)=>{
+      const firstInCombo=e.comboId&&(w.exercises||[]).findIndex(x=>x.comboId===e.comboId)===ei;
+      const optionHtml=options.map(x=>'<option value="'+escapeHtml(x.id||x.name)+'" '+(e.name===x.name?'selected':'')+'>'+escapeHtml(x.name)+'</option>').join('');
+      return '<div class="ex-card '+(e.comboId?'is-combined':'')+'">'+
+        (e.comboId?'<div class="combo-group-heading" style="display:flex;align-items:center;justify-content:space-between;gap:8px">🔗 BLOCO COMBINADO · '+escapeHtml(e.comboType||'Bi-set')+(firstInCombo?' <button type="button" class="btn btn-outline btn-sm" onclick="uncombineExtraExercises('+wi+',\''+e.comboId+'\')">Descombinar</button>':'')+'</div>':'')+
+        '<div class="ex-card-top">'+
+          '<label class="combine-select"><input type="checkbox" data-combine-extra="'+wi+'" value="'+escapeHtml(e.id)+'"> Combinar</label>'+
+          '<label class="combine-select"><input type="checkbox" data-preset-extra="'+wi+'" value="'+escapeHtml(e.id)+'"> Preset</label>'+
+          '<button type="button" class="exercise-video-thumb" onclick="openExerciseVideo(\''+escapeHtml(e.video||'')+'\',\''+escapeHtml(e.name||'Exercício')+'\')" title="Ver demonstração">'+(e.video?'▶':'＋')+'</button>'+
+          '<input type="text" class="ex-name-input" value="'+escapeHtml(e.name||'')+'" placeholder="Nome do exercício" oninput="updateExtraExercise('+wi+','+ei+',\'name\',this.value)">'+
+          '<div style="display:flex;gap:4px;align-items:center;flex-shrink:0">'+
+            '<button type="button" class="btn btn-outline btn-sm" style="padding:5px 8px" onclick="moveExtraExercise('+wi+','+ei+',-1)" '+(ei===0?'disabled':'')+'>↑</button>'+
+            '<button type="button" class="btn btn-outline btn-sm" style="padding:5px 8px" onclick="moveExtraExercise('+wi+','+ei+',1)" '+(ei===(w.exercises||[]).length-1?'disabled':'')+'>↓</button>'+
+            '<button type="button" class="rm-btn" onclick="removeExtraExercise('+wi+','+ei+')" title="Excluir exercício">🗑</button>'+
+          '</div>'+
+        '</div>'+
+        '<select id="extra-lib-'+wi+'-'+ei+'" style="width:100%;padding:9px;margin-bottom:8px" onchange="selectExtraLibraryExercise('+wi+','+ei+',this.value)">'+
+          '<option value="">Biblioteca de '+escapeHtml(extraWorkoutLabel(w.category).toLowerCase())+' — selecionar exercício</option>'+optionHtml+
+        '</select>'+
+        '<div style="display:flex;gap:7px;flex-wrap:wrap;margin:0 0 8px"><button type="button" class="btn btn-outline btn-sm" onclick="previewExtraLibraryExercise(document.getElementById(\'extra-lib-'+wi+'-'+ei+'\').value,\''+w.category+'\')">▶ Visualizar vídeo</button></div>'+
+        '<div class="ex-card-grid">'+
+          '<div><label>Séries</label><input value="'+escapeHtml(e.series||'')+'" oninput="updateExtraExercise('+wi+','+ei+',\'series\',this.value)"></div>'+
+          '<div><label>Reps / distância / tempo</label><input value="'+escapeHtml(e.reps||'')+'" oninput="updateExtraExercise('+wi+','+ei+',\'reps\',this.value)"></div>'+
+          '<div><label>Carga</label><input value="'+escapeHtml(e.carga||'')+'" oninput="updateExtraExercise('+wi+','+ei+',\'carga\',this.value)"></div>'+
+          '<div><label>Descanso</label><input value="'+escapeHtml(e.descanso||'')+'" oninput="updateExtraExercise('+wi+','+ei+',\'descanso\',this.value)"></div>'+
+        '</div>'+
+        '<input style="width:100%;padding:9px;margin-top:8px" value="'+escapeHtml(e.obs||'')+'" placeholder="Intensidade / observações" oninput="updateExtraExercise('+wi+','+ei+',\'obs\',this.value)">'+
+        '<div class="video-cell" style="margin-top:8px"><input type="url" value="'+escapeHtml(e.video||'')+'" oninput="updateExtraExercise('+wi+','+ei+',\'video\',this.value)" placeholder="Colar link do vídeo">'+(e.video?'<button type="button" class="video-open-btn" onclick="openExerciseVideo(\''+escapeHtml(e.video)+'\',\''+escapeHtml(e.name||'Exercício')+'\')">▶</button>':'')+'</div>'+
+        '<div class="ex-card-foot"><button type="button" class="btn btn-outline btn-sm" onclick="openExtraPresetPicker('+wi+',\'one\',\''+escapeHtml(e.id)+'\')">⚡ Preset de série</button></div>'+
+      '</div>';
+    }).join('');
+    const weekdays=['Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado','Domingo'];
+    const weekdayOptions=weekdays.map(day=>'<option value="'+day+'" '+(w.day===day?'selected':'')+'>'+day+'</option>').join('');
+    return '<div class="day-block" style="border-color:#c92532">'+
+      '<div class="day-head" style="flex-wrap:wrap"><b>'+escapeHtml(extraWorkoutLabel(w.category))+' · '+escapeHtml(extraWorkoutDisplayTitle(w,wi))+'</b>'+
+      '<span style="display:flex;gap:5px;margin-left:auto"><button type="button" class="btn btn-outline btn-sm" onclick="moveExtraWorkout('+wi+',-1)" '+(wi===0?'disabled':'')+'>↑</button><button type="button" class="btn btn-outline btn-sm" onclick="moveExtraWorkout('+wi+',1)" '+(wi===extraWorkouts.length-1?'disabled':'')+'>↓</button><button class="btn btn-danger btn-sm" onclick="removeExtraWorkout('+wi+')">Remover</button></span></div>'+
+      '<div class="day-body">'+
+        '<div class="field" style="margin-bottom:9px"><label>Categoria do treino extra</label><select style="width:100%;padding:9px" onchange="updateExtraWorkout('+wi+',\'category\',this.value);renderTreinoEditPanel()"><option value="core" '+(w.category==='core'?'selected':'')+'>Core / Abdômen</option><option value="cardio" '+(w.category==='cardio'?'selected':'')+'>Cardio</option><option value="speed" '+(w.category==='speed'?'selected':'')+'>Velocidade / aceleração</option></select></div>'+
+        '<div class="field" style="margin-bottom:9px"><label>Identificação do treino</label><select style="width:100%;padding:9px" onchange="updateExtraWorkout('+wi+',\'labelMode\',this.value);renderTreinoEditPanel()"><option value="name" '+(!w.labelMode||w.labelMode==='name'?'selected':'')+'>Por nome</option><option value="number" '+(w.labelMode==='number'?'selected':'')+'>Por número</option><option value="weekday" '+(w.labelMode==='weekday'?'selected':'')+'>Por dia da semana</option></select></div>'+
+        (w.labelMode==='weekday'?'<select style="width:100%;padding:9px;margin-bottom:9px" onchange="updateExtraWorkout('+wi+',\'day\',this.value)">'+weekdayOptions+'</select>':'')+
+        '<input style="width:100%;padding:10px;margin-bottom:10px" value="'+escapeHtml(w.title||'')+'" placeholder="'+(w.labelMode==='number'?'Nome complementar (opcional)':'Nome do treino')+'" oninput="updateExtraWorkout('+wi+',\'title\',this.value)">'+
+        '<div style="display:flex;gap:7px;flex-wrap:wrap;margin:0 0 12px"><button type="button" class="btn btn-primary btn-sm" onclick="combineSelectedExtraExercises('+wi+')">🔗 Combinar selecionados</button><button type="button" class="btn btn-outline btn-sm" onclick="openExtraPresetPicker('+wi+',\'selected\')">⚡ Preset nos selecionados</button><button type="button" class="btn btn-outline btn-sm" onclick="openExtraPresetPicker('+wi+',\'all\')">⚡ Preset em todos</button><button type="button" class="btn btn-outline btn-sm" onclick="addExtraExercise('+wi+')">＋ Exercício</button></div>'+
+        exercises+'</div></div>';
+  }).join('');
   const routineType=draft.trainingPlan.routineType||inferTrainingRoutineType(draft.trainingPlan);
   if(routineType && !draft.trainingPlan.routineType) draft.trainingPlan.routineType=routineType;
   p.innerHTML = `
