@@ -5198,8 +5198,8 @@ function extraWorkoutExercises(category,search){
   const extras=EXTRA_CARDIO_SPEED_LIBRARY.filter(x=>x&&x.name);
   let matches=[];
   if(category==='core')matches=regular.filter(x=>/abd[oô]men|core/i.test(x.group||''));
-  else if(category==='cardio')matches=[...extras.filter(x=>/cardio/i.test(x.group||'')),...regular.filter(x=>/funcional\\s*\\/\\s*cardio/i.test(x.group||''))];
-  else if(category==='speed')matches=[...extras.filter(x=>/velocidade/i.test(x.group||'')),...regular.filter(x=>/funcional\\s*[—-]\\s*alta performance/i.test(x.group||''))];
+  else if(category==='cardio')matches=[...extras.filter(x=>/cardio/i.test(x.group||'')),...regular.filter(x=>/funcional\s*\/\s*cardio/i.test(x.group||''))];
+  else if(category==='speed')matches=[...extras.filter(x=>/velocidade/i.test(x.group||'')),...regular.filter(x=>/funcional\s*[—-]\s*alta performance/i.test(x.group||''))];
   // Core e favoritos da biblioteca normal ficam disponíveis em qualquer categoria de treino extra.
   matches=[...matches,...regular.filter(x=>/abd[oô]men|core/i.test(x.group||'')),...exerciseLibrary.filter(x=>x&&x.name&&x.favorite)];
   const seen=new Set();
