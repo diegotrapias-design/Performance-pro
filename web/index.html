@@ -4343,79 +4343,43 @@ async function viewAthleteProfileAssessment(id){
     showToast('Não foi possível visualizar esta avaliação.','err');
   }
 }
+function setAthleteDataTab(tab){
+  window.__athleteDataTab = tab === 'anthropometry' ? 'anthropometry' : 'personal';
+  renderDadosEditPanel();
+}
 function renderDadosEditPanel(){
   const p = document.getElementById('panel-athlete');
   if(!p) return;
-  p.innerHTML = `
-    <div class="field-grid">
-      <div class="field full">
-        <label>Nome completo *</label>
-        <input type="text" value="${escapeHtml(draft.name)}" oninput="updateDraftField('name', this.value); refreshCardHeader();" placeholder="Ex: João Silva">
-      </div>
-      <div class="field">
-        <label>Esporte / modalidade</label>
-        <input type="text" value="${escapeHtml(draft.sport)}" oninput="updateDraftField('sport', this.value)" placeholder="Ex: Futebol">
-      </div>
-      <div class="field">
-        <label>Categoria</label>
-        <select onchange="updateDraftField('category', this.value); refreshMaturityCard();">
-          <option value="">Selecione…</option>
-          ${['Sub-9','Sub-11','Sub-13','Sub-15','Sub-17','Sub-20','Adulto / Profissional'].map(c =>
-            `<option value="${c}" ${draft.category===c?'selected':''}>${c}</option>`).join('')}
-        </select>
-      </div>
-      <div class="field">
-        <label>Sexo biológico</label>
-        <select onchange="updateDraftField('sex', this.value); refreshMaturityCard();">
-          <option value="">Selecione…</option>
-          <option value="M" ${draft.sex==='M'?'selected':''}>Masculino</option>
-          <option value="F" ${draft.sex==='F'?'selected':''}>Feminino</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Data de nascimento</label>
-        <input type="date" value="${draft.birthDate||''}" oninput="updateDraftField('birthDate', this.value); refreshMaturityCard();">
-      </div>
-      <div class="field">
-        <label>Data da avaliação</label>
-        <input type="date" value="${draft.assessmentDate||new Date().toISOString().slice(0,10)}" oninput="updateDraftField('assessmentDate', this.value); refreshMaturityCard();">
-      </div>
-      <div class="field">
-        <label>Altura (cm)</label>
-        <input type="number" value="${draft.height||''}" oninput="updateDraftField('height', this.value); refreshMaturityCard();" placeholder="Ex: 178">
-      </div>
-      <div class="field">
-        <label>Peso (kg)</label>
-        <input type="number" step="0.1" value="${draft.weight||''}" oninput="updateDraftField('weight', this.value); refreshMaturityCard();" placeholder="Ex: 74.5">
-      </div>
-      <div class="field">
-        <label>Altura sentado medida do chão (cm)</label>
-        <input type="number" step="0.1" value="${draft.sittingHeight||''}" oninput="updateDraftField('sittingHeight', this.value); refreshMaturityCard();" placeholder="Ex: 133">
-      </div>
-      <div class="field">
-        <label>Altura do banco (cm)</label>
-        <input type="number" step="0.1" min="0" value="${draft.benchHeight??''}" oninput="updateDraftField('benchHeight', this.value); refreshMaturityCard();" placeholder="Ex: 40">
-      </div>
-      <div class="field">
-        <label>Telefone</label>
-        <input type="text" value="${escapeHtml(draft.phone)}" oninput="updateDraftField('phone', this.value)" placeholder="Ex: (11) 98765-4321">
-      </div>
-      <div class="field">
-        <label>E-mail</label>
-        <input type="email" value="${escapeHtml(draft.email)}" oninput="updateDraftField('email', this.value)" placeholder="Ex: atleta@email.com">
-      </div>
-      <div class="field full">
-        <label>Observações</label>
-        <textarea oninput="updateDraftField('notes', this.value)" placeholder="Histórico, lesões, objetivos...">${escapeHtml(draft.notes)}</textarea>
-      </div>
+  const activeTab = window.__athleteDataTab || 'personal';
+  p.innerHTML = \
+    <div class="athlete-data-tabs" role="tablist" aria-label="Seções dos dados do atleta" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 18px">
+      <button type="button" role="tab" aria-selected="\${activeTab==='personal'}" onclick="setAthleteDataTab('personal')" style="min-height:48px;padding:10px 8px;border:1px solid #343846;border-radius:10px;background:\${activeTab==='personal'?'#c92532':'#1c2234'};color:#fff;font-weight:800;letter-spacing:.5px">DADOS PESSOAIS</button>
+      <button type="button" role="tab" aria-selected="\${activeTab==='anthropometry'}" onclick="setAthleteDataTab('anthropometry')" style="min-height:48px;padding:10px 8px;border:1px solid #343846;border-radius:10px;background:\${activeTab==='anthropometry'?'#c92532':'#1c2234'};color:#fff;font-weight:800;letter-spacing:.5px">ANTROPOMETRIA / MATURAÇÃO</button>
     </div>
-    <div id="maturity-container">${renderMaturityCard(draft)}</div>
-    <div class="actions-row">
-      <button class="btn btn-primary" onclick="saveAthlete()">Salvar dados pessoais</button>
-    </div>
-  `;
+    \${activeTab==='personal' ? \
+      <div class="field-grid" role="tabpanel" aria-label="Dados pessoais">
+        <div class="field full"><label>Nome completo *</label><input type="text" value="\${escapeHtml(draft.name)}" oninput="updateDraftField('name', this.value); refreshCardHeader();" placeholder="Ex: João Silva"></div>
+        <div class="field"><label>Esporte / modalidade</label><input type="text" value="\${escapeHtml(draft.sport)}" oninput="updateDraftField('sport', this.value)" placeholder="Ex: Futebol"></div>
+        <div class="field"><label>Categoria</label><select onchange="updateDraftField('category', this.value); refreshMaturityCard();"><option value="">Selecione…</option>\${['Sub-9','Sub-11','Sub-13','Sub-15','Sub-17','Sub-20','Adulto / Profissional'].map(c => \`<option value="\${c}" \${draft.category===c?'selected':''}>\${c}</option>\`).join('')}</select></div>
+        <div class="field"><label>Sexo biológico</label><select onchange="updateDraftField('sex', this.value); refreshMaturityCard();"><option value="">Selecione…</option><option value="M" \${draft.sex==='M'?'selected':''}>Masculino</option><option value="F" \${draft.sex==='F'?'selected':''}>Feminino</option></select></div>
+        <div class="field"><label>Data de nascimento</label><input type="date" value="\${draft.birthDate||''}" oninput="updateDraftField('birthDate', this.value); refreshMaturityCard();"></div>
+        <div class="field"><label>Telefone</label><input type="text" value="\${escapeHtml(draft.phone)}" oninput="updateDraftField('phone', this.value)" placeholder="Ex: (11) 98765-4321"></div>
+        <div class="field"><label>E-mail</label><input type="email" value="\${escapeHtml(draft.email)}" oninput="updateDraftField('email', this.value)" placeholder="Ex: atleta@email.com"></div>
+        <div class="field full"><label>Observações</label><textarea oninput="updateDraftField('notes', this.value)" placeholder="Histórico, lesões, objetivos...">\${escapeHtml(draft.notes)}</textarea></div>
+      </div>
+    \` : \
+      <div class="field-grid" role="tabpanel" aria-label="Antropometria e maturação">
+        <div class="field full"><label>Data da avaliação (para cálculo preciso da idade decimal)</label><input type="date" value="\${draft.assessmentDate||new Date().toISOString().slice(0,10)}" oninput="updateDraftField('assessmentDate', this.value); refreshMaturityCard();"></div>
+        <div class="field"><label>Altura (cm)</label><input type="number" step="0.1" value="\${draft.height||''}" oninput="updateDraftField('height', this.value); refreshMaturityCard();" placeholder="Ex: 178"></div>
+        <div class="field"><label>Peso (kg)</label><input type="number" step="0.1" value="\${draft.weight||''}" oninput="updateDraftField('weight', this.value); refreshMaturityCard();" placeholder="Ex: 74.5"></div>
+        <div class="field"><label>Altura sentado medida do chão (cm)</label><input type="number" step="0.1" value="\${draft.sittingHeight||''}" oninput="updateDraftField('sittingHeight', this.value); refreshMaturityCard();" placeholder="Ex: 133"></div>
+        <div class="field"><label>Altura do banco (cm)</label><input type="number" step="0.1" min="0" value="\${draft.benchHeight??''}" oninput="updateDraftField('benchHeight', this.value); refreshMaturityCard();" placeholder="Ex: 40"></div>
+      </div>
+      <div id="maturity-container">\${renderMaturityCard(draft)}</div>
+    \`}
+    <div class="actions-row"><button class="btn btn-primary" onclick="saveAthlete()">Salvar alterações</button></div>
+  \`;
 }
-
 async function saveAthlete(returnToProfile){
   if(returnToProfile === undefined) returnToProfile = true;
   if(!draft.name || !draft.name.trim()){
