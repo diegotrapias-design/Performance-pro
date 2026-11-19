@@ -4383,7 +4383,20 @@ function renderProfileView(){
   const a = draft;
   const age = calcAge(a.birthDate);
   const days = (a.trainingPlan && a.trainingPlan.days) || [];
+  const extraWorkouts = (a.trainingPlan && a.trainingPlan.extraWorkouts) || [];
   const hasTraining = days.some(d => (d.exercises||[]).some(ex => ex.name && ex.name.trim()));
+  const extraWorkoutsHtml = extraWorkouts.length ? extraWorkouts.map(w => `
+    <article class="profile-card" style="margin:0 0 10px">
+      <b>${escapeHtml(w.title||extraWorkoutLabel(w.category)||'Treino extra')}</b>
+      <div style="font-size:12px;color:var(--muted);margin:5px 0 8px">${extraWorkoutLabel(w.category)} · ${(w.exercises||[]).length} exercício(s)</div>
+      <div style="display:grid;gap:6px">${(w.exercises||[]).map(ex => `
+        <div style="padding:8px 10px;border-radius:8px;background:var(--panel);font-size:13px">
+          <b>${escapeHtml(ex.name||'Exercício')}</b>
+          <div style="color:var(--muted);font-size:12px;margin-top:3px">${[ex.series&&('Séries: '+ex.series),ex.reps&&('Reps/tempo: '+ex.reps),ex.descanso&&('Descanso: '+ex.descanso)].filter(Boolean).map(escapeHtml).join(' · ')}</div>
+          ${ex.obs?'<div style="font-size:12px;margin-top:3px">'+escapeHtml(ex.obs)+'</div>':''}
+          ${ex.video?'<button type="button" class="btn btn-outline btn-sm" style="margin-top:6px" onclick="openExerciseVideo(\''+escapeHtml(ex.video)+'\',\''+escapeHtml(ex.name||'Exercício')+'\')">▶ Ver vídeo</button>':''}
+        </div>`).join('')}</div>
+    </article>`).join('') : '<div class="empty-state" style="padding:14px">Nenhum treino extra cadastrado para este atleta.</div>';
 
   p.innerHTML = `
     <div class="profile-actions">
@@ -4424,6 +4437,12 @@ function renderProfileView(){
       ? buildDayCardsHtml(days, true)
       : `<div class="empty-state"><div class="icon">📋</div><div>Nenhum treino montado ainda.</div>
           <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="setAthleteMode('edit-treino')">Montar treino</button></div>`}
+
+    <div class="profile-section-title">Treinos extras</div>
+    ${extraWorkoutsHtml}
+    <div class="actions-row" style="margin:8px 0 18px">
+      <button class="btn btn-primary btn-sm" onclick="setAthleteMode('edit-treino')">✏️ Visualizar / editar treinos extras</button>
+    </div>
 
     <div class="actions-row">
       ${hasTraining && !isNew ? `<button class="btn btn-outline" onclick="downloadRoutinePdf('${draft.id}', true)">Baixar rotina (PDF)</button>` : ''}
@@ -5082,22 +5101,59 @@ function renderCopyExtraWorkouts(){
 function selectAllCopyExtraWorkouts(checked){
   document.querySelectorAll('input[name="copy-extra-workout"]').forEach(el=>el.checked=!!checked);
 }
-function copyExtraWorkoutsFromAthlete(){
+async function copyExtraWorkoutsFromAthlete(){
   const source=athletes.find(a=>String(a.id)===String(document.getElementById('copy-extra-athlete')?.value));
   const sourceExtras=source?.trainingPlan?.extraWorkouts||[];
   if(!source||!sourceExtras.length){showToast('Selecione um atleta com treinos extras cadastrados.','err');return;}
   const selectedIds=Array.from(document.querySelectorAll('input[name="copy-extra-workout"]:checked')).map(el=>String(el.value));
   if(!selectedIds.length){showToast('Selecione pelo menos um treino extra para copiar.','err');return;}
+  if(!draft?.id||!currentUser?.id||!currentProfile?.team_id){showToast('Não foi possível identificar o atleta de destino ou a equipe.','err');return;}
   const copied=sourceExtras.filter((workout,i)=>selectedIds.includes(String(workout.id||i))).map(workout=>{
     const clone=JSON.parse(JSON.stringify(workout));
     clone.id=uid();
     clone.exercises=(clone.exercises||[]).map(ex=>({...ex,id:uid()}));
     return clone;
   });
+  if(!copied.length){showToast('Nenhum treino extra válido foi selecionado.','err');return;}
+  const previousExtras=JSON.parse(JSON.stringify(draft.trainingPlan?.extraWorkouts||[]));
   draft.trainingPlan=draft.trainingPlan||{days:[]};
-  draft.trainingPlan.extraWorkouts=[...(draft.trainingPlan.extraWorkouts||[]),...copied];
-  renderTreinoEditPanel();
-  showToast(copied.length+' treino(s) extra(s) copiado(s) de '+source.name+'. Os treinos existentes foram preservados.','ok');
+  draft.trainingPlan.extraWorkouts=[...previousExtras,...copied];
+  draft.updatedAt=new Date().toISOString();
+  const athleteIndex=athletes.findIndex(a=>String(a.id)===String(draft.id));
+  if(athleteIndex<0){showToast('Atleta de destino não encontrado na lista. Nenhuma cópia foi salva.','err');draft.trainingPlan.extraWorkouts=previousExtras;return;}
+  athletes[athleteIndex]=JSON.parse(JSON.stringify(draft));
+  const workoutRows=copied.filter(w=>(w.exercises||[]).length).map((extra,index)=>({
+    id:extra.id,team_id:currentProfile.team_id,athlete_id:draft.id,
+    title:'[EXTRA] '+(extra.title||'Treino extra'),
+    routine_type:'extra_'+(extra.category||'cardio'),
+    sort_order:1000+(previousExtras.length+index),created_by:currentUser.id
+  }));
+  const itemRows=[];
+  copied.forEach(extra=>(extra.exercises||[]).forEach((e,index)=>itemRows.push({
+    id:e.id,workout_id:extra.id,exercise_name:e.name||'',
+    sets:e.series?parseInt(e.series,10)||null:null,reps:e.reps||null,
+    load_text:null,rest_seconds:e.descanso?parseInt(e.descanso,10)||null:null,
+    notes:e.obs||'',video_url:e.video||null,sort_order:index
+  })));
+  try{
+    if(!athleteDataReady)throw new Error('Os dados dos atletas ainda não terminaram de carregar.');
+    const payload={athletes,library:exerciseLibrary,deletedLibraryExerciseKeys,seriesPresets,updatedAt:new Date().toISOString()};
+    const {error:payloadError}=await supabaseClient.from(DATA_COLLECTION).upsert({user_id:currentUser.id,payload,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+    if(payloadError)throw payloadError;
+    if(workoutRows.length){
+      const {error}=await supabaseClient.from('workouts').upsert(workoutRows,{onConflict:'id'});
+      if(error)throw error;
+    }
+    if(itemRows.length){
+      const {error}=await supabaseClient.from('workout_items').upsert(itemRows,{onConflict:'id'});
+      if(error)throw error;
+    }
+    renderTreinoEditPanel();
+    showToast(copied.length+' treino(s) extra(s) copiado(s) e salvo(s) para '+draft.name+'.','ok');
+  }catch(error){
+    console.error('Falha ao salvar treinos extras copiados:',error);
+    showToast('Não foi possível salvar a cópia dos treinos extras. Tente novamente.','err');
+  }
 }
 function copyTrainingFromAthlete(){
   const source=athletes.find(a=>a.id===document.getElementById('copy-training-athlete')?.value);
