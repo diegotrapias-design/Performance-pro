@@ -4164,7 +4164,7 @@ function openAthletePhotoCrop(img){
       <div style="width:min(100%,430px);background:var(--panel,#1c1c21);color:var(--text,#f8f8f8);border:1px solid #454550;border-radius:18px;padding:20px;max-height:94vh;overflow:auto">
         <h3 style="margin:0 0 8px">Enquadrar foto do atleta</h3><p style="color:var(--muted,#b7b7bd);margin:0 0 14px">Ajuste o zoom e a posição até o enquadramento ficar como deseja.</p>
         <canvas id="athlete-photo-crop-canvas" width="320" height="320" style="display:block;width:min(100%,320px);aspect-ratio:1;margin:0 auto 18px;border-radius:50%;border:3px solid #c92532;background:#111"></canvas>
-        <label style="display:block;margin:12px 0 5px">Zoom</label><input type="range" min="1" max="3" step="0.01" value="1" style="width:100%" oninput="updateAthletePhotoCrop('zoom',this.value)">
+        <label style="display:block;margin:12px 0 5px">Zoom</label><input type="range" min="0.75" max="3" step="0.01" value="1" style="width:100%" oninput="updateAthletePhotoCrop('zoom',this.value)">
         <label style="display:block;margin:12px 0 5px">Mover para esquerda / direita</label><input type="range" min="-100" max="100" step="1" value="0" style="width:100%" oninput="updateAthletePhotoCrop('x',this.value)">
         <label style="display:block;margin:12px 0 5px">Mover para cima / baixo</label><input type="range" min="-100" max="100" step="1" value="0" style="width:100%" oninput="updateAthletePhotoCrop('y',this.value)">
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px"><button class="btn btn-primary" style="flex:1" onclick="applyAthletePhotoCrop()">Usar esta foto</button><button class="btn btn-outline" onclick="closeAthletePhotoCrop()">Cancelar</button></div>
