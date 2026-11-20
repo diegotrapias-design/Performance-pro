@@ -1291,9 +1291,9 @@ window.handleLogin = async function(event){
 
   .dt-sticker-motto{position:relative;z-index:1;display:block;box-sizing:border-box;width:100%;margin:0 0 8px;padding:8px 10px;border:2px solid #c92532;border-radius:10px;background:linear-gradient(100deg,#dedfe2,#fff,#dedfe2);color:#101116;text-align:center;font-size:clamp(11px,2.4vw,16px);font-weight:950;line-height:1.15;letter-spacing:-.2px;overflow-wrap:normal;word-break:normal}
   .dt-sticker-motto em{color:#c92532;font-style:normal}
-  .dt-sticker{position:relative;isolation:isolate;overflow:hidden;box-sizing:border-box;width:100%;margin:12px 0;padding:10px;border:3px solid #c7c9ce;border-radius:20px;background:linear-gradient(135deg,#08090d 0%,#171920 55%,#08090d 100%);color:#f8f8f8;box-shadow:0 7px 20px #0003}
+  .dt-sticker{position:relative;isolation:isolate;overflow:visible;box-sizing:border-box;width:100%;margin:12px 0;padding:10px;border:3px solid #c7c9ce;border-radius:20px;background:linear-gradient(135deg,#08090d 0%,#171920 55%,#08090d 100%);color:#f8f8f8;box-shadow:0 7px 20px #0003}
   .dt-sticker:before{content:"";position:absolute;z-index:-1;inset:3px;border:2px solid #c92532;border-radius:14px;pointer-events:none}
-  .dt-sticker-top{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,.65fr) minmax(0,2fr) minmax(0,.85fr);gap:9px;align-items:stretch;min-height:150px}
+  .dt-sticker-top{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:9px;align-items:start;min-height:0}
   .dt-sticker-left{display:flex;flex-direction:column;justify-content:space-between;gap:8px;min-width:0;padding:4px 0}
   .dt-sticker-brand{display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;min-width:0;font-size:10px;letter-spacing:.7px;font-weight:900;line-height:1.15;color:#f5f5f5}
   .dt-sticker-brand .dt-sticker-logo{display:block;width:min(100%,96px);max-height:48px;height:auto;object-fit:contain;object-position:left center}
@@ -1304,9 +1304,9 @@ window.handleLogin = async function(event){
   .dt-sticker-sport b,.dt-sticker-team b{display:block;font-size:clamp(8px,2.2vw,12px);line-height:1.2;overflow-wrap:break-word;word-break:normal;hyphens:auto;color:#fff}
   .dt-sticker-team{font-size:8px;color:#c6c8cf;letter-spacing:.8px;line-height:1.2}
   .dt-sticker-team b{overflow-wrap:normal;word-break:normal;hyphens:none}
-  .dt-sticker-portrait{position:relative;min-width:0;width:100%;height:100%;min-height:150px;display:block;overflow:hidden;border:3px solid #c92532;border-radius:22px;background:#08090d;box-shadow:inset 0 0 0 2px #e5e6e8}
+  .dt-sticker-portrait{position:relative;min-width:0;width:100%;height:auto;aspect-ratio:4/3;min-height:0;display:block;overflow:hidden;border:3px solid #c92532;border-radius:22px;background:#08090d;box-shadow:inset 0 0 0 2px #e5e6e8}
   .dt-sticker-photo{position:absolute;inset:0;width:100%;height:100%;min-width:0;min-height:0;object-fit:cover;object-position:center 42%;display:block}
-  .dt-sticker-stats{display:flex;flex-direction:column;justify-content:space-around;gap:5px;min-width:0;padding:3px 0}
+  .dt-sticker-stats{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;min-width:0;padding:3px 0}
   .dt-sticker-stat{min-width:0;padding:6px;border:1px solid #71313a;border-radius:8px;background:#22252d;font-size:8px;line-height:1.2;color:#c6c8cf;overflow-wrap:anywhere;word-break:normal}
   .dt-sticker-stat b{display:block;margin-top:3px;color:#fff;font-size:clamp(9px,2.3vw,12px);line-height:1.2;overflow-wrap:break-word;word-break:normal;hyphens:auto}
   .dt-sticker-name{position:relative;z-index:1;min-width:0;margin:9px 0 0;padding:9px 10px;background:linear-gradient(100deg,#92969e,#f0f0f0,#aeb2ba);color:#101116;border:1px solid #f7f7f7;border-radius:7px;text-align:center;font-size:clamp(14px,4vw,20px);font-weight:950;line-height:1.2;letter-spacing:.25px;overflow-wrap:anywhere;word-break:normal}
@@ -1314,7 +1314,7 @@ window.handleLogin = async function(event){
   .dt-sticker-role small{font-size:8px;font-weight:800;letter-spacing:1.6px;line-height:1.2}
   /* Compacta somente a escala externa; conteúdo e proporções internas idênticos ao modelo padrão. */
   .dt-sticker.compact{grid-column:1/-1;width:100%;margin:0 auto;transform:none;transform-origin:top center}
-  @media(max-width:380px){.dt-sticker{padding:7px}.dt-sticker-top{grid-template-columns:minmax(0,.6fr) minmax(0,2fr) minmax(0,.8fr);gap:5px;min-height:132px}.dt-sticker-portrait{min-height:132px}.dt-sticker-brand{font-size:8px}.dt-sticker-brand strong{font-size:20px}.dt-sticker-stat{padding:5px 4px}.dt-sticker-stat b{font-size:10px}.dt-sticker-name{font-size:14px;padding:7px 5px}.dt-sticker-role{letter-spacing:1px}}
+  @media(max-width:520px){.dt-sticker{padding:7px}.dt-sticker-top{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:6px}.dt-sticker-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.dt-sticker-brand{font-size:8px}.dt-sticker-brand strong{font-size:20px}.dt-sticker-stat{padding:6px 5px}.dt-sticker-stat b{font-size:10px}.dt-sticker-name{font-size:14px;padding:7px 5px}.dt-sticker-role{letter-spacing:1px}}
 
 </style>
 </head>
@@ -4227,7 +4227,7 @@ function openAthletePhotoCrop(img,backgroundRemoved=false){
     <div style="position:fixed;inset:0;z-index:10020;background:#080a10ed;display:flex;align-items:center;justify-content:center;padding:18px;overflow:auto">
       <div style="width:min(100%,430px);background:var(--panel,#1c1c21);color:var(--text,#f8f8f8);border:1px solid #454550;border-radius:18px;padding:20px;max-height:94vh;overflow:auto">
         <h3 style="margin:0 0 8px">Enquadrar foto do atleta</h3><p style="color:var(--muted,#b7b7bd);margin:0 0 14px">Ajuste o zoom e a posição até o enquadramento ficar como deseja.</p>
-        <canvas id="athlete-photo-crop-canvas" width="320" height="274" style="display:block;width:min(100%,320px);height:auto;aspect-ratio:320/274;margin:0 auto 18px;border-radius:12px;border:3px solid #c7c9ce;background:#bfc1c6"></canvas>
+        <canvas id="athlete-photo-crop-canvas" width="320" height="240" style="display:block;width:min(100%,320px);height:auto;aspect-ratio:4/3;margin:0 auto 18px;border-radius:12px;border:3px solid #c7c9ce;background:#bfc1c6"></canvas>
         <label style="display:block;margin:12px 0 5px">Zoom</label><input type="range" min="0.75" max="3" step="0.01" value="1" style="width:100%" oninput="updateAthletePhotoCrop('zoom',this.value)">
         <label style="display:block;margin:12px 0 5px">Mover para esquerda / direita</label><input type="range" min="-100" max="100" step="1" value="0" style="width:100%" oninput="updateAthletePhotoCrop('x',this.value)">
         <label style="display:block;margin:12px 0 5px">Mover para cima / baixo</label><input type="range" min="-100" max="100" step="1" value="0" style="width:100%" oninput="updateAthletePhotoCrop('y',this.value)">
@@ -4246,7 +4246,7 @@ function updateAthletePhotoCrop(key,value){if(!athletePhotoCropState)return;athl
 function closeAthletePhotoCrop(){const modal=document.getElementById('athlete-photo-crop-modal');if(modal)modal.remove();athletePhotoCropState=null;}
 function applyAthletePhotoCrop(){
   const canvas=document.getElementById('athlete-photo-crop-canvas');if(!canvas||!athletePhotoCropState)return;
-  const output=document.createElement('canvas');output.width=520;output.height=445;output.getContext('2d').drawImage(canvas,0,0,520,445);
+  const output=document.createElement('canvas');output.width=520;output.height=390;output.getContext('2d').drawImage(canvas,0,0,520,390);
   draft.profilePhoto=athletePhotoCropState.backgroundRemoved?output.toDataURL('image/png'):output.toDataURL('image/jpeg',0.82);
   const preview=document.getElementById('athlete-photo-preview');if(preview)preview.innerHTML='<img src="'+draft.profilePhoto+'" alt="Foto do atleta" style="width:112px;height:112px;object-fit:cover;border-radius:12px;border:3px solid #c7c9ce">';
   persistCurrentRoute();closeAthletePhotoCrop();showToast('Enquadramento aplicado. Salve as alterações para gravar no perfil.','ok');
