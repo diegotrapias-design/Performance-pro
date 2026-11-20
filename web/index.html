@@ -1291,15 +1291,12 @@ window.handleLogin = async function(event){
 
   .dt-sticker-motto{position:relative;z-index:1;display:block;box-sizing:border-box;width:100%;margin:0 0 8px;padding:8px 10px;border:2px solid #c92532;border-radius:10px;background:linear-gradient(100deg,#dedfe2,#fff,#dedfe2);color:#101116;text-align:center;font-size:clamp(11px,2.4vw,16px);font-weight:950;line-height:1.15;letter-spacing:-.2px;overflow-wrap:normal;word-break:normal}
   .dt-sticker-motto em{color:#c92532;font-style:normal}
-  .dt-sticker.compact .dt-sticker-motto{margin-bottom:6px;padding:6px 7px;border-width:1.5px;border-radius:8px;font-size:clamp(9px,2vw,13px);line-height:1.12}
-  @media(max-width:380px){.dt-sticker.compact .dt-sticker-motto{font-size:9px;padding:5px 6px}}
   .dt-sticker{position:relative;isolation:isolate;overflow:hidden;box-sizing:border-box;width:100%;margin:12px 0;padding:10px;border:3px solid #c7c9ce;border-radius:20px;background:linear-gradient(135deg,#08090d 0%,#171920 55%,#08090d 100%);color:#f8f8f8;box-shadow:0 7px 20px #0003}
   .dt-sticker:before{content:"";position:absolute;z-index:-1;inset:3px;border:2px solid #c92532;border-radius:14px;pointer-events:none}
   .dt-sticker-top{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.72fr) minmax(0,.82fr);gap:9px;align-items:stretch;min-height:210px}
   .dt-sticker-left{display:flex;flex-direction:column;justify-content:space-between;gap:8px;min-width:0;padding:4px 0}
   .dt-sticker-brand{display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;min-width:0;font-size:10px;letter-spacing:.7px;font-weight:900;line-height:1.15;color:#f5f5f5}
   .dt-sticker-brand .dt-sticker-logo{display:block;width:min(100%,96px);max-height:48px;height:auto;object-fit:contain;object-position:left center}
-  .dt-sticker.compact .dt-sticker-brand .dt-sticker-logo{width:min(100%,76px);max-height:38px}
   .dt-sticker-brand strong{display:block;margin:0;font-size:24px;line-height:1;color:#fff;font-style:italic}
   .dt-sticker-brand span{display:block;width:100%;max-width:100%;color:#e13a43;font-size:clamp(6px,1.6vw,8px);letter-spacing:0;line-height:1.15;white-space:nowrap;overflow-wrap:normal;word-break:keep-all}
   .dt-sticker-sport,.dt-sticker-team{border-left:2px solid #c92532;padding:5px 0 5px 7px;min-width:0;overflow:visible}
@@ -1315,19 +1312,8 @@ window.handleLogin = async function(event){
   .dt-sticker-name{position:relative;z-index:1;min-width:0;margin:9px 0 0;padding:9px 10px;background:linear-gradient(100deg,#92969e,#f0f0f0,#aeb2ba);color:#101116;border:1px solid #f7f7f7;border-radius:7px;text-align:center;font-size:clamp(14px,4vw,20px);font-weight:950;line-height:1.2;letter-spacing:.25px;overflow-wrap:anywhere;word-break:normal}
   .dt-sticker-role{position:relative;z-index:1;width:min(58%,280px);min-width:0;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:3px;background:linear-gradient(90deg,#8f1721,#c92532,#8f1721);border:1px solid #d5d6d9;border-top:0;color:#fff;text-align:center;font-size:10px;font-weight:900;letter-spacing:1.5px;padding:6px;border-radius:0 0 9px 9px}
   .dt-sticker-role small{font-size:8px;font-weight:800;letter-spacing:1.6px;line-height:1.2}
-  .dt-sticker.compact{padding:7px;border-radius:15px;margin:0 0 12px}
-  .dt-sticker.compact .dt-sticker-top{grid-template-columns:minmax(0,.78fr) minmax(0,1.72fr) minmax(0,.82fr);gap:6px;min-height:138px}
-  .dt-sticker.compact .dt-sticker-portrait{height:100%;min-height:138px}
-  .dt-sticker.compact .dt-sticker-photo{min-height:0}
-  .dt-sticker.compact .dt-sticker-brand strong{font-size:17px}
-  .dt-sticker.compact .dt-sticker-brand{font-size:8px;letter-spacing:.45px}
-  .dt-sticker.compact .dt-sticker-brand span{font-size:6px;letter-spacing:0;display:block;white-space:nowrap;overflow-wrap:normal;word-break:keep-all}
-  .dt-sticker.compact .dt-sticker-sport b,.dt-sticker.compact .dt-sticker-team b{font-size:9px}
-  .dt-sticker.compact .dt-sticker-stat{padding:4px;font-size:7px}
-  .dt-sticker.compact .dt-sticker-stat b{font-size:9px}
-  .dt-sticker.compact .dt-sticker-name{font-size:13px;padding:6px;margin-top:6px}
-  .dt-sticker.compact .dt-sticker-role{font-size:8px;padding:4px}
-  .dt-sticker.compact{width:min(100%,520px);margin:0 auto -34px;transform:scale(.85);transform-origin:top center}
+  /* Compacta somente a escala externa; conteúdo e proporções internas idênticos ao modelo padrão. */
+  .dt-sticker.compact{width:100%;margin:0 auto -34px;transform:scale(.85);transform-origin:top center}
   @media(max-width:380px){.dt-sticker{padding:7px}.dt-sticker-top{grid-template-columns:minmax(0,.82fr) minmax(0,1.45fr) minmax(0,.82fr);gap:5px;min-height:164px}.dt-sticker-portrait{min-height:164px}.dt-sticker-brand{font-size:8px}.dt-sticker-brand strong{font-size:20px}.dt-sticker-stat{padding:5px 4px}.dt-sticker-stat b{font-size:10px}.dt-sticker-name{font-size:14px;padding:7px 5px}.dt-sticker-role{letter-spacing:1px}}
 
 </style>
