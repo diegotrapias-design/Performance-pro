@@ -3722,11 +3722,20 @@ function escapeHtml(s){
 
 /* ---------------- HOME / MENU ---------------- */
 
+function returnFromAccountSettings(){
+  if(currentProfile?.role==='athlete'){
+    window.__ppAthleteSection='home';
+    persistCurrentRoute();
+    loadAthletePortal();
+    return;
+  }
+  renderHome();
+}
+
 function renderAccountSettings(){
   if(!currentUser || !currentProfile || !['coach','athlete'].includes(currentProfile.role))return;
   currentScreen='account-settings';
-  const isAthlete=currentProfile.role==='athlete';
-  const backAction=isAthlete?"showAthleteSection('home')":"renderHome()";
+  const backAction="returnFromAccountSettings()";
   const app=document.getElementById('app');
   const email=escapeHtml(currentUser.email||'');
   app.innerHTML=`
