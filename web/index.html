@@ -4198,22 +4198,27 @@ function athleteSportOptionsHtml(){
   const list=ATHLETE_SPORTS[draft.sportType||inferAthleteSportType(draft.sport)]||{};
   return Object.keys(list).sort((a,b)=>a.localeCompare(b,'pt-BR')).map(name=>'<option value="'+escapeHtml(name)+'" '+(draft.sport===name?'selected':'')+'>'+escapeHtml(name)+'</option>').join('');
 }
+const ATHLETE_OBJECTIVES=['Hipertrofia','Força máxima','Resistência muscular','Condicionamento físico','Definição muscular','Emagrecimento','Saúde e qualidade de vida','Performance esportiva'];
+function athletePositionLabel(){return (draft.sportType||inferAthleteSportType(draft.sport))==='individual'?'Objetivo':'Posição / prova / especialidade';}
 function athletePositionOptionsHtml(){
-  const options=(ATHLETE_SPORTS[draft.sportType||inferAthleteSportType(draft.sport)]||{})[draft.sport]||[];
-  return options.map(name=>'<option value="'+escapeHtml(name)+'" '+(draft.position===name?'selected':'')+'>'+escapeHtml(name)+'</option>').join('');
+ const type=draft.sportType||inferAthleteSportType(draft.sport);
+ const specific=(ATHLETE_SPORTS[type]||{})[draft.sport]||[];
+ const options=type==='individual'?[...new Set([...ATHLETE_OBJECTIVES,...specific])]:specific;
+ return options.map(name=>'<option value="'+escapeHtml(name)+'" '+(draft.position===name?'selected':'')+'>'+escapeHtml(name)+'</option>').join('');
+}
+function refreshAthletePositionField(){
+ const label=document.getElementById('athlete-position-label'),position=document.getElementById('athlete-position');
+ if(label)label.textContent=athletePositionLabel();
+ if(position)position.innerHTML='<option value="">Selecione…</option>'+athletePositionOptionsHtml();
 }
 function changeAthleteSportType(type){
-  draft.sportType=type;draft.sport='';draft.position='';
-  const sport=document.getElementById('athlete-sport'),position=document.getElementById('athlete-position');
-  if(sport)sport.innerHTML='<option value="">Selecione o esporte…</option>'+athleteSportOptionsHtml();
-  if(position)position.innerHTML='<option value="">Selecione…</option>';
-  persistCurrentRoute();
+ draft.sportType=type;draft.sport='';draft.position='';
+ const sport=document.getElementById('athlete-sport');
+ if(sport)sport.innerHTML='<option value="">Selecione o esporte…</option>'+athleteSportOptionsHtml();
+ refreshAthletePositionField();persistCurrentRoute();
 }
 function changeAthleteSport(sport){
-  draft.sport=sport;draft.position='';
-  const position=document.getElementById('athlete-position');
-  if(position)position.innerHTML='<option value="">Selecione…</option>'+athletePositionOptionsHtml();
-  persistCurrentRoute();
+ draft.sport=sport;draft.position='';refreshAthletePositionField();persistCurrentRoute();
 }
 let athletePhotoCropState=null;
 function handleAthleteProfilePhoto(input){
