@@ -5343,7 +5343,7 @@ function renderTreinoEditPanel(){
         <select onchange="updateDayField('${d.id}','type',this.value)">
           ${['Funcional','Musculação','Fortalecimento','Preventivo','Personalizado'].map(t => `<option ${d.type===t?'selected':''}>${t}</option>`).join('')}
         </select>
-        <button class="btn btn-danger btn-sm" onclick="removeDay('${d.id}')">Remover dia</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="archiveTrainingItem('day','${d.id}')">Arquivar treino</button><button class="btn btn-danger btn-sm" onclick="removeDay('${d.id}')">Remover dia</button>
       </div>
       <div class="day-body" style="${window.__ppCollapsedTrainingDays[d.id]?"display:none":""}">
         <div class="day-foot" style="position:sticky;top:8px;z-index:5;background:var(--panel);padding:10px;border:1px solid var(--line);border-radius:12px;box-shadow:0 3px 12px rgba(0,0,0,.12);margin:0 0 12px">
@@ -5428,7 +5428,7 @@ function renderTreinoEditPanel(){
     const weekdayOptions=weekdays.map(day=>'<option value="'+day+'" '+(w.day===day?'selected':'')+'>'+day+'</option>').join('');
     return '<div class="day-block" style="border-color:#c92532">'+
       '<div class="day-head" style="flex-wrap:wrap"><b>'+escapeHtml(extraWorkoutLabel(w.category))+' · '+escapeHtml(extraWorkoutDisplayTitle(w,wi))+'</b>'+
-      '<span style="display:flex;gap:5px;margin-left:auto"><button type="button" class="btn btn-outline btn-sm" onclick="moveExtraWorkout('+wi+',-1)" '+(wi===0?'disabled':'')+'>↑</button><button type="button" class="btn btn-outline btn-sm" onclick="moveExtraWorkout('+wi+',1)" '+(wi===extraWorkouts.length-1?'disabled':'')+'>↓</button><button class="btn btn-danger btn-sm" onclick="removeExtraWorkout('+wi+')">Remover</button></span></div>'+
+      '<span style="display:flex;gap:5px;margin-left:auto"><button type="button" class="btn btn-outline btn-sm" onclick="moveExtraWorkout('+wi+',-1)" '+(wi===0?'disabled':'')+'>↑</button><button type="button" class="btn btn-outline btn-sm" onclick="moveExtraWorkout('+wi+',1)" '+(wi===extraWorkouts.length-1?'disabled':'')+'>↓</button><button type="button" class="btn btn-outline btn-sm" onclick="archiveTrainingItem('extra','${w.id}')">Arquivar</button><button class="btn btn-danger btn-sm" onclick="removeExtraWorkout('+wi+')">Remover</button></span></div>'+
       '<div class="day-body">'+
         '<div class="field" style="margin-bottom:9px"><label>Categoria do treino extra</label><select style="width:100%;padding:9px" onchange="updateExtraWorkout('+wi+',\'category\',this.value);renderTreinoEditPanel()"><option value="core" '+(w.category==='core'?'selected':'')+'>Core / Abdômen</option><option value="cardio" '+(w.category==='cardio'?'selected':'')+'>Cardio</option><option value="speed" '+(w.category==='speed'?'selected':'')+'>Velocidade / aceleração</option></select></div>'+
         '<div class="field" style="margin-bottom:9px"><label>Identificação do treino</label><select style="width:100%;padding:9px" onchange="updateExtraWorkout('+wi+',\'labelMode\',this.value);renderTreinoEditPanel()"><option value="name" '+(!w.labelMode||w.labelMode==='name'?'selected':'')+'>Por nome</option><option value="number" '+(w.labelMode==='number'?'selected':'')+'>Por número</option><option value="weekday" '+(w.labelMode==='weekday'?'selected':'')+'>Por dia da semana</option></select></div>'+
@@ -5449,6 +5449,13 @@ function renderTreinoEditPanel(){
       </div>
     </div>
     ${!routineType ? '<div class="empty-state">Escolha o tipo de rotina acima para começar a montar o treino.</div>' : `
+    <div class="panel" style="margin-bottom:14px;padding:14px">
+      <div style="font-weight:700;margin-bottom:8px">🗂️ Rotinas e treinos arquivados</div>
+      <button type="button" class="btn btn-outline btn-sm" onclick="archiveTrainingItem('routine')">Arquivar rotina completa deste atleta</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><select id="archived-training-select" style="flex:1;min-width:180px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text)"><option value="">Selecione uma rotina ou treino arquivado...</option>${renderArchivedTemplateOptions()}</select>
+      <button type="button" class="btn btn-primary btn-sm" onclick="copyArchivedTrainingTemplate()">Copiar para este atleta</button><button type="button" class="btn btn-outline btn-sm" onclick="deleteArchivedTrainingTemplate()">Excluir arquivo</button></div>
+      <small style="display:block;margin-top:7px;color:var(--muted)">Os arquivos ficam guardados para reutilização. Copiar adiciona os treinos sem apagar os existentes.</small>
+    </div>
     <div class="panel" style="margin-bottom:14px;padding:14px">
       <div style="font-weight:700;margin-bottom:8px">📋 Copiar treino de outro atleta</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
