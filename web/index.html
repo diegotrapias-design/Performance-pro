@@ -2724,7 +2724,7 @@ async function loadAthletePortal(){
                 <div><b>Tempo de treino:</b><span id="athlete-finish-duration">00:00:00</span></div>
               </div>
               <label class="field-label" style="display:block;margin-top:18px">PSE — esforço (0–10)</label><p class="muted">Como foi o esforço desta sessão?</p>
-              <div class="athlete-finish-pse" id="athlete-finish-pse-options"><button type="button" class="btn btn-outline" data-pse="0" onclick="selectAthleteScale('pse',0);document.getElementById('athlete-finish-pse-error').hidden=true">0</button><button type="button" class="btn btn-outline" data-pse="1" onclick="selectAthleteScale('pse',1);document.getElementById('athlete-finish-pse-error').hidden=true">1</button><button type="button" class="btn btn-outline" data-pse="2" onclick="selectAthleteScale('pse',2);document.getElementById('athlete-finish-pse-error').hidden=true">2</button><button type="button" class="btn btn-outline" data-pse="3" onclick="selectAthleteScale('pse',3);document.getElementById('athlete-finish-pse-error').hidden=true">3</button><button type="button" class="btn btn-outline" data-pse="4" onclick="selectAthleteScale('pse',4);document.getElementById('athlete-finish-pse-error').hidden=true">4</button><button type="button" class="btn btn-outline" data-pse="5" onclick="selectAthleteScale('pse',5);document.getElementById('athlete-finish-pse-error').hidden=true">5</button><button type="button" class="btn btn-outline" data-pse="6" onclick="selectAthleteScale('pse',6);document.getElementById('athlete-finish-pse-error').hidden=true">6</button><button type="button" class="btn btn-outline" data-pse="7" onclick="selectAthleteScale('pse',7);document.getElementById('athlete-finish-pse-error').hidden=true">7</button><button type="button" class="btn btn-outline" data-pse="8" onclick="selectAthleteScale('pse',8);document.getElementById('athlete-finish-pse-error').hidden=true">8</button><button type="button" class="btn btn-outline" data-pse="9" onclick="selectAthleteScale('pse',9);document.getElementById('athlete-finish-pse-error').hidden=true">9</button><button type="button" class="btn btn-outline" data-pse="10" onclick="selectAthleteScale('pse',10);document.getElementById('athlete-finish-pse-error').hidden=true">10</button></div>
+              <div class="athlete-finish-pse" id="athlete-finish-pse-options"><button type="button" class="btn btn-outline" data-pse="0" onclick="selectAthleteScale('pse',0);document.getElementById('athlete-finish-pse-error').hidden=true">0</button><button type="button" class="btn btn-outline" data-pse="1" onclick="selectAthleteScale('pse',1);document.getElementById('athlete-finish-pse-error').hidden=true">1</button><button type="button" class="btn btn-outline" data-pse="2" onclick="selectAthleteScale('pse',2);document.getElementById('athlete-finish-pse-error').hidden=true">2</button><button type="button" class="btn btn-outline" data-pse="3" onclick="selectAthleteScale('pse',3);document.getElementById('athlete-finish-pse-error').hidden=true">3</button><button type="button" class="btn btn-outline" data-pse="4" onclick="selectAthleteScale('pse',4);document.getElementById('athlete-finish-pse-error').hidden=true">4</button><button type="button" class="btn btn-outline" data-pse="5" onclick="selectAthleteScale('pse',5);document.getElementById('athlete-finish-pse-error').hidden=true">5</button><button type="button" class="btn btn-outline" data-pse="6" onclick="selectAthleteScale('pse',6);document.getElementById('athlete-finish-pse-error').hidden=true">6</button><button type="button" class="btn btn-outline" data-pse="7" onclick="selectAthleteScale('pse',7);document.getElementById('athlete-finish-pse-error').hidden=true">7</button><button type="button" class="btn btn-outline" data-pse="8" onclick="selectAthleteScale('pse',8);document.getElementById('athlete-finish-pse-error').hidden=true">8</button><button type="button" class="btn btn-outline" data-pse="9" onclick="selectAthleteScale('pse',9);document.getElementById('athlete-finish-pse-error').hidden=true">9</button><button type="button" class="btn btn-outline" data-pse="10" onclick="selectAthleteScale('pse',10);document.getElementById('athlete-finish-pse-error').hidden=true">10</button></div><div id="athlete-finish-pse-feedback" class="athlete-scale-feedback" aria-live="polite"></div>
               <p id="athlete-finish-pse-error" class="athlete-finish-error" hidden>Esse campo é obrigatório.</p>
               <label class="field-label" for="athlete-finish-comment" style="display:block;margin-top:18px">Se quiser, deixe seu comentário aqui</label>
               <textarea id="athlete-finish-comment" rows="3" placeholder="Seu comentário aqui" style="width:100%;margin-top:6px"></textarea>
@@ -2781,13 +2781,30 @@ async function loadAthletePortal(){
       </section>
       <section id="athlete-extras" hidden>${backButton}<h2>Treinos extras</h2>${workoutCards(extraWorkouts,'Ainda não há treinos extras atribuídos pelo treinador.')}</section>
       <section id="athlete-workout-detail" hidden><button type="button" class="btn btn-outline btn-sm" onclick="backFromAthleteWorkout('${athlete.id}')" style="margin:8px 0 16px">← Voltar aos treinos</button><div id="athlete-workout-detail-content"></div></section>
-      <section id="athlete-assessments" hidden>${backButton}
+      <style id="athlete-scale-feedback-styles">
+.athlete-scale-feedback{min-height:24px;margin:-8px 0 16px;color:#b7b7bd;font-size:13px;font-weight:700;letter-spacing:.1px;transition:opacity .18s ease}
+.athlete-scale-feedback:empty{display:none}
+.athlete-scale-feedback.is-visible{animation:athleteScaleLabelIn .24s ease both}
+#athlete-tqr-options button,#athlete-pse-options button,#athlete-finish-pse-options button{transition:background-color .2s ease,border-color .2s ease,color .2s ease,transform .2s ease,box-shadow .2s ease}
+#athlete-tqr-options button.scale-selected,#athlete-pse-options button.scale-selected,#athlete-finish-pse-options button.scale-selected{border-color:transparent!important;color:#fff!important;font-weight:900;transform:scale(1.08);box-shadow:0 5px 14px rgba(0,0,0,.25)}
+.scale-selected.scale-tqr-red,.scale-selected.scale-pse-red{background:#c92532!important}
+.scale-selected.scale-tqr-orange,.scale-selected.scale-pse-orange{background:#c66a17!important}
+.scale-selected.scale-tqr-lime,.scale-selected.scale-pse-lime{background:#719b12!important}
+.scale-selected.scale-tqr-green,.scale-selected.scale-pse-green{background:#13866c!important}
+.scale-selected.scale-tqr-purple{background:#7653c7!important}
+.scale-selected.scale-pse-max{background:#211313!important;border:1px solid #572727!important}
+.scale-pop{animation:athleteScalePop .38s cubic-bezier(.2,.85,.25,1.25)}
+@keyframes athleteScalePop{0%{transform:scale(1)}45%{transform:scale(1.16)}100%{transform:scale(1.08)}}
+@keyframes athleteScaleLabelIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){#athlete-tqr-options button,#athlete-pse-options button,#athlete-finish-pse-options button,.athlete-scale-feedback{transition:none!important;animation:none!important}}
+</style>
+<section id="athlete-assessments" hidden>${backButton}
         <div id="athlete-assessment-form-slot"></div>
         <section class="panel" style="padding:18px;margin-top:8px" id="athlete-monitor-form">
           <h2>Registrar sessão</h2><p class="muted">Responda ao terminar cada sessão. Os dados serão enviados automaticamente ao treinador.</p>
           <label class="field-label" for="athlete-monitor-date">Data da sessão</label><input id="athlete-monitor-date" type="date" value="${performanceProLocalDateISO()}" style="width:100%;margin:6px 0 16px">
           <label class="field-label">TQR — recuperação (6–20)</label><p class="muted">Como foi sua recuperação até esta sessão?</p>
-          <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin:10px 0 18px" id="athlete-tqr-options">${Array.from({length:15},(_,i)=>i+6).map(n=>`<button type="button" class="btn btn-outline" data-tqr="${n}" onclick="selectAthleteScale('tqr',${n})" style="padding:10px 2px">${n}</button>`).join('')}</div>
+          <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin:10px 0 18px" id="athlete-tqr-options">${Array.from({length:15},(_,i)=>i+6).map(n=>`<button type="button" class="btn btn-outline" data-tqr="${n}" onclick="selectAthleteScale('tqr',${n})" style="padding:10px 2px">${n}</button>`).join('')}</div><div id="athlete-tqr-feedback" class="athlete-scale-feedback" aria-live="polite"></div>
           <label class="field-label" for="athlete-duration">Duração real do treino (minutos)</label><input id="athlete-duration" type="number" min="1" max="600" inputmode="numeric" placeholder="Ex.: 60" onchange="saveAthleteProgress('${athlete.id}',{quiet:true})" style="width:100%;margin:6px 0 18px">
           <div id="athlete-jump-assessment">
             <h3>🦘 Avaliação CMJ — salto vertical</h3><p class="muted">Faça a avaliação por vídeo antes e depois do treino. O aplicativo calcula a altura do salto pela marcação dos quadros.</p>
@@ -2797,7 +2814,7 @@ async function loadAthletePortal(){
           <button class="btn btn-primary" id="athlete-monitor-submit" type="button" onclick="saveAthleteProgress('${athlete.id}')">Salvar progresso</button>
           <div id="athlete-pse-current-location" style="display:block;clear:both;width:100%;margin-top:18px">
             <label class="field-label" style="display:block">PSE — esforço (0–10)</label><p class="muted">Como foi o esforço desta sessão?</p>
-            <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;margin:10px 0 18px" id="athlete-pse-options">${Array.from({length:11},(_,i)=>i).map(n=>`<button type="button" class="btn btn-outline" data-pse="${n}" onclick="selectAthleteScale('pse',${n})" style="padding:10px 2px">${n}</button>`).join('')}</div>
+            <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;margin:10px 0 18px" id="athlete-pse-options">${Array.from({length:11},(_,i)=>i).map(n=>`<button type="button" class="btn btn-outline" data-pse="${n}" onclick="selectAthleteScale('pse',${n})" style="padding:10px 2px">${n}</button>`).join('')}</div><div id="athlete-pse-feedback" class="athlete-scale-feedback" aria-live="polite"></div>
           </div>
           <p id="athlete-monitor-message" class="muted" role="status" style="margin-top:10px">TQR e salto pré-sessão podem ser salvos antes de terminar. Depois, registre PSE e salto pós-sessão.</p>
         </section>
@@ -3226,15 +3243,48 @@ function showAthleteWorkout(workoutId){
   loadAthleteProgressForWorkout(window.__athleteMonitoringId,workoutId);
   startAthleteWorkoutClock();
 }
+function athleteScaleFeedback(type,value){
+  if(value==null||!Number.isFinite(Number(value)))return null;
+  const n=Number(value);
+  if(type==='tqr'){
+    if(n<=10)return {band:'red',emoji:n<=8?'😣':'🙁',label:n<=8?'Muito ruim':'Ruim'};
+    if(n<=14)return {band:'orange',emoji:'😐',label:'Razoável'};
+    if(n<=16)return {band:'lime',emoji:'😊',label:'Muito boa'};
+    if(n<=19)return {band:'green',emoji:'💪',label:'Excelente'};
+    return {band:'purple',emoji:'🚀',label:'Máxima recuperação'};
+  }
+  if(n<=2)return {band:'green',emoji:'🟢',label:n===0?'Nenhum esforço':n===1?'Muito leve':'Leve'};
+  if(n<=4)return {band:'lime',emoji:'🟡',label:'Moderado'};
+  if(n<=6)return {band:'red',emoji:'🟠',label:'Difícil'};
+  if(n<=8)return {band:'orange',emoji:'🔴',label:'Muito difícil'};
+  return {band:'max',emoji:'⚫',label:'Máximo esforço'};
+}
+function updateAthleteScaleVisual(type,value,animate=false){
+  const attr=type==='tqr'?'data-tqr':'data-pse';
+  const selector=type==='tqr'?'#athlete-tqr-options button':'#athlete-pse-options button, #athlete-finish-pse-options button';
+  const info=athleteScaleFeedback(type,value);
+  document.querySelectorAll(selector).forEach(b=>{
+    const active=value!=null&&Number(b.getAttribute(attr))===Number(value);
+    b.classList.remove('scale-selected','scale-tqr-red','scale-tqr-orange','scale-tqr-lime','scale-tqr-green','scale-tqr-purple','scale-pse-green','scale-pse-lime','scale-pse-red','scale-pse-orange','scale-pse-max','scale-pop');
+    b.classList.toggle('btn-primary',active);
+    b.classList.toggle('btn-outline',!active);
+    b.setAttribute('aria-pressed',active?'true':'false');
+    if(active&&info){
+      b.classList.add('scale-selected','scale-'+type+'-'+info.band);
+      if(animate){void b.offsetWidth;b.classList.add('scale-pop');}
+    }
+  });
+  const ids=type==='tqr'?['athlete-tqr-feedback']:['athlete-pse-feedback','athlete-finish-pse-feedback'];
+  ids.forEach(id=>{
+    const el=document.getElementById(id);if(!el)return;
+    el.textContent=info?info.emoji+' '+info.label:'';
+    el.classList.toggle('is-visible',!!info);
+  });
+}
 function selectAthleteScale(type,value){
   if(!window.__athleteScale) window.__athleteScale={tqr:null,pse:null};
   window.__athleteScale[type]=value;
-  const attr=type==='tqr'?'data-tqr':'data-pse';
-  document.querySelectorAll(type==='tqr'?'#athlete-tqr-options button':'#athlete-pse-options button, #athlete-finish-pse-options button').forEach(b=>{
-    const active=Number(b.getAttribute(attr))===value;
-    b.classList.toggle('btn-primary',active);
-    b.classList.toggle('btn-outline',!active);
-  });
+  updateAthleteScaleVisual(type,value,true);
   if(window.__athleteMonitoringId && window.__activeAthleteWorkoutId)
     saveAthleteProgress(window.__athleteMonitoringId,{quiet:true});
 }
@@ -3344,14 +3394,7 @@ async function loadAthleteProgressForWorkout(athleteId,workoutId){
     const row=await findAthleteSessionRow(athleteId,date);
     if(!row)return;
     window.__athleteScale={tqr:row.psr==null?null:Number(row.psr),pse:row.pse==null?null:Number(row.pse)};
-    ['tqr','pse'].forEach(type=>{
-      const value=window.__athleteScale[type];
-      const attr=type==='tqr'?'data-tqr':'data-pse';
-      document.querySelectorAll('#athlete-'+type+'-options button').forEach(b=>{
-        const active=value!=null&&Number(b.getAttribute(attr))===value;
-        b.classList.toggle('btn-primary',active);b.classList.toggle('btn-outline',!active);
-      });
-    });
+    ['tqr','pse'].forEach(type=>updateAthleteScaleVisual(type,window.__athleteScale[type],false));
     const duration=document.getElementById('athlete-duration');
     if(duration&&row.duration_min!=null)duration.value=row.duration_min;
     const pre=document.getElementById('athlete-jump-pre');
