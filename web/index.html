@@ -4450,7 +4450,7 @@ function renderAthletePreviewTab(tab){
  '@media(max-width:380px){#athlete-preview-host .pp-preview-scroll{padding:10px}#athlete-preview-host .pp-preview-summary-grid span{font-size:12px}#athlete-preview-host .pp-preview-day-nav strong{font-size:14px}}'+
  '</style><div class="pp-preview-overlay"><header class="pp-preview-header"><div class="pp-preview-brand">DT <span>PERFORMANCE</span></div><div class="pp-preview-athlete">'+safe(a.name||'Atleta')+'</div><button type="button" class="pp-preview-close" onclick="closeAthletePreview()">Voltar ao perfil ×</button></header><main class="pp-preview-scroll">'+nav+actionBar+content+'<small style="display:block;text-align:center;color:#7b8792;margin:18px 0 6px">Prévia visual — não inicia nem altera treinos.</small></main></div>';
 }
-function closeAthletePreview(){const h=document.getElementById('athlete-preview-host');if(h)h.innerHTML='';}
+function closeAthletePreview(){const h=document.getElementById('athlete-preview-host');if(h)h.innerHTML='';window.__ppAthleteTrainingViewActions=false;}
 function buildAthleteStickerHtml(a,compact=false){
   const age=calcAge(a.birthDate);
   const photo=a.profilePhoto||'';
@@ -6165,14 +6165,19 @@ function closeSaltoScreen(){
     saltoReturnAthleteId = null;
     if(saltoReturnToAthletePortal){
       saltoReturnToAthletePortal = false;
-      // Mantém a tela e o formulário do treino abertos; não recarrega o portal,
-      // pois isso levaria o atleta de volta ao menu e poderia descartar o estado visual.
-      const workoutId = window.__activeAthleteWorkoutId;
-      if(workoutId){
-        showAthleteSection('workout-detail');
-        loadAthleteProgressForWorkout(id,workoutId);
+      if(window.__ppReturnToTrainingView){
+        window.__ppReturnToTrainingView=false;
+        openAthleteTrainingView(id);
       }else{
-        showAthleteSection('home');
+        // Mantém a tela e o formulário do treino abertos; não recarrega o portal,
+        // pois isso levaria o atleta de volta ao menu e poderia descartar o estado visual.
+        const workoutId = window.__activeAthleteWorkoutId;
+        if(workoutId){
+          showAthleteSection('workout-detail');
+          loadAthleteProgressForWorkout(id,workoutId);
+        }else{
+          showAthleteSection('home');
+        }
       }
     }else if(window.__ppReturnToTrainingView){
       window.__ppReturnToTrainingView=false;
