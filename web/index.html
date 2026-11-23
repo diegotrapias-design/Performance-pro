@@ -4114,7 +4114,21 @@ function closeDetail(){
   renderList();
 }
 
+function returnToTrainingViewFromEditor(){
+  if(!window.__ppReturnToTrainingView||!currentId)return;
+  athleteMode='profile';
+  renderDetail();
+  window.__ppAthleteTrainingViewActions=true;
+  window.__ppAthletePreviewMode='coach';
+  window.__ppTrainingAthleteId=currentId;
+  openAthletePreview();
+}
+
 function backFromDetail(){
+  if(athleteMode==='edit-treino'&&window.__ppReturnToTrainingView){
+    returnToTrainingViewFromEditor();
+    return;
+  }
   if(athleteMode !== 'profile'){
     athleteMode = 'profile';
     renderDetail();
@@ -4398,7 +4412,8 @@ function renderAthletePreviewTab(tab){
  window.__ppAthletePreviewTab=tab;
  const safe=x=>escapeHtml(x==null?'':String(x));
  const nav='<div class="pp-preview-tabs"><button type="button" class="'+(tab==='routines'?'active':'')+'" onclick="renderAthletePreviewTab(\'routines\')">Rotinas</button><button type="button" class="'+(tab==='extras'?'active':'')+'" onclick="renderAthletePreviewTab(\'extras\')">Treinos extras</button></div>';
- const actionBar=window.__ppAthleteTrainingViewActions&&window.__ppAthletePreviewMode==='coach'?'<div class="pp-preview-actions"><button type="button" onclick="closeAthletePreview();window.__ppAthleteTrainingViewActions=false;setAthleteMode(\'edit-treino\')">✏️ Editar treino</button><button type="button" onclick="window.__ppAthletePreviewMode=\'athlete\';renderAthletePreviewTab(window.__ppAthletePreviewTab||\'routines\')">👁 Visualizar como atleta</button><button type="button" onclick="closeAthletePreview();window.__ppReturnToTrainingView=true;toggleCoachMonitoring(\''+(a.id||'')+'\')">📊 Monitoramento</button><button type="button" onclick="closeAthletePreview();window.__ppReturnToTrainingView=true;goSaltoForAthlete(\''+(a.id||'')+'\')">🦘 Registrar salto</button></div>':'';
+ const returnBar='<div class="pp-preview-returnbar"><button type="button" onclick="backFromAthletePreview()">← '+(window.__ppAthletePreviewMode==='athlete'?'Voltar ao treino':'Voltar ao perfil')+'</button></div>';
+ const actionBar=window.__ppAthleteTrainingViewActions&&window.__ppAthletePreviewMode==='coach'?'<div class="pp-preview-actions"><button type="button" onclick="window.__ppReturnToTrainingView=true;closeAthletePreview();window.__ppAthleteTrainingViewActions=false;setAthleteMode(\'edit-treino\')">✏️ Editar treino</button><button type="button" onclick="window.__ppAthletePreviewMode=\'athlete\';renderAthletePreviewTab(window.__ppAthletePreviewTab||\'routines\')">👁 Visualizar como atleta</button><button type="button" onclick="closeAthletePreview();window.__ppReturnToTrainingView=true;toggleCoachMonitoring(\''+(a.id||'')+'\')">📊 Monitoramento</button><button type="button" onclick="closeAthletePreview();window.__ppReturnToTrainingView=true;goSaltoForAthlete(\''+(a.id||'')+'\')">🦘 Registrar salto</button></div>':'';
 
  let content='';
  if(tab==='routines'){
@@ -4437,7 +4452,7 @@ function renderAthletePreviewTab(tab){
    content=extras.length?extras.map((w,i)=>'<button type="button" class="pp-preview-extra" onclick="window.__ppAthletePreviewExtraIndex='+i+';renderAthletePreviewTab(\'extras\')"><b>'+safe(w.title||extraWorkoutLabel(w.category)||'Treino extra')+'</b><span>'+safe(extraWorkoutLabel(w.category))+' · '+(w.exercises||[]).length+' exercícios</span><strong>Ver treino ›</strong></button>').join(''):'<div class="pp-preview-empty">Nenhum treino extra cadastrado.</div>';
  }
  h.innerHTML='<style>'+
- ' #athlete-preview-host .pp-preview-overlay{position:fixed;inset:0;z-index:9999;background:#111114;display:flex;flex-direction:column;overflow:hidden;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}'+
+ ' #athlete-preview-host .pp-preview-overlay{ #athlete-preview-host .pp-preview-returnbar{position:sticky;top:0;z-index:20;margin:0 -2px 10px;padding:6px 0;background:#f0f0f2}#athlete-preview-host .pp-preview-returnbar button{width:100%;min-height:46px;border:1px solid #c92532;border-radius:9px;background:#1c1c21;color:#fff;font-size:15px;font-weight:800;text-align:left;padding:10px 14px} position:fixed;inset:0;z-index:9999;background:#111114;display:flex;flex-direction:column;overflow:hidden;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}'+
  '#athlete-preview-host .pp-preview-header{position:relative;flex:0 0 auto;background:#111114;color:#f8f8f8;padding:16px 110px 14px 16px;text-align:left;border-bottom:2px solid #c92532;min-height:82px}'+
  '#athlete-preview-host .pp-preview-brand{font-size:17px;font-weight:800;letter-spacing:1.2px;line-height:1.2}#athlete-preview-host .pp-preview-brand span{display:block;font-size:11px;font-weight:500;letter-spacing:1.8px;color:#c9cbd0;margin-top:3px}'+
  '#athlete-preview-host .pp-preview-athlete{font-size:12px;color:#b7b7bd;margin-top:8px}#athlete-preview-host .pp-preview-close{position:absolute;right:10px;top:16px;border:1px solid #c92532;background:#1c1c21;color:#f8f8f8;border-radius:8px;padding:9px 10px;font-weight:700}'+
@@ -4451,7 +4466,7 @@ function renderAthletePreviewTab(tab){
  '#athlete-preview-host .pp-preview-ex-data{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}#athlete-preview-host .pp-preview-ex-data>div{background:#f3f6f8;border-radius:7px;padding:8px;min-width:0}#athlete-preview-host .pp-preview-ex-data small{display:block;color:#697887;font-size:9px;font-weight:800}#athlete-preview-host .pp-preview-ex-data b{display:block;font-size:12px;margin-top:3px;overflow-wrap:anywhere}#athlete-preview-host .pp-preview-notes{font-size:12px;color:#526170;margin:10px 0 0;white-space:pre-wrap}'+
  '#athlete-preview-host .pp-preview-video{margin-top:10px;border:1px solid #c92532;border-radius:7px;padding:8px 12px;background:#1c1c21;color:#fff;font-weight:700}#athlete-preview-host .pp-preview-extra{display:block;width:100%;text-align:left;background:#fff;border:1px solid #e0e5e9;border-radius:10px;padding:15px;margin:9px 0;color:#253342}#athlete-preview-host .pp-preview-extra span{display:block;font-size:12px;color:#687787;margin-top:6px}#athlete-preview-host .pp-preview-extra strong{display:block;text-align:right;color:#c92532;margin-top:10px}#athlete-preview-host .pp-preview-empty{background:#fff;border-radius:10px;padding:22px;text-align:center;color:#687787;margin:12px 0}'+
  '@media(max-width:380px){#athlete-preview-host .pp-preview-scroll{padding:10px}#athlete-preview-host .pp-preview-summary-grid span{font-size:12px}#athlete-preview-host .pp-preview-day-nav strong{font-size:14px}}'+
- '</style><div class="pp-preview-overlay"><header class="pp-preview-header"><div class="pp-preview-brand">DIEGO TRAPIÁ<span>ALTA PERFORMANCE</span></div><div class="pp-preview-athlete">'+safe(a.name||'Atleta')+'</div><button type="button" class="pp-preview-close" onclick="backFromAthletePreview()">'+(window.__ppAthletePreviewMode==='athlete'?'Voltar ao treino ×':'Voltar ao perfil ×')+'</button></header><main class="pp-preview-scroll">'+nav+actionBar+content+'<small style="display:block;text-align:center;color:#7b8792;margin:18px 0 6px">Prévia visual — não inicia nem altera treinos.</small></main></div>';
+ '</style><div class="pp-preview-overlay"><header class="pp-preview-header"><div class="pp-preview-brand">DIEGO TRAPIÁ<span>ALTA PERFORMANCE</span></div><div class="pp-preview-athlete">'+safe(a.name||'Atleta')+'</div><button type="button" class="pp-preview-close" onclick="backFromAthletePreview()">'+(window.__ppAthletePreviewMode==='athlete'?'Voltar ao treino ×':'Voltar ao perfil ×')+'</button></header><main class="pp-preview-scroll">'+returnBar+nav+actionBar+content+'<small style="display:block;text-align:center;color:#7b8792;margin:18px 0 6px">Prévia visual — não inicia nem altera treinos.</small></main></div>';
 }
 function backFromAthletePreview(){
   if(window.__ppAthletePreviewMode==='athlete'){
@@ -5490,6 +5505,8 @@ function renderTreinoEditPanel(){
   const routineType=draft.trainingPlan.routineType||inferTrainingRoutineType(draft.trainingPlan);
   if(routineType && !draft.trainingPlan.routineType) draft.trainingPlan.routineType=routineType;
   p.innerHTML = `
+    ${window.__ppReturnToTrainingView?'<button type="button" class="btn btn-outline" style="position:sticky;top:8px;z-index:20;width:100%;margin:0 0 12px;background:#1c1c21;color:#fff;border:1px solid #c92532" onclick="returnToTrainingViewFromEditor()">← Voltar para Ver treino</button>':''}
+
     <div class="panel" style="margin-bottom:14px;padding:14px">
       <div style="font-weight:800;margin-bottom:10px">1. Escolha o tipo de rotina</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px">
