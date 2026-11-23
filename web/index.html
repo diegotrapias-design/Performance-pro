@@ -1975,6 +1975,9 @@ async function onAuthChange(user){
   }
 }
 
+// Disponibiliza o controlador assim que sua definição é carregada, antes do restante da inicialização.
+window.onAuthChange = onAuthChange;
+
 // Notificações push: ativação explícita pelo treinador.
 const PP_PUSH_PUBLIC_KEY = 'BAokAdASLwG_U8FfY8ACah1S08I-T2-J36o_B4pokPgyxl-n4FJ8-0TjxJJhsq6zF6ehU7AGkXr_4e96Ycl7nPE';
 function ppUrlBase64ToUint8Array(value){
