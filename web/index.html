@@ -3062,7 +3062,7 @@ function renderPhysicalAssessments(){
     <section class="panel" style="padding:16px;margin-bottom:18px">
       <h3 style="margin-top:0">Importar avaliação recebida do atleta</h3>
       <div class="field"><label for="assessment-athlete">Atleta</label><select id="assessment-athlete"><option value="">Selecione o atleta</option>${options}</select></div>
-      <div class="field"><label for="assessment-file">Arquivo da avaliação (PDF ou HTML)</label><input id="assessment-file" type="file" accept=".pdf,.html,application/pdf,text/html"></div>
+      <div class="field"><label for="assessment-file">Arquivo da avaliação (PDF ou HTML)</label><input id="assessment-file" type="file" accept=".pdf,.html,.htm,application/pdf,text/html"></div>
       <div class="field"><label for="assessment-notes">Observações (opcional)</label><textarea id="assessment-notes" rows="2" placeholder="Ex.: Avaliação realizada em novembro"></textarea></div>
       <button class="btn btn-primary" onclick="uploadPhysicalAssessment()">Importar avaliação</button>
       <p class="muted" style="font-size:12px;margin-bottom:0">Arquivos privados, vinculados ao atleta selecionado. Limite de 15 MB por arquivo.</p>
@@ -3078,7 +3078,7 @@ async function uploadPhysicalAssessment(){
   const notes=document.getElementById('assessment-notes')?.value.trim()||'';
   if(!athleteId||!file){showToast('Selecione o atleta e o arquivo da avaliação.','err');return;}
   const ext=(file.name.split('.').pop()||'').toLowerCase();
-  const mime=ext==='pdf'?'application/pdf':ext==='html'?'text/html':'';
+  const mime=ext==='pdf'?'application/pdf':(ext==='html'||ext==='htm')?'text/html':'';
   if(!mime){showToast('Envie somente arquivos PDF ou HTML.','err');return;}
   if(file.size>15*1024*1024){showToast('O arquivo deve ter no máximo 15 MB.','err');return;}
   const athlete=athletes.find(a=>String(a.id)===String(athleteId));
@@ -3125,6 +3125,7 @@ async function loadPhysicalAssessmentList(){
         <div style="font-size:12px;color:var(--muted)">${new Date(doc.created_at).toLocaleDateString('pt-BR')} · ${doc.file_type==='application/pdf'?'PDF':'HTML'} · ${(doc.file_size/1048576).toFixed(1)} MB</div>
         ${doc.notes?'<div style="font-size:13px;margin-top:6px">'+escapeHtml(doc.notes)+'</div>':''}
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          ${doc.file_type==='text/html'?'<button class="btn btn-outline btn-sm" onclick="viewPhysicalAssessment(\''+doc.id+'\')">Visualizar avaliação</button>':''}
           <button class="btn btn-outline btn-sm" onclick="downloadPhysicalAssessment('${doc.id}')">Baixar avaliação</button>
           <button class="btn btn-danger btn-sm" onclick="deletePhysicalAssessment('${doc.id}')">Excluir avaliação</button>
         </div>
@@ -3132,6 +3133,10 @@ async function loadPhysicalAssessmentList(){
     }).join('');
     window.__physicalAssessmentRows=data;
   }catch(e){console.error('Falha ao listar avaliações:',e);host.innerHTML='<div class="empty-state">Não foi possível carregar as avaliações.</div>';}
+}
+function viewPhysicalAssessment(id){
+  window.__athleteProfileAssessmentRows=window.__physicalAssessmentRows||[];
+  viewAthleteProfileAssessment(id);
 }
 async function downloadPhysicalAssessment(id){
   const doc=(window.__physicalAssessmentRows||[]).find(x=>String(x.id)===String(id));
@@ -4666,6 +4671,13 @@ async function viewAthleteProfileAssessment(id){
     window.__athleteAssessmentKeyHandler=e=>{if(e.key==='Escape')closeAthleteProfileAssessmentViewer();};
     document.addEventListener('keydown',window.__athleteAssessmentKeyHandler);
 
+    const htmlPages=document.getElementById('athlete-assessment-pdf-pages');
+    if(doc.file_type==='text/html'||/\.html?$/i.test(doc.file_name||'')){
+      if(!htmlPages||!viewer.isConnected)return;
+      htmlPages.style.padding='0';
+      htmlPages.innerHTML='<iframe title="Visualização da avaliação HTML" sandbox="" referrerpolicy="no-referrer" style="display:block;width:100%;height:100%;min-height:70vh;border:0;background:#fff" src="'+escapeHtml(data.signedUrl)+'"></iframe>';
+      return;
+    }
     if(!window.__performanceProPdfJsPromise){
       window.__performanceProPdfJsPromise=new Promise((resolve,reject)=>{
         const script=document.createElement('script');
