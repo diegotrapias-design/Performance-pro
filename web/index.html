@@ -2351,7 +2351,7 @@ async function syncCoachDataToRelational(){
           id:e.id,workout_id:day.id,exercise_name:e.name.trim(),
           sets:e.series?parseInt(e.series,10)||null:null,
           reps:e.reps||null,load_text:e.carga||null,
-          rest_seconds:e.descanso?parseInt(e.descanso,10)||null:null,
+          rest_seconds:e.descanso?(parseInt(e.descanso,10)||null)*(/min/i.test(String(e.descanso))?60:1):null,
           notes:(e.comboId?'[[PP_COMBO:'+e.comboId+'|'+(e.comboType||'Bi-set')+']] ':'')+(e.obs||''),video_url:e.video||null,sort_order:index
         });
       });
@@ -2360,7 +2360,7 @@ async function syncCoachDataToRelational(){
       const exs=extra.exercises||[];if(!exs.length)continue;
       const extraIndex=(a.trainingPlan.extraWorkouts||[]).indexOf(extra);
       workoutRows.push({id:extra.id,team_id:teamId,athlete_id:a.id,title:'[EXTRA] '+extraWorkoutDisplayTitle(extra,extraIndex),routine_type:'extra_'+(extra.category||'cardio'),sort_order:1000+extraIndex,created_by:currentUser.id});
-      exs.forEach((e,index)=>itemRows.push({id:e.id,workout_id:extra.id,exercise_name:e.name||'',sets:e.series?parseInt(e.series,10)||null:null,reps:e.reps||null,load_text:e.carga||null,rest_seconds:e.descanso?parseInt(e.descanso,10)||null:null,notes:(e.comboId?'[[PP_COMBO:'+e.comboId+'|'+(e.comboType||'Bi-set')+']] ':'')+(e.obs||''),video_url:e.video||null,sort_order:index}));
+      exs.forEach((e,index)=>itemRows.push({id:e.id,workout_id:extra.id,exercise_name:e.name||'',sets:e.series?parseInt(e.series,10)||null:null,reps:e.reps||null,load_text:e.carga||null,rest_seconds:e.descanso?(parseInt(e.descanso,10)||null)*(/min/i.test(String(e.descanso))?60:1):null,notes:(e.comboId?'[[PP_COMBO:'+e.comboId+'|'+(e.comboType||'Bi-set')+']] ':'')+(e.obs||''),video_url:e.video||null,sort_order:index}));
     }
   }
   if(workoutRows.length){
@@ -2754,7 +2754,7 @@ async function loadAthletePortal(){
                 ${i.sets?'<span><b>'+safe(i.sets)+'</b> séries</span>':''}
                 ${i.reps?'<span><b>'+safe(i.reps)+'</b> repetições</span>':''}
                 ${i.load_text?'<span>Carga: <b>'+safe(i.load_text)+'</b></span>':''}
-                ${i.rest_seconds?'<span>Descanso: <b>'+safe(i.rest_seconds)+'s</b></span>':''}
+                ${i.rest_seconds?'<span>Descanso: <b>'+safe(i.rest_seconds%60===0?Math.floor(i.rest_seconds/60)+'min':i.rest_seconds+'s')+'</b></span>':''}
               </div>
               ${cleanNotes(i)?'<p class="athlete-exercise-notes">'+safe(cleanNotes(i))+'</p>':''}
               ${i.video_url?renderAthleteExerciseVideo(i.video_url,i.exercise_name):''}
@@ -5297,7 +5297,7 @@ async function copyExtraWorkoutsFromAthlete(){
   copied.forEach(extra=>(extra.exercises||[]).forEach((e,index)=>itemRows.push({
     id:e.id,workout_id:extra.id,exercise_name:e.name||'',
     sets:e.series?parseInt(e.series,10)||null:null,reps:e.reps||null,
-    load_text:null,rest_seconds:e.descanso?parseInt(e.descanso,10)||null:null,
+    load_text:null,rest_seconds:e.descanso?(parseInt(e.descanso,10)||null)*(/min/i.test(String(e.descanso))?60:1):null,
     notes:e.obs||'',video_url:e.video||null,sort_order:index
   })));
   try{
