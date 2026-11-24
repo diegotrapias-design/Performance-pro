@@ -1437,6 +1437,12 @@ window.handleLogin = async function(event){
       <label>Categoria</label>
       <select id="ex-form-group"></select>
     </div>
+    <div class="field" id="ex-form-extra-category-wrap" style="margin-bottom:12px;display:none;">
+      <label>Categoria do exercício</label>
+      <select id="ex-form-extra-category">
+        <option value="Velocidade/Sprint">Velocidade/Sprint</option>
+      </select>
+    </div>
     <div class="field" style="margin-bottom:14px;" id="ex-form-newgroup-wrap" hidden>
       <label>Nome da nova categoria</label>
       <input type="text" id="ex-form-newgroup" placeholder="Ex: Mobilidade">
@@ -5365,7 +5371,7 @@ function extraWorkoutExercises(category,search){
   let matches=[];
   if(category==='core')matches=regular.filter(x=>/abd[oô]men|core/i.test(x.group||''));
   else if(category==='cardio')matches=[...extras.filter(x=>/cardio/i.test(x.group||'')),...regular.filter(x=>/funcional\s*\/\s*cardio/i.test(x.group||''))];
-  else if(category==='speed')matches=[...extras.filter(x=>/velocidade/i.test(x.group||'')),...regular.filter(x=>/funcional\s*[—-]\s*alta performance/i.test(x.group||''))];
+  else if(category==='speed')matches=[...extras.filter(x=>/velocidade/i.test(x.group||'')),...regular.filter(x=>/funcional\s*[—-]\s*alta performance/i.test(x.group||'')||x.category==='Velocidade/Sprint')];
   // Core e favoritos da biblioteca normal ficam disponíveis em qualquer categoria de treino extra.
   matches=[...matches,...regular.filter(x=>/abd[oô]men|core/i.test(x.group||'')),...exerciseLibrary.filter(x=>x&&x.name&&x.favorite)];
   const seen=new Set();
@@ -5392,6 +5398,30 @@ function moveExtraWorkout(index,direction){
 function addExtraExercise(i){
   const w=draft?.trainingPlan?.extraWorkouts?.[i];if(!w)return;
   w.exercises.push({id:uid(),name:'',series:'',reps:'',descanso:'',obs:'',video:''});renderTreinoEditPanel();
+}
+let extraExerciseCreateTarget=null;
+function openExtraCreateExerciseForm(wi,ei){
+  const w=draft?.trainingPlan?.extraWorkouts?.[wi];
+  const ex=w?.exercises?.[ei];
+  if(!w||!ex)return;
+  extraExerciseCreateTarget={workoutId:w.id,exerciseId:ex.id};
+  editingExerciseId=null;
+  document.getElementById('exercise-form-title').textContent='Criar exercício para treino extra';
+  document.getElementById('ex-form-name').value=ex.name||'';
+  populateGroupSelect('Velocidade / Sprint');
+  const group=document.getElementById('ex-form-group');
+  if(![...group.options].some(o=>o.value==='Velocidade / Sprint')){
+    const option=document.createElement('option');option.value='Velocidade / Sprint';option.textContent='Velocidade / Sprint';group.insertBefore(option,group.firstChild);
+  }
+  group.value='Velocidade / Sprint';
+  document.getElementById('ex-form-newgroup-wrap').hidden=true;
+  document.getElementById('ex-form-newgroup').value='';
+  document.getElementById('ex-form-video').value='';
+  document.getElementById('ex-form-favorite').checked=false;
+  document.getElementById('ex-form-extra-category-wrap').style.display='block';
+  document.getElementById('ex-form-extra-category').value='Velocidade/Sprint';
+  resetExerciseVideoPreview();
+  document.getElementById('exercise-form-modal').style.display='flex';
 }
 function updateExtraExercise(wi,ei,k,v){const e=draft?.trainingPlan?.extraWorkouts?.[wi]?.exercises?.[ei];if(e)e[k]=v;}
 function moveExtraExercise(wi,ei,direction){
@@ -5534,7 +5564,7 @@ function renderTreinoEditPanel(){
         '<select id="extra-lib-'+wi+'-'+ei+'" style="width:100%;padding:9px;margin-bottom:8px" onchange="selectExtraLibraryExercise('+wi+','+ei+',this.value)">'+
           '<option value="">Biblioteca — core, favoritos e categoria do treino</option>'+optionHtml+
         '</select>'+
-        '<div style="display:flex;gap:7px;flex-wrap:wrap;margin:0 0 8px"><button type="button" class="btn btn-outline btn-sm" onclick="previewExtraLibraryExercise(document.getElementById(\'extra-lib-'+wi+'-'+ei+'\').value,\''+w.category+'\')">▶ Visualizar vídeo</button></div>'+
+        '<div style="display:flex;gap:7px;flex-wrap:wrap;margin:0 0 8px"><button type="button" class="btn btn-outline btn-sm" onclick="previewExtraLibraryExercise(document.getElementById(\'extra-lib-'+wi+'-'+ei+'\').value,\''+w.category+'\')">▶ Visualizar vídeo</button><button type="button" class="btn btn-outline btn-sm" onclick="openExtraCreateExerciseForm('+wi+','+ei+')">＋ Criar exercício</button></div>'+
         '<div class="ex-card-grid">'+
           '<div><label>Séries</label><input value="'+escapeHtml(e.series||'')+'" oninput="updateExtraExercise('+wi+','+ei+',\'series\',this.value)"></div>'+
           (w.category==='speed'
@@ -6338,7 +6368,7 @@ function renderLibraryScreen(filter){
     `).join('');
 
   const groupOptions = [...new Set(exerciseLibrary.filter(ex=>!categoryFilter||exerciseCategory(ex)===categoryFilter).map(libraryMuscleGroup).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-  const categoryOptions = ['Musculação','Funcional','Aeróbico','Mobilidade','Alongamento','Esportivo'];
+  const categoryOptions = ['Musculação','Funcional','Aeróbico','Mobilidade','Alongamento','Esportivo','Velocidade/Sprint'];
   const groupSelectHtml = '<option value="">Todos os grupos musculares</option>' + groupOptions.map(g=>'<option value="'+escapeHtml(g)+'" '+(g===groupFilter?'selected':'')+'>'+escapeHtml(g)+'</option>').join('');
   const categorySelectHtml = '<option value="">Todas as categorias</option>' + categoryOptions.map(c=>'<option value="'+escapeHtml(c)+'" '+(c===categoryFilter?'selected':'')+'>'+escapeHtml(c)+'</option>').join('');
 
@@ -6429,6 +6459,8 @@ function chooseAnotherExerciseVideo(){
 }
 
 function openCreateExerciseForm(){
+  extraExerciseCreateTarget=null;
+  document.getElementById('ex-form-extra-category-wrap').style.display='none';
   editingExerciseId = null;
   document.getElementById('exercise-form-title').textContent = 'Novo exercício';
   document.getElementById('ex-form-name').value = '';
@@ -6441,6 +6473,8 @@ function openCreateExerciseForm(){
 }
 
 function editLibraryExercise(exId){
+  extraExerciseCreateTarget=null;
+  document.getElementById('ex-form-extra-category-wrap').style.display='none';
   const ex = exerciseLibrary.find(x => x.id === exId);
   if(!ex) return;
   editingExerciseId = exId;
@@ -6506,14 +6540,24 @@ async function submitExerciseForm(){
     }else{
       // Uma inclusão manual explícita autoriza novamente esse nome na biblioteca.
       deletedLibraryExerciseKeys=deletedLibraryExerciseKeys.filter(key=>key!==libraryExerciseKey(name));
-      exerciseLibrary.push({ id: uid(), name, group, video:videoUrl, favorite });
+      const extraCategory=extraExerciseCreateTarget?document.getElementById('ex-form-extra-category').value:'';
+      const created={ id: uid(), name, group, video:videoUrl, favorite, ...(extraCategory?{category:extraCategory}:{}) };
+      exerciseLibrary.push(created);
+      if(extraExerciseCreateTarget){
+        const targetWorkout=draft?.trainingPlan?.extraWorkouts?.find(w=>String(w.id)===String(extraExerciseCreateTarget.workoutId));
+        const targetExercise=targetWorkout?.exercises?.find(ex=>String(ex.id)===String(extraExerciseCreateTarget.exerciseId));
+        if(targetExercise){targetExercise.name=name;targetExercise.video=videoUrl;targetExercise.libraryExerciseId=created.id;}
+      }
     }
 
     const ok = await persistExerciseLibrary();
     if(!ok) throw new Error('Não foi possível salvar o exercício na galeria. Verifique a conexão e tente novamente.');
     showToast('Exercício salvo' + (videoUrl ? ' com vídeo.' : '.'), 'ok');
     closeExerciseForm();
-    if(currentScreen === 'library') renderLibraryScreen(document.getElementById('lib-screen-search') ? document.getElementById('lib-screen-search').value : '');
+    if(extraExerciseCreateTarget){
+      extraExerciseCreateTarget=null;
+      renderTreinoEditPanel();
+    }else if(currentScreen === 'library') renderLibraryScreen(document.getElementById('lib-screen-search') ? document.getElementById('lib-screen-search').value : '');
   }catch(e){
     console.error('Erro ao salvar exercício:',e);
     showToast(e && e.message ? e.message : 'Não foi possível salvar o exercício.', 'err');
