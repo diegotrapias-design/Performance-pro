@@ -2635,7 +2635,7 @@ async function loadAthletePortal(){
       items=data||[];
     }
     const {data:monitoring,error:monitorError}=await supabaseClient.from('monitoring_sessions')
-      .select('id,session_date,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm,completed_workout_ids')
+      .select('id,session_date,session_type,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm,completed_workout_ids')
       .eq('athlete_id',athlete.id).order('session_date',{ascending:false}).limit(100);
     if(monitorError) throw monitorError;
     const {data:invoiceRows,error:invoiceError}=await supabaseClient.from('athlete_invoices')
@@ -2831,7 +2831,7 @@ async function loadAthletePortal(){
           <p id="athlete-monitor-message" class="muted" role="status" style="margin-top:10px">TQR e salto pré-sessão podem ser salvos antes de terminar. Depois, registre PSE e salto pós-sessão.</p>
         </section>
       </section>
-      <section id="athlete-progress" hidden>${backButton}<section class="panel" style="padding:18px;margin-top:8px">${buildWorkoutProgressCharts((monitoring||[]).slice().reverse(),allWorkouts)+buildMonitoringCharts((monitoring||[]).slice().reverse(),true)}</section></section>
+      <section id="athlete-progress" hidden>${backButton}<section class="panel" style="padding:18px;margin-top:8px">${'<section><h3>🏋️ TREINOS REGULARES</h3>'+buildWorkoutProgressCharts((monitoring||[]).filter(r=>(r.session_type||'routine')==='routine').slice().reverse(),allWorkouts,'routine')+buildMonitoringCharts((monitoring||[]).filter(r=>(r.session_type||'routine')==='routine').slice().reverse(),true)+'</section><section style="margin-top:22px"><h3>⚡ TREINOS EXTRAS</h3>'+buildWorkoutProgressCharts((monitoring||[]).filter(r=>r.session_type==='extra').slice().reverse(),allWorkouts,'extra')+buildMonitoringCharts((monitoring||[]).filter(r=>r.session_type==='extra').slice().reverse(),true)+'</section>'}</section></section>
       <section id="athlete-invoices" hidden>${backButton}<h2>Faturas</h2><div id="athlete-invoices-content"><div class="loading">Carregando faturas…</div></div></section>
 `;
     window.__athleteWorkouts=allWorkouts;
@@ -2919,15 +2919,12 @@ function renderAthleteExerciseVideo(url,title){
 }
 
 async function refreshAthleteProgressChart(){
-  const host=document.querySelector('#athlete-progress .panel');
-  if(!host||!window.__athleteMonitoringId)return;
+  const host=document.querySelector('#athlete-progress .panel');if(!host||!window.__athleteMonitoringId)return;
   try{
-    const {data,error}=await supabaseClient.from('monitoring_sessions')
-      .select('session_date,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm,completed_workout_ids')
-      .eq('athlete_id',window.__athleteMonitoringId)
-      .order('session_date',{ascending:true}).limit(100);
+    const {data,error}=await supabaseClient.from('monitoring_sessions').select('session_date,session_type,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm,completed_workout_ids').eq('athlete_id',window.__athleteMonitoringId).order('session_date',{ascending:true}).limit(200);
     if(error)throw error;
-    host.innerHTML=buildWorkoutProgressCharts(data||[],window.__athleteWorkouts||[])+buildMonitoringCharts(data||[],true)
+    const rows=data||[],workouts=window.__athleteWorkouts||[],routine=rows.filter(r=>(r.session_type||'routine')==='routine'),extra=rows.filter(r=>r.session_type==='extra');
+    host.innerHTML='<section><h3>🏋️ TREINOS REGULARES</h3>'+buildWorkoutProgressCharts(routine,workouts,'routine')+buildMonitoringCharts(routine,true)+'</section><section style="margin-top:22px"><h3>⚡ TREINOS EXTRAS</h3>'+buildWorkoutProgressCharts(extra,workouts,'extra')+buildMonitoringCharts(extra,true)+'</section>';
   }catch(e){console.error('Não foi possível atualizar a evolução do atleta:',e);}
 }
 
@@ -3339,26 +3336,21 @@ function calculateMonitoringMetrics(rows){
 }
 
 async function loadAthleteMonitoringMetrics(athleteId){
-  const {data,error}=await supabaseClient.from('monitoring_sessions')
-    .select('session_date,load_ua').eq('athlete_id',athleteId)
-    .gte('session_date',(()=>{const d=new Date();d.setDate(d.getDate()-6);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})());
-  if(error) throw error;
-  const m=calculateMonitoringMetrics(data||[]);
-  const host=document.getElementById('athlete-monitor-form');
-  if(!host) return;
-  const box=document.createElement('div');
-  box.className='stat-grid';
-  box.style.marginTop='18px';
-  box.innerHTML=`<div class="stat-card"><div class="stat-num">${m.acute.toFixed(0)}</div><div class="stat-label">Carga aguda — 7 dias (UA)</div></div>
-    <div class="stat-card"><div class="stat-num">${m.monotony===null?'—':m.monotony.toFixed(2)}</div><div class="stat-label">Monotonia</div></div>
-    <div class="stat-card"><div class="stat-num">${m.strain===null?'—':m.strain.toFixed(0)}</div><div class="stat-label">Strain (UA)</div></div>`;
-  host.appendChild(box);
+  const {data,error}=await supabaseClient.from('monitoring_sessions').select('session_date,session_type,load_ua').eq('athlete_id',athleteId).gte('session_date',(()=>{const d=new Date();d.setDate(d.getDate()-6);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})());
+  if(error)throw error;
+  const host=document.getElementById('athlete-monitor-form');if(!host)return;const rows=data||[];
+  const block=(type,label)=>{const m=calculateMonitoringMetrics(rows.filter(r=>(r.session_type||'routine')===type));return '<div class="profile-card" style="margin-top:14px"><h3>'+label+'</h3><div class="stat-grid"><div class="stat-card"><div class="stat-num">'+m.acute.toFixed(0)+'</div><div class="stat-label">Carga aguda — 7 dias (UA)</div></div><div class="stat-card"><div class="stat-num">'+(m.monotony===null?'—':m.monotony.toFixed(2))+'</div><div class="stat-label">Monotonia</div></div><div class="stat-card"><div class="stat-num">'+(m.strain===null?'—':m.strain.toFixed(0))+'</div><div class="stat-label">Strain (UA)</div></div></div></div>';};
+  const old=host.querySelector('.athlete-monitoring-metrics');if(old)old.remove();const box=document.createElement('div');box.className='athlete-monitoring-metrics';box.innerHTML=block('routine','🏋️ Monitoramento — treinos regulares')+block('extra','⚡ Monitoramento — treinos extras');host.appendChild(box);
 }
 
-async function findAthleteSessionRow(athleteId,date){
+function getActiveMonitoringSessionType(workoutId=window.__activeAthleteWorkoutId){
+  const workout=(window.__athleteWorkouts||[]).find(w=>String(w.id)===String(workoutId));
+  return String(workout?.title||'').startsWith('[EXTRA] ')?'extra':'routine';
+}
+async function findAthleteSessionRow(athleteId,date,sessionType=getActiveMonitoringSessionType()){
   const {data,error}=await supabaseClient.from('monitoring_sessions')
-    .select('id,psr,pse,duration_min,jump_pre_cm,jump_post_cm,completed_workout_ids')
-    .eq('athlete_id',athleteId).eq('session_date',date)
+    .select('id,session_type,psr,pse,duration_min,jump_pre_cm,jump_post_cm,completed_workout_ids')
+    .eq('athlete_id',athleteId).eq('session_date',date).eq('session_type',sessionType)
     .order('created_at',{ascending:false}).limit(1).maybeSingle();
   if(error) throw error;
   return data||null;
@@ -3373,7 +3365,8 @@ async function saveAthleteProgress(athleteId,options={}){
   const durationRaw=document.getElementById('athlete-duration')?.value||'';
   const pre=document.getElementById('athlete-jump-pre')?.value||'';
   const post=document.getElementById('athlete-jump-post')?.value||'';
-  const values={created_by:currentUser.id};
+  const sessionType=getActiveMonitoringSessionType();
+  const values={created_by:currentUser.id,session_type:sessionType};
   if(scale.tqr!=null) values.psr=Number(scale.tqr);
   if(scale.pse!=null) values.pse=Number(scale.pse);
   if(durationRaw!==''){
@@ -3404,12 +3397,19 @@ async function saveAthleteProgress(athleteId,options={}){
 }
 
 async function loadAthleteProgressForWorkout(athleteId,workoutId){
-  const dateEl=document.getElementById('athlete-monitor-date');
-  const date=dateEl?.value;
+  const dateEl=document.getElementById('athlete-monitor-date'),date=dateEl?.value;
   if(!athleteId||!date)return;
+  window.__activeMonitoringSessionType=getActiveMonitoringSessionType(workoutId);
   try{
-    const row=await findAthleteSessionRow(athleteId,date);
-    if(!row)return;
+    const row=await findAthleteSessionRow(athleteId,date,window.__activeMonitoringSessionType);
+    if(!row){
+      window.__athleteScale={tqr:null,pse:null};
+      ['tqr','pse'].forEach(type=>updateAthleteScaleVisual(type,null,false));
+      ['athlete-duration','athlete-jump-pre','athlete-jump-post'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+      const button=document.getElementById('athlete-workout-complete');
+      if(button){button.textContent='Marcar treino como concluído';button.classList.remove('btn-primary');button.classList.add('btn-outline');}
+      return;
+    }
     window.__athleteScale={tqr:row.psr==null?null:Number(row.psr),pse:row.pse==null?null:Number(row.pse)};
     ['tqr','pse'].forEach(type=>updateAthleteScaleVisual(type,window.__athleteScale[type],false));
     const duration=document.getElementById('athlete-duration');
@@ -3483,22 +3483,16 @@ function buildCoachMonitoringExtras(rows){
   return card('📈 TQR E PSE POR SESSÃO',tqrSvg)+card('⚡ CARGA DA SESSÃO (UA = PSE × DURAÇÃO EM MIN)',loadSvg)+card('📊 CARGA POR PERÍODO (Σ PSE) & MONOTONIA',weekSvg)+interpretation;
 }
 
-function buildWorkoutProgressCharts(rows,workouts){
-  const list=Array.isArray(workouts)?workouts:[];
-  const extraIds=new Set(list.filter(w=>String(w.title||'').startsWith('[EXTRA] ')).map(w=>String(w.id)));
-  const routineIds=new Set(list.filter(w=>!String(w.title||'').startsWith('[EXTRA] ')).map(w=>String(w.id)));
-  const days=new Map();
-  (rows||[]).forEach(r=>{const ids=Array.isArray(r.completed_workout_ids)?r.completed_workout_ids:[];if(!r.session_date||!ids.length)return;const date=String(r.session_date).slice(0,10);if(!days.has(date))days.set(date,{routine:0,extra:0});ids.forEach(id=>{const key=String(id);if(extraIds.has(key))days.get(date).extra++;else if(routineIds.has(key))days.get(date).routine++;});});
-  const dates=[...days.keys()].sort();
-  const chart=(title,key,color)=>{
-    const total=dates.reduce((s,d)=>s+days.get(d)[key],0);
-    if(!total)return '<div class="profile-card"><h3>'+title+'</h3><div class="empty-state">Ainda não há treinos concluídos nesta categoria.</div></div>';
-    const max=Math.max(1,...dates.map(d=>days.get(d)[key])),left=44,base=220,plot=175,slot=552/Math.max(1,dates.length),bar=Math.min(42,slot*.58);
-    const bars=dates.map((d,i)=>{const v=days.get(d)[key],hh=v/max*plot,x=left+i*slot+(slot-bar)/2,y=base-hh,p=d.split('-'),label=p.length===3?p[2]+'/'+p[1]:d;return '<rect x="'+x+'" y="'+y+'" width="'+bar+'" height="'+hh+'" rx="5" fill="'+color+'"><title>'+escapeHtml(d)+': '+v+' concluído(s)</title></rect><text x="'+(x+bar/2)+'" y="'+(y-7)+'" fill="currentColor" font-size="14" text-anchor="middle">'+v+'</text><text x="'+(x+bar/2)+'" y="247" fill="currentColor" font-size="12" text-anchor="middle">'+escapeHtml(label)+'</text>';}).join('');
-    const grid=[0,1,2,3].map(i=>{const y=base-i*plot/3;return '<line x1="44" y1="'+y+'" x2="596" y2="'+y+'" stroke="currentColor" opacity=".12"/><text x="35" y="'+(y+4)+'" fill="currentColor" font-size="12" text-anchor="end">'+Math.round(max*i/3)+'</text>';}).join('');
-    return '<div class="profile-card"><h3>'+title+'</h3><p class="muted">Total concluído: <b>'+total+'</b></p><div style="width:100%;overflow:hidden"><svg viewBox="0 0 620 265" style="display:block;width:100%;height:auto" role="img" aria-label="'+title+'">'+grid+bars+'</svg></div></div>';
-  };
-  return '<section><h3 style="margin:16px 0 10px">📊 Progresso dos treinos</h3>'+chart('🏋️ Treinos regulares','routine','#2583e8')+chart('⚡ Treinos extras','extra','#c92532')+'</section>';
+function buildWorkoutProgressCharts(rows,workouts,sessionType='routine'){
+  const list=Array.isArray(workouts)?workouts:[],selected=list.filter(w=>String(w.title||'').startsWith('[EXTRA] ')===(sessionType==='extra'));
+  const ids=new Set(selected.map(w=>String(w.id))),days=new Map();
+  (rows||[]).filter(r=>(r.session_type||'routine')===sessionType).forEach(r=>{const completed=Array.isArray(r.completed_workout_ids)?r.completed_workout_ids:[];if(!r.session_date||!completed.length)return;const date=String(r.session_date).slice(0,10);days.set(date,(days.get(date)||0)+completed.filter(id=>ids.has(String(id))).length);});
+  const dates=[...days.keys()].sort(),total=dates.reduce((sum,date)=>sum+days.get(date),0),title=sessionType==='extra'?'⚡ Progresso dos treinos extras':'🏋️ Progresso dos treinos regulares';
+  if(!total)return '<div class="profile-card"><h3>'+title+'</h3><div class="empty-state">Ainda não há treinos concluídos nesta categoria.</div></div>';
+  const max=Math.max(1,...dates.map(date=>days.get(date))),left=44,base=220,plot=175,slot=552/Math.max(1,dates.length),bar=Math.min(42,slot*.58);
+  const bars=dates.map((date,i)=>{const value=days.get(date),height=value/max*plot,x=left+i*slot+(slot-bar)/2,y=base-height,parts=date.split('-'),label=parts.length===3?parts[2]+'/'+parts[1]:date;return '<rect x="'+x+'" y="'+y+'" width="'+bar+'" height="'+height+'" rx="5" fill="'+(sessionType==='extra'?'#c92532':'#2583e8')+'"><title>'+escapeHtml(date)+': '+value+' concluído(s)</title></rect><text x="'+(x+bar/2)+'" y="'+(y-7)+'" fill="currentColor" font-size="14" text-anchor="middle">'+value+'</text><text x="'+(x+bar/2)+'" y="247" fill="currentColor" font-size="12" text-anchor="middle">'+escapeHtml(label)+'</text>';}).join('');
+  const grid=[0,1,2,3].map(i=>{const y=base-i*plot/3;return '<line x1="44" y1="'+y+'" x2="596" y2="'+y+'" stroke="currentColor" opacity=".12"/><text x="35" y="'+(y+4)+'" fill="currentColor" font-size="12" text-anchor="end">'+Math.round(max*i/3)+'</text>';}).join('');
+  return '<div class="profile-card"><h3>'+title+'</h3><p class="muted">Total concluído: <b>'+total+'</b></p><div style="width:100%;overflow:hidden"><svg viewBox="0 0 620 265" style="display:block;width:100%;height:auto" role="img" aria-label="'+title+'">'+grid+bars+'</svg></div></div>';
 }
 
 function buildMonitoringCharts(rows,athleteView=false){
@@ -3569,45 +3563,20 @@ async function deleteAthleteProgressFromCurrentPanel(){
   }catch(e){console.error('Falha ao excluir progresso do atleta:',e);showToast(e.message||'Não foi possível excluir o progresso.','err');if(host)await loadCoachMonitoringPanel(target.athleteId,target.hostId);}
 }
 
-async function loadCoachMonitoringPanel(athleteId, hostId='coach-monitoring-panel'){
-  const host=document.getElementById(hostId);
-  if(!host||!currentUser) return;
-  ppMonitoringDeleteTarget={athleteId,hostId};
-  host.innerHTML='<div class="loading">Carregando monitoramento…</div>';
+async function loadCoachMonitoringPanel(athleteId,hostId='coach-monitoring-panel'){
+  const host=document.getElementById(hostId);if(!host||!currentUser)return;ppMonitoringDeleteTarget={athleteId,hostId};host.innerHTML='<div class="loading">Carregando monitoramento…</div>';
   try{
-    const {data:rows,error}=await supabaseClient.from('monitoring_sessions')
-      .select('id,session_date,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm,jump_video_pre_path,jump_video_post_path,completed_workout_ids')
-      .eq('athlete_id',athleteId).order('session_date',{ascending:true}).limit(90);
-    if(error) throw error;
-    const {data:coachWorkouts,error:coachWorkoutsError}=await supabaseClient.from('workouts').select('id,title').eq('athlete_id',athleteId);
-    if(coachWorkoutsError)throw coachWorkoutsError;
-    const safe=x=>escapeHtml(x==null?'—':String(x));
-    const metrics=calculateMonitoringMetrics(rows||[]);
-    const latest=(rows||[]).slice(-1)[0];
-    const videoLinks={};
-    for(const r of (rows||[])){
-      for(const field of ['jump_video_pre_path','jump_video_post_path']){
-        if(r[field]){
-          const {data:signed}=await supabaseClient.storage.from('athlete-media').createSignedUrl(r[field],3600);
-          if(signed?.signedUrl) videoLinks[r.id+'_'+field]=signed.signedUrl;
-        }
-      }
-    }
-    host.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div class="profile-section-title">📊 Monitoramento do atleta</div><button type="button" class="btn btn-danger btn-sm" onclick="deleteAthleteProgressFromCurrentPanel()">Excluir progresso</button></div>
-      <div class="stat-grid">
-        <div class="stat-card"><div class="stat-num">${latest?Number(latest.psr).toFixed(0):'—'}</div><div class="stat-label">TQR atual (6–20)</div></div>
-        <div class="stat-card"><div class="stat-num">${latest?Number(latest.pse).toFixed(1):'—'}</div><div class="stat-label">PSE atual (0–10)</div></div>
-        <div class="stat-card"><div class="stat-num">${metrics.acute.toFixed(0)}</div><div class="stat-label">Carga aguda — 7 dias (UA)</div></div>
-        <div class="stat-card"><div class="stat-num">${metrics.monotony===null?'—':metrics.monotony.toFixed(2)}</div><div class="stat-label">Monotonia</div></div>
-        <div class="stat-card"><div class="stat-num">${metrics.strain===null?'—':metrics.strain.toFixed(0)}</div><div class="stat-label">Strain (UA)</div></div>
-      </div>
-${buildCoachMonitoringExtras(rows)}
-      ${buildWorkoutProgressCharts(rows,coachWorkouts||[])}
-      ${buildMonitoringCharts(rows)}
-      <div class="profile-card"><h3>Evolução por sessão</h3>
-        <div class="table-wrap"><table><thead><tr><th>Data</th><th>TQR</th><th>PSE</th><th>Min</th><th>UA</th><th>CMJ pré</th><th>CMJ pós</th><th>Δ CMJ</th></tr></thead>
-        <tbody>${(rows||[]).slice().reverse().map(r=>`<tr><td>${safe(r.session_date)}</td><td>${safe(r.psr)}</td><td>${safe(r.pse)}</td><td>${safe(r.duration_min)}</td><td>${safe(r.load_ua)}</td><td>${safe(r.jump_pre_cm)}</td><td>${safe(r.jump_post_cm)}</td><td>${r.jump_pre_cm!=null&&r.jump_post_cm!=null?(Number(r.jump_post_cm)-Number(r.jump_pre_cm)).toFixed(1):'—'}</td><td>${videoLinks[r.id+'_jump_video_pre_path']?'<a target="_blank" rel="noopener" href="'+videoLinks[r.id+'_jump_video_pre_path']+'">Vídeo pré</a>':''} ${videoLinks[r.id+'_jump_video_post_path']?'<a target="_blank" rel="noopener" href="'+videoLinks[r.id+'_jump_video_post_path']+'">Vídeo pós</a>':''}</td></tr>`).join('')}</tbody></table></div>
-      </div>`;
+    const {data:rows,error}=await supabaseClient.from('monitoring_sessions').select('id,session_date,session_type,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm,jump_video_pre_path,jump_video_post_path,completed_workout_ids').eq('athlete_id',athleteId).order('session_date',{ascending:true}).limit(200);
+    if(error)throw error;
+    const {data:coachWorkouts,error:workoutError}=await supabaseClient.from('workouts').select('id,title').eq('athlete_id',athleteId);if(workoutError)throw workoutError;
+    const safe=value=>escapeHtml(value==null?'—':String(value)),videoLinks={};
+    for(const row of (rows||[]))for(const field of ['jump_video_pre_path','jump_video_post_path'])if(row[field]){const {data:signed}=await supabaseClient.storage.from('athlete-media').createSignedUrl(row[field],3600);if(signed?.signedUrl)videoLinks[row.id+'_'+field]=signed.signedUrl;}
+    const group=(type,label)=>{
+      const data=(rows||[]).filter(r=>(r.session_type||'routine')===type),latest=data[data.length-1],metrics=calculateMonitoringMetrics(data),history=data.slice().reverse();
+      const table='<div class="profile-card"><h3>Evolução por sessão — '+label+'</h3><div class="table-wrap"><table><thead><tr><th>Data</th><th>TQR</th><th>PSE</th><th>Min</th><th>UA</th><th>CMJ pré</th><th>CMJ pós</th><th>Δ CMJ</th><th>Vídeos</th></tr></thead><tbody>'+(history.length?history.map(r=>'<tr><td>'+safe(r.session_date)+'</td><td>'+safe(r.psr)+'</td><td>'+safe(r.pse)+'</td><td>'+safe(r.duration_min)+'</td><td>'+safe(r.load_ua)+'</td><td>'+safe(r.jump_pre_cm)+'</td><td>'+safe(r.jump_post_cm)+'</td><td>'+(r.jump_pre_cm!=null&&r.jump_post_cm!=null?(Number(r.jump_post_cm)-Number(r.jump_pre_cm)).toFixed(1):'—')+'</td><td>'+(videoLinks[r.id+'_jump_video_pre_path']?'<a target="_blank" rel="noopener" href="'+videoLinks[r.id+'_jump_video_pre_path']+'">Vídeo pré</a>':'')+' '+(videoLinks[r.id+'_jump_video_post_path']?'<a target="_blank" rel="noopener" href="'+videoLinks[r.id+'_jump_video_post_path']+'">Vídeo pós</a>':'')+'</td></tr>').join(''):'<tr><td colspan="9">Nenhum registro nesta categoria.</td></tr>')+'</tbody></table></div></div>';
+      return '<section class="monitoring-category" style="margin-top:20px"><h2>'+label+'</h2><div class="stat-grid"><div class="stat-card"><div class="stat-num">'+(latest&&latest.psr!=null?Number(latest.psr).toFixed(0):'—')+'</div><div class="stat-label">TQR atual (6–20)</div></div><div class="stat-card"><div class="stat-num">'+(latest&&latest.pse!=null?Number(latest.pse).toFixed(1):'—')+'</div><div class="stat-label">PSE atual (0–10)</div></div><div class="stat-card"><div class="stat-num">'+metrics.acute.toFixed(0)+'</div><div class="stat-label">Carga aguda — 7 dias (UA)</div></div><div class="stat-card"><div class="stat-num">'+(metrics.monotony===null?'—':metrics.monotony.toFixed(2))+'</div><div class="stat-label">Monotonia</div></div><div class="stat-card"><div class="stat-num">'+(metrics.strain===null?'—':metrics.strain.toFixed(0))+'</div><div class="stat-label">Strain (UA)</div></div></div><h3 style="margin:18px 0 8px">📊 Evolução do monitoramento — '+label+'</h3>'+buildCoachMonitoringExtras(data)+buildWorkoutProgressCharts(data,coachWorkouts||[],type)+buildMonitoringCharts(data)+table+'</section>';
+    };
+    host.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div class="profile-section-title">📊 Monitoramento do atleta</div><button type="button" class="btn btn-danger btn-sm" onclick="deleteAthleteProgressFromCurrentPanel()">Excluir progresso</button></div>'+group('routine','🏋️ TREINOS REGULARES')+group('extra','⚡ TREINOS EXTRAS');
   }catch(e){console.error('Monitoramento do atleta:',e);host.innerHTML='<div class="empty-state">Não foi possível carregar o monitoramento: '+escapeHtml(e.message||'erro')+'</div>';}
 }
 
@@ -3626,7 +3595,7 @@ async function renderCoachWorkoutNotificationDetail(athleteId,workoutId){
       .eq('workout_id',workoutId).order('sort_order',{ascending:true});
     if(itemsError)throw itemsError;
     const {data:sessions,error:sessionsError}=await supabaseClient.from('monitoring_sessions')
-      .select('id,session_date,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm,completed_workout_ids')
+      .select('id,session_date,session_type,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm,completed_workout_ids')
       .eq('athlete_id',athleteId).order('session_date',{ascending:false}).limit(90);
     if(sessionsError)throw sessionsError;
     const session=(sessions||[]).find(row=>Array.isArray(row.completed_workout_ids)&&row.completed_workout_ids.some(id=>String(id)===String(workoutId)));
