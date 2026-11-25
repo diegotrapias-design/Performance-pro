@@ -3576,7 +3576,7 @@ async function loadCoachMonitoringPanel(athleteId, hostId='coach-monitoring-pane
   host.innerHTML='<div class="loading">Carregando monitoramento…</div>';
   try{
     const {data:rows,error}=await supabaseClient.from('monitoring_sessions')
-      .select('id,session_date,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm,jump_video_pre_path,jump_video_post_path')
+      .select('id,session_date,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm,jump_video_pre_path,jump_video_post_path,completed_workout_ids')
       .eq('athlete_id',athleteId).order('session_date',{ascending:true}).limit(90);
     if(error) throw error;
     const {data:coachWorkouts,error:coachWorkoutsError}=await supabaseClient.from('workouts').select('id,title').eq('athlete_id',athleteId);
