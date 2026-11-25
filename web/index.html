@@ -2831,7 +2831,7 @@ async function loadAthletePortal(){
           <p id="athlete-monitor-message" class="muted" role="status" style="margin-top:10px">TQR e salto pré-sessão podem ser salvos antes de terminar. Depois, registre PSE e salto pós-sessão.</p>
         </section>
       </section>
-      <section id="athlete-progress" hidden>${backButton}<section class="panel" style="padding:18px;margin-top:8px">${buildMonitoringCharts((monitoring||[]).slice().reverse(),true)}</section></section>
+      <section id="athlete-progress" hidden>${backButton}<section class="panel" style="padding:18px;margin-top:8px">${buildWorkoutProgressCharts((monitoring||[]).slice().reverse(),allWorkouts)+buildMonitoringCharts((monitoring||[]).slice().reverse(),true)}</section></section>
       <section id="athlete-invoices" hidden>${backButton}<h2>Faturas</h2><div id="athlete-invoices-content"><div class="loading">Carregando faturas…</div></div></section>
 `;
     window.__athleteWorkouts=allWorkouts;
@@ -2923,11 +2923,11 @@ async function refreshAthleteProgressChart(){
   if(!host||!window.__athleteMonitoringId)return;
   try{
     const {data,error}=await supabaseClient.from('monitoring_sessions')
-      .select('session_date,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm')
+      .select('session_date,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm,completed_workout_ids')
       .eq('athlete_id',window.__athleteMonitoringId)
       .order('session_date',{ascending:true}).limit(100);
     if(error)throw error;
-    host.innerHTML=buildMonitoringCharts(data||[],true);
+    host.innerHTML=buildWorkoutProgressCharts(data||[],window.__athleteWorkouts||[])+buildMonitoringCharts(data||[],true)
   }catch(e){console.error('Não foi possível atualizar a evolução do atleta:',e);}
 }
 
@@ -3483,6 +3483,24 @@ function buildCoachMonitoringExtras(rows){
   return card('📈 TQR E PSE POR SESSÃO',tqrSvg)+card('⚡ CARGA DA SESSÃO (UA = PSE × DURAÇÃO EM MIN)',loadSvg)+card('📊 CARGA POR PERÍODO (Σ PSE) & MONOTONIA',weekSvg)+interpretation;
 }
 
+function buildWorkoutProgressCharts(rows,workouts){
+  const list=Array.isArray(workouts)?workouts:[];
+  const extraIds=new Set(list.filter(w=>String(w.title||'').startsWith('[EXTRA] ')).map(w=>String(w.id)));
+  const routineIds=new Set(list.filter(w=>!String(w.title||'').startsWith('[EXTRA] ')).map(w=>String(w.id)));
+  const days=new Map();
+  (rows||[]).forEach(r=>{const ids=Array.isArray(r.completed_workout_ids)?r.completed_workout_ids:[];if(!r.session_date||!ids.length)return;const date=String(r.session_date).slice(0,10);if(!days.has(date))days.set(date,{routine:0,extra:0});ids.forEach(id=>{const key=String(id);if(extraIds.has(key))days.get(date).extra++;else if(routineIds.has(key))days.get(date).routine++;});});
+  const dates=[...days.keys()].sort();
+  const chart=(title,key,color)=>{
+    const total=dates.reduce((s,d)=>s+days.get(d)[key],0);
+    if(!total)return '<div class="profile-card"><h3>'+title+'</h3><div class="empty-state">Ainda não há treinos concluídos nesta categoria.</div></div>';
+    const max=Math.max(1,...dates.map(d=>days.get(d)[key])),left=44,base=220,plot=175,slot=552/Math.max(1,dates.length),bar=Math.min(42,slot*.58);
+    const bars=dates.map((d,i)=>{const v=days.get(d)[key],hh=v/max*plot,x=left+i*slot+(slot-bar)/2,y=base-hh,p=d.split('-'),label=p.length===3?p[2]+'/'+p[1]:d;return '<rect x="'+x+'" y="'+y+'" width="'+bar+'" height="'+hh+'" rx="5" fill="'+color+'"><title>'+escapeHtml(d)+': '+v+' concluído(s)</title></rect><text x="'+(x+bar/2)+'" y="'+(y-7)+'" fill="currentColor" font-size="14" text-anchor="middle">'+v+'</text><text x="'+(x+bar/2)+'" y="247" fill="currentColor" font-size="12" text-anchor="middle">'+escapeHtml(label)+'</text>';}).join('');
+    const grid=[0,1,2,3].map(i=>{const y=base-i*plot/3;return '<line x1="44" y1="'+y+'" x2="596" y2="'+y+'" stroke="currentColor" opacity=".12"/><text x="35" y="'+(y+4)+'" fill="currentColor" font-size="12" text-anchor="end">'+Math.round(max*i/3)+'</text>';}).join('');
+    return '<div class="profile-card"><h3>'+title+'</h3><p class="muted">Total concluído: <b>'+total+'</b></p><div style="width:100%;overflow:hidden"><svg viewBox="0 0 620 265" style="display:block;width:100%;height:auto" role="img" aria-label="'+title+'">'+grid+bars+'</svg></div></div>';
+  };
+  return '<section><h3 style="margin:16px 0 10px">📊 Progresso dos treinos</h3>'+chart('🏋️ Treinos regulares','routine','#2583e8')+chart('⚡ Treinos extras','extra','#c92532')+'</section>';
+}
+
 function buildMonitoringCharts(rows,athleteView=false){
   const valid=(rows||[]).filter(r=>athleteView?r.jump_pre_cm!=null:(r.jump_pre_cm!=null||r.jump_post_cm!=null));
   if(!valid.length)return '<div class="empty-state">Os gráficos CMJ aparecerão quando houver avaliações de salto pré-sessão.</div>';
@@ -3561,6 +3579,8 @@ async function loadCoachMonitoringPanel(athleteId, hostId='coach-monitoring-pane
       .select('id,session_date,psr,pse,duration_min,load_ua,jump_pre_cm,jump_post_cm,jump_video_pre_path,jump_video_post_path')
       .eq('athlete_id',athleteId).order('session_date',{ascending:true}).limit(90);
     if(error) throw error;
+    const {data:coachWorkouts,error:coachWorkoutsError}=await supabaseClient.from('workouts').select('id,title').eq('athlete_id',athleteId);
+    if(coachWorkoutsError)throw coachWorkoutsError;
     const safe=x=>escapeHtml(x==null?'—':String(x));
     const metrics=calculateMonitoringMetrics(rows||[]);
     const latest=(rows||[]).slice(-1)[0];
@@ -3582,6 +3602,7 @@ async function loadCoachMonitoringPanel(athleteId, hostId='coach-monitoring-pane
         <div class="stat-card"><div class="stat-num">${metrics.strain===null?'—':metrics.strain.toFixed(0)}</div><div class="stat-label">Strain (UA)</div></div>
       </div>
 ${buildCoachMonitoringExtras(rows)}
+      ${buildWorkoutProgressCharts(rows,coachWorkouts||[])}
       ${buildMonitoringCharts(rows)}
       <div class="profile-card"><h3>Evolução por sessão</h3>
         <div class="table-wrap"><table><thead><tr><th>Data</th><th>TQR</th><th>PSE</th><th>Min</th><th>UA</th><th>CMJ pré</th><th>CMJ pós</th><th>Δ CMJ</th></tr></thead>
