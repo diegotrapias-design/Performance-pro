@@ -3486,7 +3486,7 @@ function buildCoachMonitoringExtras(rows){
 function buildWorkoutProgressCharts(rows,workouts,sessionType='routine'){
   const list=Array.isArray(workouts)?workouts:[],selected=list.filter(w=>String(w.title||'').startsWith('[EXTRA] ')===(sessionType==='extra'));
   const ids=new Set(selected.map(w=>String(w.id))),days=new Map();
-  (rows||[]).filter(r=>(r.session_type||'routine')===sessionType).forEach(r=>{const completed=Array.isArray(r.completed_workout_ids)?r.completed_workout_ids:[];if(!r.session_date||!completed.length)return;const date=String(r.session_date).slice(0,10);days.set(date,(days.get(date)||0)+completed.filter(id=>ids.has(String(id))).length);});
+  (rows||[]).forEach(r=>{const completed=Array.isArray(r.completed_workout_ids)?r.completed_workout_ids:[];if(!r.session_date||!completed.length)return;const date=String(r.session_date).slice(0,10);days.set(date,(days.get(date)||0)+completed.filter(id=>ids.has(String(id))).length);});
   const dates=[...days.keys()].sort(),total=dates.reduce((sum,date)=>sum+days.get(date),0),title=sessionType==='extra'?'⚡ Progresso dos treinos extras':'🏋️ Progresso dos treinos regulares';
   if(!total)return '<div class="profile-card"><h3>'+title+'</h3><div class="empty-state">Ainda não há treinos concluídos nesta categoria.</div></div>';
   const max=Math.max(1,...dates.map(date=>days.get(date))),left=44,base=220,plot=175,slot=552/Math.max(1,dates.length),bar=Math.min(42,slot*.58);
@@ -7439,13 +7439,13 @@ boot();
       if(athleteId && currentUser && entry.type.toLowerCase().startsWith('cmj')){
         const jumpField = jumpTypeInput.value.toLowerCase().includes('pré') ? 'jump_pre_cm' : 'jump_post_cm';
         const {data:existing,error:findError}=await supabaseClient.from('monitoring_sessions')
-          .select('id').eq('athlete_id',athleteId).eq('session_date',entry.date).order('created_at',{ascending:false}).limit(1).maybeSingle();
+          .select('id').eq('athlete_id',athleteId).eq('session_date',entry.date).eq('session_type','routine').order('created_at',{ascending:false}).limit(1).maybeSingle();
         if(findError) throw findError;
         if(existing){
           const {error:updateError}=await supabaseClient.from('monitoring_sessions').update({[jumpField]:currentHeightCm}).eq('id',existing.id);
           if(updateError) throw updateError;
         }else{
-          const jumpPayload={athlete_id:athleteId,session_date:entry.date,[jumpField]:currentHeightCm,created_by:currentUser.id};
+          const jumpPayload={athlete_id:athleteId,session_date:entry.date,session_type:'routine',[jumpField]:currentHeightCm,created_by:currentUser.id};
           const {error:insertError}=await supabaseClient.from('monitoring_sessions').insert(jumpPayload);
           if(insertError) throw insertError;
         }
