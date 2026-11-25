@@ -379,7 +379,7 @@ window.handleLogin = async function(event){
   .ex-card-grid input{width:100%;border:1px solid var(--border);border-radius:7px;padding:7px 8px;font-size:12.5px;font-family:'Inter',sans-serif;}
   .ex-card-grid input:focus{outline:2px solid var(--red2);outline-offset:0;border-color:transparent;}
   .ex-obs-input{
-    width:100%;border:1px solid var(--border);border-radius:7px;padding:7px 9px;font-size:12.5px;margin-bottom:8px;
+    width:100%;min-height:110px;box-sizing:border-box;resize:vertical;border:1px solid var(--border);border-radius:7px;padding:9px;font-size:12.5px;margin-bottom:8px;line-height:1.45;white-space:pre-wrap;
     font-family:'Inter',sans-serif;
   }
   .ex-obs-input:focus{outline:2px solid var(--red2);outline-offset:0;border-color:transparent;}
@@ -5548,7 +5548,7 @@ function renderTreinoEditPanel(){
               <div><label>Carga</label><input type="text" data-day-id="${d.id}" data-ex-id="${ex.id}" data-ex-field="carga" value="${escapeHtml(ex.carga)}" oninput="updateExerciseField('${d.id}','${ex.id}','carga',this.value)" placeholder="20kg"></div>
               <div><label>Descanso</label><input type="text" data-day-id="${d.id}" data-ex-id="${ex.id}" data-ex-field="descanso" value="${escapeHtml(ex.descanso)}" oninput="updateExerciseField('${d.id}','${ex.id}','descanso',this.value)" placeholder="60s"></div>
             </div>
-            <input type="text" class="ex-obs-input" value="${escapeHtml(ex.obs)}" oninput="updateExerciseField('${d.id}','${ex.id}','obs',this.value)" placeholder="Observações (opcional)">
+            <textarea rows="4" class="ex-obs-input" oninput="updateExerciseField('${d.id}','${ex.id}','obs',this.value)" placeholder="Observações (opcional)">${escapeHtml(ex.obs)}</textarea>
             <div class="video-cell">
               <input type="url" value="${escapeHtml(ex.video)}" oninput="updateExerciseField('${d.id}','${ex.id}','video',this.value)" placeholder="Colar link do vídeo">
               <label class="video-upload-btn" title="Enviar vídeo da galeria">
@@ -5601,7 +5601,7 @@ function renderTreinoEditPanel(){
               '<div><label>Carga</label><input value="'+escapeHtml(e.carga||'')+'" oninput="updateExtraExercise('+wi+','+ei+',\'carga\',this.value)"></div>'+
               '<div><label>Descanso</label><input value="'+escapeHtml(e.descanso||'')+'" oninput="updateExtraExercise('+wi+','+ei+',\'descanso\',this.value)"></div>')+
         '</div>'+
-        '<input style="width:100%;padding:9px;margin-top:8px" value="'+escapeHtml(e.obs||'')+'" placeholder="Intensidade / observações" oninput="updateExtraExercise('+wi+','+ei+',\'obs\',this.value)">'+
+        '<textarea rows="4" style="width:100%;min-height:110px;box-sizing:border-box;resize:vertical;padding:9px;margin-top:8px;font:inherit;border:1px solid var(--border);border-radius:8px" placeholder="Intensidade / observações" oninput="updateExtraExercise('+wi+','+ei+',\'obs\',this.value)">'+escapeHtml(e.obs||'')+'</textarea>'+
         '<div class="video-cell" style="margin-top:8px"><input type="url" value="'+escapeHtml(e.video||'')+'" oninput="updateExtraExercise('+wi+','+ei+',\'video\',this.value)" placeholder="Colar link do vídeo">'+(e.video?'<button type="button" class="video-open-btn" onclick="openExerciseVideo(\''+escapeHtml(e.video)+'\',\''+escapeHtml(e.name||'Exercício')+'\')">▶</button>':'')+'</div>'+
         '<div class="ex-card-foot"><button type="button" class="btn btn-outline btn-sm" onclick="openExtraPresetPicker('+wi+',\'one\',\''+escapeHtml(e.id)+'\')">⚡ Preset de série</button></div>'+
       '</div>';
