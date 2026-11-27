@@ -649,6 +649,10 @@ window.handleLogin = async function(event){
   .lib-manage-info{flex:1;min-width:0;}
   .lib-manage-name{font-family:'Poppins',sans-serif;font-weight:600;font-size:13.5px;}
   .lib-manage-meta{font-size:11px;color:var(--gray);margin-top:2px;}
+  .lib-bulk-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px;}
+  .lib-bulk-count{font-size:12px;color:var(--gray);font-weight:600;}
+  .lib-manage-select{display:flex;align-items:center;justify-content:center;flex:0 0 28px;}
+  .lib-manage-select input{width:19px;height:19px;accent-color:var(--red);}
 
   /* ---- Página pública do treino (compartilhada com o atleta) ---- */
   #shared-view-root .shared-main{max-width:640px;margin:0 auto;padding:20px 16px 60px;}
@@ -6350,18 +6354,18 @@ function renderLibraryScreen(filter){
       <div class="lib-manage-list">
         ${groups[g].map(ex => `
           <div class="lib-manage-row">
-            <button class="lib-fav-btn ${ex.favorite?'active':''}" onclick="toggleLibraryFavorite('${ex.id}')" title="Favoritar">⭐</button>
+            ${libraryManageMultiSelect ? `<label class="lib-manage-select" title="Selecionar exercício"><input type="checkbox" ${selectedLibraryManageIds.includes(ex.id)?'checked':''} onchange="toggleLibraryManageId('${ex.id}',this.checked)"></label>` : `<button class="lib-fav-btn ${ex.favorite?'active':''}" onclick="toggleLibraryFavorite('${ex.id}')" title="Favoritar">⭐</button>`}
             <div class="lib-manage-info">
               <div class="lib-manage-name">${escapeHtml(ex.name)}</div>
               <div class="lib-manage-meta">${ex.video ? 'Vídeo anexado' : (ex.description ? 'Descrição disponível' : 'Sem vídeo')} · ${escapeHtml(exerciseCategory(ex))}</div>
             </div>
-            <label class="video-upload-btn" title="Enviar vídeo da galeria">
+            ${libraryManageMultiSelect ? '' : `<label class="video-upload-btn" title="Enviar vídeo da galeria">
               🎥
               <input type="file" accept="video/*,image/gif,image/webp,image/png,image/jpeg" style="display:none" onchange="handleLibraryVideoUpload(event,'${ex.id}')">
             </label>
             ${ex.video ? `<button type="button" onclick="openExerciseVideo('${escapeHtml(ex.video)}','${escapeHtml(ex.name)}')" class="video-open-btn exercise-video-open" title="Assistir vídeo">▶</button>` : ''}
             <button class="btn btn-outline btn-sm" onclick="editLibraryExercise('${ex.id}')">✏️</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteLibraryExercise('${ex.id}')">🗑</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteLibraryExercise('${ex.id}')">🗑</button>`}
           </div>
         `).join('')}
       </div>
@@ -6382,6 +6386,7 @@ function renderLibraryScreen(filter){
       <div class="toolbar">
         <input type="search" id="lib-screen-search" placeholder="Buscar exercício…" oninput="renderLibraryScreen(this.value)" value="${escapeHtml(filter||'')}">
         <button id="lib-screen-favorites" class="btn ${libraryFilterFavOnly?'btn-primary':'btn-outline'} btn-sm" onclick="toggleLibraryFavFilter()">⭐ Favoritos</button>
+        <button class="btn btn-outline btn-sm" onclick="toggleLibraryManageSelection()">${libraryManageMultiSelect?'Cancelar':'Selecionar vários'}</button>
         <button class="btn btn-primary" onclick="openCreateExerciseForm()">+ Novo exercício</button>
       </div>
       <div class="library-filter-row" style="margin:-4px 0 14px">
@@ -6392,6 +6397,7 @@ function renderLibraryScreen(filter){
           ${groupSelectHtml}
         </select>
       </div>
+      ${libraryManageMultiSelect ? `<div class="lib-bulk-toolbar"><span class="lib-bulk-count" id="lib-bulk-count">${selectedLibraryManageIds.length} selecionados</span><button type="button" class="btn btn-outline btn-sm" onclick="selectVisibleLibraryExercises()">Selecionar resultados</button><button type="button" class="btn btn-danger btn-sm" onclick="deleteSelectedLibraryExercises()" ${selectedLibraryManageIds.length?'':'disabled'}>Excluir selecionados</button></div>` : ''}
       <div id="lib-screen-results">${resultsHtml}</div>
       <button type="button" class="library-scroll-control library-scroll-top" onclick="scrollLibraryToTop()" aria-label="Rolar para o topo da biblioteca" title="Ir para o topo">↑</button>
       <button type="button" class="library-scroll-control library-scroll-bottom" onclick="scrollLibraryToBottom()" aria-label="Rolar para o final da biblioteca" title="Ir para o final">↓</button>
@@ -6407,6 +6413,26 @@ function renderLibraryScreen(filter){
   }
 }
 let editingExerciseId = null;
+let libraryManageMultiSelect = false;
+let selectedLibraryManageIds = [];
+function toggleLibraryManageSelection(){libraryManageMultiSelect=!libraryManageMultiSelect;selectedLibraryManageIds=[];renderLibraryScreen(document.getElementById('lib-screen-search')?.value||'');}
+function toggleLibraryManageId(id,checked){if(checked){if(!selectedLibraryManageIds.includes(id))selectedLibraryManageIds.push(id);}else selectedLibraryManageIds=selectedLibraryManageIds.filter(x=>x!==id);const count=document.getElementById('lib-bulk-count');if(count)count.textContent=selectedLibraryManageIds.length+' selecionados';}
+function selectVisibleLibraryExercises(){const q=(document.getElementById('lib-screen-search')?.value||'').toLowerCase();const ids=exerciseLibrary.filter(ex=>(!q||[ex.name,...(ex.aliases||[])].some(n=>(n||'').toLowerCase().includes(q)))&&(!libraryScreenGroupFilter||libraryMuscleGroup(ex)===libraryScreenGroupFilter)&&(!libraryScreenCategoryFilter||exerciseCategory(ex)===libraryScreenCategoryFilter)&&(!libraryFilterFavOnly||ex.favorite)).map(ex=>ex.id);selectedLibraryManageIds=[...new Set([...selectedLibraryManageIds,...ids])];renderLibraryScreen(q);}
+async function deleteSelectedLibraryExercises(){
+  const selected=exerciseLibrary.filter(ex=>selectedLibraryManageIds.includes(ex.id));
+  if(!selected.length){showToast('Selecione pelo menos um exercício.','err');return;}
+  if(!confirm('Excluir '+selected.length+' exercício(s) selecionado(s) da biblioteca? Esta ação não remove vídeos enviados separadamente nem altera os treinos já montados.'))return;
+  const previousLibrary=exerciseLibrary;
+  const previousDeletedKeys=[...deletedLibraryExerciseKeys];
+  const ids=new Set(selected.map(ex=>ex.id));
+  selected.forEach(ex=>{if(ex.name){const key=libraryExerciseKey(ex.name);if(!deletedLibraryExerciseKeys.includes(key))deletedLibraryExerciseKeys.push(key);}});
+  exerciseLibrary=exerciseLibrary.filter(ex=>!ids.has(ex.id));
+  const saved=await persist(false);
+  if(!saved){exerciseLibrary=previousLibrary;deletedLibraryExerciseKeys=previousDeletedKeys;showToast('Não foi possível confirmar a exclusão na nuvem. Nenhuma alteração foi mantida.','err');return;}
+  selectedLibraryManageIds=[];libraryManageMultiSelect=false;
+  showToast(selected.length+' exercício(s) excluído(s) da biblioteca.','ok');
+  renderLibraryScreen(document.getElementById('lib-screen-search')?.value||'');
+}
 
 function populateGroupSelect(selected){
   const groups = [...new Set(exerciseLibrary.map(e => e.group))].sort();
