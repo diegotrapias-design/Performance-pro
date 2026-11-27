@@ -644,8 +644,8 @@ window.handleLogin = async function(event){
     display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);
     border-radius:12px;padding:10px 12px;margin-bottom:8px;
   }
-  .lib-fav-btn{background:none;font-size:17px;opacity:.35;flex-shrink:0;padding:2px;}
-  .lib-fav-btn.active{opacity:1;}
+  .lib-fav-btn{background:none;font-size:20px;line-height:1;color:#f2c94c;opacity:1;flex-shrink:0;padding:2px;}
+  .lib-fav-btn.active{color:#c92532;opacity:1;}
   .lib-manage-info{flex:1;min-width:0;}
   .lib-manage-name{font-family:'Poppins',sans-serif;font-weight:600;font-size:13.5px;}
   .lib-manage-meta{font-size:11px;color:var(--gray);margin-top:2px;}
@@ -6354,7 +6354,7 @@ function renderLibraryScreen(filter){
       <div class="lib-manage-list">
         ${groups[g].map(ex => `
           <div class="lib-manage-row">
-            ${libraryManageMultiSelect ? `<label class="lib-manage-select" title="Selecionar exercício"><input type="checkbox" ${selectedLibraryManageIds.includes(ex.id)?'checked':''} onchange="toggleLibraryManageId('${ex.id}',this.checked)"></label>` : `<button class="lib-fav-btn ${ex.favorite?'active':''}" onclick="toggleLibraryFavorite('${ex.id}')" title="Favoritar">⭐</button>`}
+            ${libraryManageMultiSelect ? `<label class="lib-manage-select" title="Selecionar exercício"><input type="checkbox" ${selectedLibraryManageIds.includes(ex.id)?'checked':''} onchange="toggleLibraryManageId('${ex.id}',this.checked)"></label>` : `<button class="lib-fav-btn ${ex.favorite?'active':''}" onclick="toggleLibraryFavorite('${ex.id}')" title="${ex.favorite?'Remover dos favoritos':'Favoritar'}">★</button>`}
             <div class="lib-manage-info">
               <div class="lib-manage-name">${escapeHtml(ex.name)}</div>
               <div class="lib-manage-meta">${ex.video ? 'Vídeo anexado' : (ex.description ? 'Descrição disponível' : 'Sem vídeo')} · ${escapeHtml(exerciseCategory(ex))}</div>
@@ -6397,12 +6397,14 @@ function renderLibraryScreen(filter){
           ${groupSelectHtml}
         </select>
       </div>
-      ${libraryManageMultiSelect ? `<div class="lib-bulk-toolbar"><span class="lib-bulk-count" id="lib-bulk-count">${selectedLibraryManageIds.length} selecionados</span><button type="button" class="btn btn-outline btn-sm" onclick="selectVisibleLibraryExercises()">Selecionar resultados</button><button type="button" id="lib-bulk-delete" class="btn btn-danger btn-sm" onclick="deleteSelectedLibraryExercises()" ${selectedLibraryManageIds.length?'':'disabled'}>Excluir selecionados</button></div>` : ''}
+      <div id="lib-bulk-toolbar">${libraryManageMultiSelect ? `<div class="lib-bulk-toolbar"><span class="lib-bulk-count" id="lib-bulk-count">${selectedLibraryManageIds.length} selecionados</span><button type="button" class="btn btn-outline btn-sm" onclick="selectVisibleLibraryExercises()">Selecionar resultados</button><button type="button" id="lib-bulk-delete" class="btn btn-danger btn-sm" onclick="deleteSelectedLibraryExercises()" ${selectedLibraryManageIds.length?'':'disabled'}>Excluir selecionados</button></div>` : ''}</div>
       <div id="lib-screen-results">${resultsHtml}</div>
       <button type="button" class="library-scroll-control library-scroll-top" onclick="scrollLibraryToTop()" aria-label="Rolar para o topo da biblioteca" title="Ir para o topo">↑</button>
       <button type="button" class="library-scroll-control library-scroll-bottom" onclick="scrollLibraryToBottom()" aria-label="Rolar para o final da biblioteca" title="Ir para o final">↓</button>
     `;
   }else{
+    const bulkToolbar=document.getElementById('lib-bulk-toolbar');
+    if(bulkToolbar) bulkToolbar.innerHTML=libraryManageMultiSelect ? `<div class="lib-bulk-toolbar"><span class="lib-bulk-count" id="lib-bulk-count">${selectedLibraryManageIds.length} selecionados</span><button type="button" class="btn btn-outline btn-sm" onclick="selectVisibleLibraryExercises()">Selecionar resultados</button><button type="button" id="lib-bulk-delete" class="btn btn-danger btn-sm" onclick="deleteSelectedLibraryExercises()" ${selectedLibraryManageIds.length?'':'disabled'}>Excluir selecionados</button></div>` : '';
     results.innerHTML = resultsHtml;
     const favoritesButton = document.getElementById('lib-screen-favorites');
     if(favoritesButton) favoritesButton.className = 'btn ' + (libraryFilterFavOnly?'btn-primary':'btn-outline') + ' btn-sm';
