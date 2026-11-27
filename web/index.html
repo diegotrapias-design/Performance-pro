@@ -4544,15 +4544,16 @@ function closeAthletePreview(){const h=document.getElementById('athlete-preview-
 function buildAthleteStickerHtml(a,compact=false){
   const age=calcAge(a.birthDate);
   const photo=a.profilePhoto||'';
-  const individual=(a.sportType||inferAthleteSportType(a.sport))==='individual';
-  const stats=[['ALTURA',a.height?(a.height+' cm'):'—'],['PESO',a.weight?(a.weight+' kg'):'—'],['IDADE',age!==null?(age+' anos'):'—'],[individual?'OBJETIVO':'POSIÇÃO',a.position||'—']];
+  const athleteType=a.sportType||inferAthleteSportType(a.sport);
+  const individual=athleteType==='individual',samba=athleteType==='samba';
+  const stats=[['ALTURA',a.height?(a.height+' cm'):'—'],['PESO',a.weight?(a.weight+' kg'):'—'],['IDADE',age!==null?(age+' anos'):'—'],[samba?'FUNÇÃO':(individual?'OBJETIVO':'POSIÇÃO'),a.position||'—']];
   return `<div class="dt-sticker${compact?' compact':''}">
     <div class="dt-sticker-motto">Seja o <em>adversário</em> que você temeria enfrentar.</div>
     <div class="dt-sticker-top">
       <div class="dt-sticker-left">
         <div class="dt-sticker-brand"><img class="dt-sticker-logo" src="data:image/png;base64,${ICON_B64}" alt="Diego Trapiá Alta Performance"></div>
-        <div class="dt-sticker-sport"><span>ESPORTE</span><b>${escapeHtml(a.sport||'—')}</b></div>
-        <div class="dt-sticker-team">${(a.sportType||inferAthleteSportType(a.sport))==='coletivo'?'CLUBE':'EQUIPE'}<br><b>${escapeHtml(a.club||'—')}</b></div>
+        <div class="dt-sticker-sport"><span>${samba?'CARNAVAL':'ESPORTE'}</span><b>${escapeHtml(a.sport||'—')}</b></div>
+        <div class="dt-sticker-team">${samba?'ESCOLA':((a.sportType||inferAthleteSportType(a.sport))==='coletivo'?'CLUBE':'EQUIPE')}<br><b>${escapeHtml(a.club||'—')}</b></div>
       </div>
       <div class="dt-sticker-portrait"><img class="dt-sticker-photo" src="${photo}" alt="Foto de ${escapeHtml(a.name||'atleta')}"></div>
       <div class="dt-sticker-stats">${stats.map(([label,value])=>`<div class="dt-sticker-stat"><span>${label}</span><b>${escapeHtml(String(value))}</b></div>`).join('')}</div>
