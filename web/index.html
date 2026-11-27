@@ -5453,6 +5453,13 @@ function previewExtraLibraryExercise(id,category){
   const x=findExtraLibraryExercise(id,category);if(!x)return;
   openExerciseVideo(x.video||'',x.name||'Demonstração do exercício',!!x.videoLoop);
 }
+function focusExtraExerciseReplacement(wi,ei){
+  const search=document.getElementById('extra-replace-search-'+wi+'-'+ei);
+  if(!search)return;
+  search.scrollIntoView({behavior:'smooth',block:'center'});
+  search.focus();
+  search.select();
+}
 function selectExtraLibraryExercise(wi,ei,id){
   const e=draft?.trainingPlan?.extraWorkouts?.[wi]?.exercises?.[ei];
   const category=draft?.trainingPlan?.extraWorkouts?.[wi]?.category;
@@ -5564,7 +5571,7 @@ function renderTreinoEditPanel(){
             '<button type="button" class="rm-btn" onclick="removeExtraExercise('+wi+','+ei+')" title="Excluir exercício">🗑</button>'+
           '</div>'+
         '</div>'+
-        '<input type="search" style="width:100%;padding:9px;margin:0 0 6px" placeholder="Buscar exercício pelo nome..." oninput="filterExtraLibraryOptions('+wi+','+ei+',this.value)">'+
+        '<input type="search" id="extra-replace-search-'+wi+'-'+ei+'" style="width:100%;padding:9px;margin:0 0 6px" placeholder="Buscar exercício pelo nome..." oninput="filterExtraLibraryOptions('+wi+','+ei+',this.value)">'+
         '<select id="extra-lib-'+wi+'-'+ei+'" style="width:100%;padding:9px;margin-bottom:8px" onchange="selectExtraLibraryExercise('+wi+','+ei+',this.value)">'+
           '<option value="">Biblioteca — core, favoritos e categoria do treino</option>'+optionHtml+
         '</select>'+
@@ -5580,7 +5587,7 @@ function renderTreinoEditPanel(){
         '</div>'+
         '<textarea rows="4" style="width:100%;min-height:110px;box-sizing:border-box;resize:vertical;padding:9px;margin-top:8px;font:inherit;border:1px solid var(--border);border-radius:8px" placeholder="Intensidade / observações" oninput="updateExtraExercise('+wi+','+ei+',\'obs\',this.value)">'+escapeHtml(e.obs||'')+'</textarea>'+
         '<div class="video-cell" style="margin-top:8px"><input type="url" value="'+escapeHtml(e.video||'')+'" oninput="updateExtraExercise('+wi+','+ei+',\'video\',this.value)" placeholder="Colar link do vídeo">'+(e.video?'<button type="button" class="video-open-btn" onclick="openExerciseVideo(\''+escapeHtml(e.video)+'\',\''+escapeHtml(e.name||'Exercício')+'\')">▶</button>':'')+'</div>'+
-        '<div class="ex-card-foot"><button type="button" class="btn btn-outline btn-sm" onclick="openExtraPresetPicker('+wi+',\'one\',\''+escapeHtml(e.id)+'\')">⚡ Preset de série</button></div>'+
+        '<div class="ex-card-foot"><button type="button" class="btn btn-outline btn-sm" onclick="focusExtraExerciseReplacement('+wi+','+ei+')">🔄 Substituir exercício</button><button type="button" class="btn btn-outline btn-sm" onclick="openExtraPresetPicker('+wi+',\'one\',\''+escapeHtml(e.id)+'\')">⚡ Preset de série</button></div>'+
       '</div>';
     }).join('');
     const weekdays=['Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado','Domingo'];
