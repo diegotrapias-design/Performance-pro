@@ -6548,6 +6548,9 @@ function closeExerciseForm(){
 async function submitExerciseForm(){
   const name = document.getElementById('ex-form-name').value.trim();
   if(!name){ showToast('Digite o nome do exercício.', 'err'); return; }
+  const normalizedName = exerciseNameKey(name);
+  const duplicate = exerciseLibrary.find(ex => ex.id !== editingExerciseId && exerciseNameKey(ex.name) === normalizedName);
+  if(duplicate){ showToast('Já existe um exercício com esse nome na biblioteca. Escolha outro nome.', 'err'); return; }
   const sel = document.getElementById('ex-form-group');
   let group = sel.value;
   if(group === '__new__'){
